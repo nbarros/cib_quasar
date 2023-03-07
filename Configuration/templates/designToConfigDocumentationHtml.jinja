@@ -1,0 +1,213 @@
+{# Copyright CERN, 2015.                                                         #}
+{# All rights not expressly granted are reserved.                                #}
+{# This file is part of Quasar.                                                  #}
+{#                                                                               #}
+{# Quasar is free software: you can redistribute it and/or modify                #}
+{# it under the terms of the GNU Lesser General Public Licence as published by   #}
+{# the Free Software Foundation, either version 3 of the Licence.                #}
+{# Quasar is distributed in the hope that it will be useful,                     #}
+{# but WITHOUT ANY WARRANTY; without even the implied warranty of                #}
+{#                                                                               #}
+{# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                 #}
+{# GNU Lesser General Public Licence for more details.                           #}
+{#                                                                               #}
+{# You should have received a copy of the GNU Lesser General Public License      #}
+{# along with Quasar.  If not, see <http://www.gnu.org/licenses/>                #}
+{#                                                                               #}
+{# Created:   Jul 2014                                                           #}
+{#            Mar 2020 (translated to Jinja2)                                    #}
+{# Authors:                                                                      #}
+{#   Piotr Nikiel <piotr@nikiel.info>                                            #}
+{#   Ben Farnham  <firstNm.secondNm@cern.ch>                                     #}
+{% import 'headers.jinja' as headers %}
+{% set this = designInspector.objectify_root() %}
+
+{% macro writeRestrictions(containingClassName, objectName, what) %}
+  {% set restrictions=designInspector.get_restrictions(containingClassName, objectName, what) %}
+
+  {% if restrictions|length>0 %}
+    <div style="background-color: #ffefef"><font color="red">Value restrictions</font>
+      {% set restrictionType = oracle.classify_xsd_restrictions(restrictions) %}
+      {% if restrictionType == 'enumeration' %}
+        <br/>Enumeration:
+        {% for restriction in restrictions -%}
+          <code>{{restriction[1]}}{{'|' if not loop.last}}</code>
+        {%- endfor %}
+      {% elif restrictionType == 'pattern' %}
+        <br/>Pattern:
+        {% for restriction in restrictions -%}
+          <code>{{restriction[1]}}</code>
+        {% endfor %}
+      {% elif restrictionType == 'bounds' %}
+        <br/>Bounds:
+        {% for restriction in restrictions|sort(attribute=0, reverse=True) -%}
+          {% if restriction[0] == 'minExclusive' %}
+            <code>{{boundsRestrictionPrefix}}{{objectName}}&gt;{{restriction[1]}}{{' AND ' if not loop.last}}</code>
+          {% endif %}
+          {% if restriction[0] == 'maxExclusive' %}
+            <code>{{boundsRestrictionPrefix}}{{objectName}}&lt;{{restriction[1]}}{{' AND ' if not loop.last}}</code>
+          {% endif %}
+          {% if restriction[0] == 'minInclusive' %}
+            <code>{{boundsRestrictionPrefix}}{{objectName}}&gt;={{restriction[1]}}{{' AND ' if not loop.last}}</code>
+          {% endif %}
+          {% if restriction[0] == 'maxInclusive' %}
+            <code>{{boundsRestrictionPrefix}}{{objectName}}&lt;={{restriction[1]}}{{' AND ' if not loop.last}}</code>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro writeCacheVarOrConfigEntry(containingClassName, elementObject, what) %}
+  {% set objectName = elementObject.get('name') %}
+  {% set objectType = elementObject.get('dataType') %}
+  {% set optionalityMsg = 'optional, the default value shown below will be used if not present' if elementObject.get('defaultValue') else 'mandatory' %}
+  <b>{{objectName}}</b> ({{objectType}}) {{optionalityMsg}}
+  {% set docElements = designInspector.objectifyDocumentation(containingClassName, objectName) %}
+  {% if docElements|length > 0 %}
+    <div style="background-color:#eeeeff"><font color="blue">DOC</font>
+      {% for docElement in docElements %}
+        {{ designInspector.strip_documentation_tag(docElement) }}
+      {% endfor %}
+      {# Add to the docs the enumeration documentation, if any. #}
+      {% if what == 'configentry' %}
+        {% set configEntryObjectified = designInspector.objectify_config_entries(containingClassName, "[@name='" + objectName + "']")[0] %}
+        {% set enumerationValuesWithDocs = designInspector.xpath_relative_to_object(configEntryObjectified, 'd:configRestriction/d:restrictionByEnumeration/d:enumerationValue[d:documentation]') %}
+        {% if enumerationValuesWithDocs|length > 0 %}
+          <ul>
+          {% for enumerationValue in designInspector.xpath_relative_to_object(configEntryObjectified, 'd:configRestriction/d:restrictionByEnumeration/d:enumerationValue') %}
+            <li><code>{{enumerationValue.get('value')}}</code>:
+              {% if enumerationValue.getchildren()|length > 0 %}
+                {{ designInspector.strip_documentation_tag(enumerationValue.getchildren()[0]) }}
+              {% else %}
+                <b>To the developer: complete this documentation entry in your Design.</b>
+              {% endif %}
+            </li>
+          {% endfor %}
+          </ul>
+        {% endif %}
+      {% endif %}
+    </div>
+  {% endif %}
+  {% if elementObject.get('defaultValue') %}
+    <div style="background-color: #efffef"><b>Default value:</b> {{elementObject.get('defaultValue')}}</div>
+  {% endif %}
+  {{ writeRestrictions(containingClassName, objectName, what) }}
+{% endmacro %}
+
+<html>
+<head>
+  <style>
+    li {margin-bottom: 10pt;}
+  </style>
+</head>
+  <h1>Configuration documentation for {{designInspector.getProjectName()}}</h1>
+
+  Jump to:
+  {% for className in designInspector.get_names_of_all_classes()|sort() %}
+    {% set parentObjects = designInspector.objectifyAllParents(className, restrict_to_by_configuration=True) %}
+    {% if parentObjects|length > 0 %}
+      <a href="#class_{{className}}">{{className}}</a>
+    {% endif %}
+  {% endfor %}
+
+  {% for className in designInspector.get_names_of_all_classes()|sort() %}
+    {% set parentObjects = designInspector.objectifyAllParents(className, restrict_to_by_configuration=True) %}
+    {% if parentObjects|length > 0 %}
+      <a id="class_{{className}}"><h2>{{className}}</h2></a>
+      {% set documentation = designInspector.objectifyDocumentation(className) %}
+      {% if documentation %}
+        <div style="background-color:#eeeeff"><font color="blue">DOC</font>
+          {% for docElement in documentation %}
+            {{ designInspector.strip_documentation_tag(docElement) }}
+          {% endfor %}
+        </div>
+        <br/>
+      {% endif %}
+      {% if designInspector.is_class_always_singleton(className) %}
+        <div style="background-color:#ffeedd">NOTE
+          This class is a singleton, do not declare it more than once.
+        </div>
+        <br/>
+        {% if designInspector.get_class_default_instance_name(className) != None %}
+          <div style="background-color:#ffeedd">NOTE
+            The <code>name</code> attribute in this class is defaulted to <code>{{designInspector.get_class_default_instance_name(className)}}</code>, don't waste time specifying it in the config file.
+          </div>
+          <br/>
+        {% endif %}
+      {% endif %}
+
+      Configuration attributes:
+      <ul>
+      {% set configEntries= designInspector.objectify_config_entries(className) %}
+      {% if configEntries|length > 0 %}
+        {% for configEntry in configEntries %}
+          <li>
+          {{ writeCacheVarOrConfigEntry(className, configEntry, "configentry") }}
+          </li>
+        {% endfor %}
+      {% else %}
+	      Class {{className}} has no configuration entries.
+      {% endif %}
+
+      {% set configuredCacheVars = designInspector.objectify_cache_variables(className, restrict_by="[@initializeWith='configuration']") %}
+      {% if configuredCacheVars |length > 0 %}
+        {% for cacheVar in configuredCacheVars %}
+          <li>
+          {{ writeCacheVarOrConfigEntry(className, cacheVar, "cachevariable") }}
+          </li>
+        {% endfor %}
+      {% else %}
+	      Class {{className}} has no cache variables initialized from the configuration.
+      {% endif %}
+      </ul>
+
+      Possible children:
+      <a href="#class_CalculatedVariable">CalculatedVariable</a>
+      <a href="#class_FreeVariable">FreeVariable</a>
+      {% for hasObject in designInspector.get_class_has_objects(className) %}
+        {% if hasObject.get('instantiateUsing')=='configuration' %}
+          <a href="#class_{{hasObject.get('class')}}">{{hasObject.get('class')}}</a>
+        {% endif %}
+      {% endfor %}
+
+    {% endif %}
+  {% endfor %}
+
+  <a id="class_CalculatedVariable"><h2>CalculatedVariable</h2></a>
+  A CalculatedVariable is a "synthetic" variable which is based on other "real" variables of the address-space.
+  You can declare a CalculatedVariable under any object in the configuration file.
+  The required attributes are:
+  <ul>
+    <li>name - will be the last part of the address</li>
+    <li>value - analytical formula used to calculate the value of the variable.
+        E.g. to calculate the square of another variable with address x.y you should put <code>x.y^2</code></li>
+  </ul>
+  Detailed documentation of all features of CalculatedVariables is available in the quasar Documentation (see CalculatedVariables/doc/CalculatedVariables.html from the quasar root).
+
+  <a id="class_CalculatedVariableGenericFormula"><h2>CalculatedVariableGenericFormula</h2></a>
+  A CalculatedVariableGenericFormula is a generalized formula that can be used as a template to
+  instantiate CalculatedVariable(s). It helps to avoid redundancy and thus also minimize probability
+  of errors. The basic way of using the CalculatedVariableGenericFormula is using the <code>$applyGenericFormula</code> operator.
+  <p/>
+
+  The CalculatedVariableGenericFormula needs to be instantiated at the very top of a chosen configuration file.
+
+  <p/>
+
+  Detailed documentation of all features of CalculatedVariables is available in the quasar Documentation (see CalculatedVariables/doc/CalculatedVariables.html from the quasar root).
+
+  <a id="class_FreeVariable"><h2>FreeVariable</h2></a>
+  A FreeVariable is an OPC-UA variable which can be added anywhere in the address-space. It is not governed at all by the given server
+  Design and, in fact, the server can't even communicate with that variable (or, at least, there is no direct support for it).
+  A free variable can be always written to by any OPCUA clients.
+  <br>
+  The required attributes are:
+  <ul>
+    <li>name</li>
+    <li>type, one of: Boolean, Byte, SByte, UInt16, Int16, UInt32, Int32, UInt64, Int64, Float, Double, String.</li>
+  </ul>
+  In addition, an initialValue attribute might be given.
+
+</html>

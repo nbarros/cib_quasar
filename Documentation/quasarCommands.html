@@ -1,0 +1,303 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>quasar.py command help</title>
+    <style>
+    .syntax {
+      font-family: monospace;
+      border-style: dotted;
+      border-width: 1px;
+      background-color:
+        #eeeeff;
+      padding: .5em;
+      margin: 1em;
+      display: inline-block;
+
+    }
+
+    </style>
+  </head>
+  <body>
+    <h1>quasar.py commands help</h1>
+    <img src="images/quasar_engine_small_smooth_square_128x128.png"
+      alt="" height="128" width="128">
+    <h2><a name="build"></a>build<br>
+    </h2>
+    <p>This is the main command to build the project (a quasar-based
+      OPC-UA server).<br>
+      Syntax:<br>
+    </p>
+    <div class="syntax">./quasar.py build [--builder builder]
+      [buildType]</div>
+    <br>
+    <p>Where:<br>
+    </p>
+    <ul>
+      <li>builder (optional) can be Ninja (in Linux), or left absent for
+        whatever is your system's default (typically GNU Make in Linux
+        and MSVC build in Windows).<br>
+      </li>
+      <li>buildType (optional) can be either Debug or Release. When not
+        specified it defaults to Release.<br>
+      </li>
+    </ul>
+    <h2><a name="build_config"></a>build_config</h2>
+    <p>Prints the currently chosen build configuration file.<br>
+      <br>
+    </p>
+    See also <a href="#set_build_config">set_build_config</a>.
+    <h2><a name="check_consistency"></a>check_consistency</h2>
+    <p>Checks the consistency of the project in terms of quasar project
+      structure.<br>
+      The following classes of errors might be reported:<br>
+    </p>
+    <ul>
+      <li>user modification of a file which belongs to quasar (found by
+        checksum verification),</li>
+      <li>broken structure of quasar project (e.g. missing files),<br>
+      </li>
+      <li>file(s) not committed in the version control system,<br>
+      </li>
+    </ul>
+    <h2><a name="clean"></a>clean</h2>
+    <p>Deprecated because quasar does out-of-source builds by default
+      for long time.<br>
+      Simply remove your build directory.<br>
+    </p>
+    <h2><a name="create_project"></a>create_project</h2>
+    <p>Creates a new quasar project at path given as <i>destination</i>.<br>
+    </p>
+    <p>Syntax:<br>
+    </p>
+    <div class="syntax">./quasar.py create_project &lt;destination&gt;</div>
+    <p> </p>
+    <h2><a name="create_release"></a>create_release<br>
+    </h2>
+    <p><i>Warning: this command is only for the developers of quasar
+        itself.</i><br>
+    </p>
+    <p>Upgrades files.txt with the contents of original_files.txt.
+      Expert command, only to be used by developers of the framework
+      when creating a new release.<br>
+      This command is strictly reserved to the quasar heads and it won't
+      work in a typical user environment.<br>
+    </p>
+    <h2><a name="doxygen"></a>doxygen</h2>
+    <p>&nbsp;Runs doxygen in the documentation folder, by default
+      profiting from quasar-supplied Doxyfile. <br>
+    </p>
+    <h2><a name="enable_module"></a>enable_module</h2>
+    <p>Enables optional module from quasar's optional modules catalogue.
+      The catalogue is fetched from GitHub (or its local mirror) in case
+      it is necessary.</p>
+    <p>Syntax:<br>
+    </p>
+    <div class="syntax">./quasar.py enable_module &lt;moduleName&gt;
+      [tag] [serverString]<br>
+    </div>
+    <p>Where:<br>
+    </p>
+    <ul>
+      <li>&nbsp; moduleName - the name (you can list available modules
+        by <a href="#list_modules">list_modules</a>)<br>
+      </li>
+      <li>&nbsp; tag (optional) - tag/branch to checkout, if not
+        specified, master branch is used</li>
+      <li>&nbsp; serverString (optional) - default git server is
+        "https://github.com", specify custom if necessary, e.g.
+        "ssh://git@gitlab.cern.ch:7999"</li>
+    </ul>
+    <h2><a name="disable_module"></a>disable_module</h2>
+    <p>Disables optional module. Module files will be deleted.</p>
+    <p>Syntax:<br>
+    </p>
+    <div class="syntax">./quasar.py disable_module &lt;moduleName&gt;</div>
+    <h2><a name="external_tool_check"></a>external_tool_check</h2>
+    <p>Checks dependencies of quasar.<br>
+    </p>
+    <h2><a name="format_design"></a>format_design</h2>
+    <p>Formats/styles Design.xml.</p>
+    <p>The backup is left as Design.xml.backup.<br>
+    </p>
+    <h2><a name="generate_as_doc"></a>generate as_doc</h2>
+    <p>Generates address space documentation (the documentation of all
+      OPCUA ObjectTypes, Variables, etc... ) and places it in
+      Documentation/AddressSpaceDoc.html.<br>
+    </p>
+    <h2> </h2>
+    <h2><a name="generate_asclass"></a>generate asclass</h2>
+    <p><i>Warning: this command is internally called by the build system
+        and it is not expected to be directly used by users.</i></p>
+    <p>Generates the files AS&lt;classname&gt;.h and
+      AS&lt;classname&gt;.cpp.<br>
+    </p>
+    <h2><a name="generate_base"></a>generate base</h2>
+    <p><i>Warning: this command is internally called by the build system
+        and it is not expected to be directly used by users.</i></p>
+    <p>Generates the files Base_D&lt;classname&gt;.h and
+      Base_D&lt;classname&gt;.cpp. <br>
+    </p>
+    <h2><a name="generate_cmake_headers"></a>generate cmake_headers</h2>
+    <p><i>Warning: this command is internally called by the build system
+        and it is not expected to be directly used by users.</i></p>
+    <p>Generates parts of CMakeLists.txt which need to be derived from
+      Design.<br>
+    </p>
+    <h2><a name="generate_config_cpp"></a>generate config_cpp</h2>
+    <p><i>Warning: this command is internally called by the build system
+        and it is not expected to be directly used by users.</i></p>
+    <p>Generates the file Configurator.cpp.<br>
+    </p>
+    <h2><a name="generate_config_doc"></a>generate config_doc</h2>
+    <p>Generates documentation of the Configuration Schema. <br>
+      Such a documentation is a HTML document with description of all
+      fields that might appear in the configuration.<br>
+    </p>
+    <h2><a name="generate_config_xsd"></a>generate config_xsd</h2>
+    <p><i>Warning: this command is internally called by the build system
+        and it is not expected to be directly used by users.</i></p>
+    <p>Generates the file Configuration.xsd. This method is called
+      automatically by cmake, it does not need to be called by the user.<br>
+    </p>
+    <h2><a name="generate_config_validator"></a>generate
+      config_validator</h2>
+    <p><i>Warning: this command is internally called by the build system
+        and it is not expected to be directly used by users.</i></p>
+    <p>Generates the file ConfigValidator.xsd. This method is called
+      automatically by cmake, it does not need to be called by the user.<br>
+    </p>
+    <h2><a name="generate_device"></a>generate device</h2>
+    <p>Generates the Device Logic files D&lt;classname&gt;.h and
+      D&lt;classname&gt;.cpp.</p>
+    <p>Syntax:<br>
+    </p>
+    <div class="syntax">./quasar.py generate device &lt;quasar class&gt;</div>
+    <h2><a name="generate_device_--all"></a>generate device --all</h2>
+    <p>Equal to "generate device" (above) run with all classes with
+      device logic from the Design.<br>
+    </p>
+    <h2><a name="generate_diagram"></a>generate diagram</h2>
+    Creates a <i>quasar design diagram</i> for this project.<br>
+    <p>Syntax:<br>
+    </p>
+    <div class="syntax">./quasar.py generate diagram [detailLevel
+      [mode]]<br>
+    </div>
+    <br>
+    &nbsp;&nbsp;&nbsp; <br>
+    Where:<br>
+    <br>
+    <ul>
+      <li> detailLevel is between 0 and 4, and it defaults to 0. When
+        the detailLevel is increased you see more and more information.</li>
+      <li> mode defaults to "dot" which is the most hierarchical
+        graphviz operation mode. You can also try "fdp" and "circo", for
+        mixed results.</li>
+    </ul>
+    If bored with the typical diagrams, try:<br>
+    <div class="syntax">./quasar.py generate diagram 4 circo<br>
+    </div>
+    <br>
+    <h2><a name="generate_honkytonk"></a>generate honkytonk</h2>
+    <p>Generates honkyTonky.cc, a special class intended for testing
+      your namespace with simulated (random) values.<br>
+    </p>
+    <h2><a name="generate_info_model"></a>generate info_model</h2>
+    <p><i>Warning: this command is internally called by the build system
+        and it is not expected to be directly used by users.<br>
+      </i></p>
+    <p>Generates the files ASInformationModel.h and
+      ASInformationModel.cpp.<br>
+    </p>
+    <h2><a name="generate_source_variables"></a> generate
+      source_variables</h2>
+    <p><i>Warning: this command is internally called by the build system
+        and it is not expected to be directly used by users.</i></p>
+    <h2> </h2>
+    <p>&nbsp;Generates the files SourceVariables.h and
+      SourceVariables.cpp.<br>
+    </p>
+    <h2><a name="generate_root"></a>generate root</h2>
+    <p><i>Warning: this command is internally called by the build system
+        and it is not expected to be directly used by users.</i></p>
+    <p>Generates the files DRoot.h and DRoot.cpp.<br>
+      <br>
+    </p>
+    <h2> <a name="list_enabled_modules"></a>list_enabled_modules</h2>
+    <p>List all optional modules that were enabled for your project.<br>
+    </p>
+    <h2> <a name="list_modules"></a>list_modules</h2>
+    <p>List all officially registered quasar optional modules.<br>
+    </p>
+    <h2><br>
+      <a name="prepare_build"></a>prepare_build</h2>
+    <p><i>Warning: used to be user's command but its future is debatable
+        - don't use.</i><br>
+    </p>
+    <h2><a name="quasar_version"></a>quasar_version</h2>
+    <p>Prints currently deployed quasar version.<br>
+    </p>
+    <h2><a name="set_build_config"></a>set_build_config</h2>
+    <p>Sets the new build config. Some standard build configs are
+      shipped with quasar, e.g. <a
+href="https://github.com/quasar-team/quasar/blob/master/open62541_config.cmake">open62541
+
+        build config</a> for building against open62541 (via
+      open62541-compat).<br>
+    </p>
+    <p>See also <a href="#build_config">build_config</a><br>
+    </p>
+    <h2><a name="setup_svn_ignore"></a>setup_svn_ignore</h2>
+    If you use SVN as your version control system, it setups the
+    .svnignore file, so the generated files will be ignored in your svn
+    repository.<br>
+    <br>
+    <h2><a name="symlink_runtime_deps"></a>symlink_runtime_deps</h2>
+    <p>New in quasar 1.3.0.</p>
+    <p>When you build out-of-source (which is the default since quasar
+      1.3.0) your executable will be done in build/bin (the default) but
+      some files (like ServerConfig.xml) which are normally in bin/ will
+      be needed to run it.<br>
+      This convenience function can be run:<br>
+      <br>
+    </p>
+    <ul>
+      <li>with no arguments -&gt; symlinks ServerConfig.xml and
+        config*.xml</li>
+      <li>with one argument -&gt; symlinks whatever wildcard-matches the
+        argument, from bin/ in the source directory to bin/ in the build
+        directory<br>
+        (NOTE: don't forget to escape asterisk if you use it by
+        backslash!)<br>
+      </li>
+    </ul>
+    <h2><a name="upgrade_design"></a>upgrade_design</h2>
+    <p>upgrade_design is used to cover backwards-incompatible Design
+      changes between different versions of quasar.<br>
+      As of quasar 1.3.4, it can be run with the following options:<br>
+      <br>
+    </p>
+    <ul>
+      <li>convert_to_hasDeviceLogic=yes<br>
+        when you are upgrading from quasar older than 1.1.0,<br>
+      </li>
+      <li>add_nullPolicy=nullAllowed or add_nullPolicy=nullForbidden<br>
+        when you are upgrading from quasar older than 0.96<br>
+      </li>
+    </ul>
+    <h2><a name="upgrade_project"></a>upgrade_project</h2>
+    <p>Upgrades the framework in a given target directory (where a
+      quasar project already is).<br>
+    </p>
+    <p>Syntax:<br>
+    </p>
+    <div class="syntax">./quasar.py upgrade_project &lt;destination&gt;</div>
+    <h2><a name="validate_design"></a>validate_design</h2>
+    <p>Validates your Design using built-in Design Validator. <br>
+    </p>
+    <p>You can run it on your own though each invocation to build will
+      also run it.<br>
+    </p>
+  </body>
+</html>
