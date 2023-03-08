@@ -27,6 +27,9 @@
 #include <LogIt.h>
 #include <shutdown.h>
 
+#include <DRoot.h>
+#include <DIOLMotor.h>
+
 QuasarServer::QuasarServer() : BaseQuasarServer()
 {
 
@@ -46,6 +49,10 @@ void QuasarServer::mainLoop()
     while(ShutDownFlag() == 0)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        for (Device::DIOLMotor * motor : Device::DRoot::getInstance()->iolmotors())
+        {
+        	motor->update();
+        }
     }
     printServerMsg(" Shutting down server");
 }
