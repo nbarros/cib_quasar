@@ -18,40 +18,38 @@
  */
 
 
-#ifndef __DIOLMotor__H__
-#define __DIOLMotor__H__
+#ifndef __DIoLLaserUnit__H__
+#define __DIoLLaserUnit__H__
 
-#include <Base_DIOLMotor.h>
+#include <Base_DIoLLaserUnit.h>
 
 namespace Device
 {
 
 class
-    DIOLMotor
-    : public Base_DIOLMotor
+    DIoLLaserUnit
+    : public Base_DIoLLaserUnit
 {
 
 public:
     /* sample constructor */
-    explicit DIOLMotor (
-        const Configuration::IOLMotor& config,
-        Parent_DIOLMotor* parent
+    explicit DIoLLaserUnit (
+        const Configuration::IoLLaserUnit& config,
+        Parent_DIoLLaserUnit* parent
     ) ;
     /* sample dtr */
-    ~DIOLMotor ();
+    ~DIoLLaserUnit ();
 
     /* delegators for
     cachevariables and sourcevariables */
-    /* Note: never directly call this function. */
-    UaStatus writePositionSetPoint ( const std::vector<OpcUa_Double>& v);
 
 
     /* delegators for methods */
 
 private:
     /* Delete copy constructor and assignment operator */
-    DIOLMotor( const DIOLMotor& other );
-    DIOLMotor& operator=(const DIOLMotor& other);
+    DIoLLaserUnit( const DIoLLaserUnit& other );
+    DIoLLaserUnit& operator=(const DIoLLaserUnit& other);
 
     // ----------------------------------------------------------------------- *
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
@@ -59,16 +57,13 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
-    void update();
-
 
 private:
-    std::vector<double> position_;
-    std::vector<double> positionSetPoint_;
+
 
 
 };
 
 }
 
-#endif // __DIOLMotor__H__
+#endif // __DIoLLaserUnit__H__

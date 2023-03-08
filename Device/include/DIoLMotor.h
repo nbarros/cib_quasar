@@ -18,27 +18,27 @@
  */
 
 
-#ifndef __DIOLMotor__H__
-#define __DIOLMotor__H__
+#ifndef __DIoLMotor__H__
+#define __DIoLMotor__H__
 
-#include <Base_DIOLMotor.h>
+#include <Base_DIoLMotor.h>
 
 namespace Device
 {
 
 class
-    DIOLMotor
-    : public Base_DIOLMotor
+    DIoLMotor
+    : public Base_DIoLMotor
 {
 
 public:
     /* sample constructor */
-    explicit DIOLMotor (
-        const Configuration::IOLMotor& config,
-        Parent_DIOLMotor* parent
+    explicit DIoLMotor (
+        const Configuration::IoLMotor& config,
+        Parent_DIoLMotor* parent
     ) ;
     /* sample dtr */
-    ~DIOLMotor ();
+    ~DIoLMotor ();
 
     /* delegators for
     cachevariables and sourcevariables */
@@ -50,8 +50,8 @@ public:
 
 private:
     /* Delete copy constructor and assignment operator */
-    DIOLMotor( const DIOLMotor& other );
-    DIOLMotor& operator=(const DIOLMotor& other);
+    DIoLMotor( const DIoLMotor& other );
+    DIoLMotor& operator=(const DIoLMotor& other);
 
     // ----------------------------------------------------------------------- *
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
@@ -67,8 +67,9 @@ private:
     std::vector<double> positionSetPoint_;
 
 
+
 };
 
 }
 
-#endif // __DIOLMotor__H__
+#endif // __DIoLMotor__H__

@@ -20,8 +20,8 @@
 
 #include <Configuration.hxx> // TODO; should go away, is already in Base class for ages
 
-#include <DIOLMotor.h>
-#include <ASIOLMotor.h>
+#include <DIoLLaserUnit.h>
+#include <ASIoLLaserUnit.h>
 
 namespace Device
 {
@@ -47,50 +47,24 @@ namespace Device
 // 2222222222222222222222222222222222222222222222222222222222222222222222222
 
 /* sample ctr */
-DIOLMotor::DIOLMotor (
-    const Configuration::IOLMotor& config,
-    Parent_DIOLMotor* parent
+DIoLLaserUnit::DIoLLaserUnit (
+    const Configuration::IoLLaserUnit& config,
+    Parent_DIoLLaserUnit* parent
 ):
-    Base_DIOLMotor( config, parent)
+    Base_DIoLLaserUnit( config, parent)
 
     /* fill up constructor initialization list here */
 {
     /* fill up constructor body here */
-	LOG(Log::INF) << "Constructing IOLMotor::ID=" << config.id();
 }
 
 /* sample dtr */
-DIOLMotor::~DIOLMotor ()
+DIoLLaserUnit::~DIoLLaserUnit ()
 {
 }
 
 /* delegates for cachevariables */
 
-/* Note: never directly call this function. */
-
-UaStatus DIOLMotor::writePositionSetPoint ( const std::vector<OpcUa_Double>& v)
-{
-
-	if (v.size() != 3)
-	{
-		return OpcUa_BadInvalidArgument;
-	}
-
-	// check ranges
-	if ((v.at(0) < 0) || (v.at(0) > 50000))
-	{
-		LOG(Log::ERR) << "Value out of range for positionSetPoint. Offending value = " << v.at(0);
-		return OpcUa_BadOutOfRange;
-	}
-
-	if (v != positionSetPoint_)
-	{
-		LOG(Log::INF) << "Updating motor ID=" << id() << " with positionSetPoint = (" << v.at(0) << "," << v.at(1) << "," << v.at(2) << ")";
-		positionSetPoint_ = v;
-	}
-
-    return OpcUa_Good;
-}
 
 
 /* delegators for methods */
@@ -100,37 +74,5 @@ UaStatus DIOLMotor::writePositionSetPoint ( const std::vector<OpcUa_Double>& v)
 // 3     Below you put bodies for custom methods defined for this class.   3
 // 3     You can do whatever you want, but please be decent.               3
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
-
-void DIOLMotor::update()
-{
-	//LOG(Log::INF) << "Updating for IOLMotor::ID=" << id();
-
-	// server updates
-	// i.e., form the server to the client
-	position_ = {rand(),rand(),rand()};
-	getAddressSpaceLink()->setPosition(position_,OpcUa_Good);
-
-
-
-	/** The code below is valid for regular writing mechanism
-	 *
-	// from the client to the server
-	//std::vector<double> pos2;
-	std::vector<double> tmp_positionSetPoint_ = {0,0,0};
-	OpcUa_StatusCode res = getAddressSpaceLink()->getPositionSetPoint(tmp_positionSetPoint_);
-	if (res == OpcUa_Good)
-	{
-		//LOG(Log::ERR) << "Failed to acquire PositionSetPoint " << ;
-		if (tmp_positionSetPoint_ != positionSetPoint_)
-		{
-			LOG(Log::INF) << "Updating motor ID=" << id() << " with positionSetPoint = (" << tmp_positionSetPoint_.at(0) << "," << tmp_positionSetPoint_.at(1) << "," << tmp_positionSetPoint_.at(2) << ")";
-			positionSetPoint_ = tmp_positionSetPoint_;
-		}
-	} else
-	{
-		// for now do nothing
-	}
-	*/
-}
 
 }

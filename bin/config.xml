@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration xmlns="http://cern.ch/quasar/Configuration" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cern.ch/quasar/Configuration ../Configuration/Configuration.xsd ">
-<IOLMotor name="m1" />
-<IOLMotor name="m2" />
+	<IOLMotor name="m1" id="1" server_address="localhost:4500"
+		speed="2" torque="5" refresh_rate_hz="1" >
+		<positionSetPoint>
+			<value>0.0</value>
+			<value>0.0</value>
+			<value>0.0</value>
+		</positionSetPoint></IOLMotor>
+	<IOLMotor name="m2" id="2" server_address="localhost:4501"
+		refresh_rate_hz="1.5" speed="3" torque="5" >
+		<positionSetPoint>
+			<value>0.0</value>
+			<value>0.0</value>
+			<value>0.0</value>
+		</positionSetPoint></IOLMotor>
 </configuration>

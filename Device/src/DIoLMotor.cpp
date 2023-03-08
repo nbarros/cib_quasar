@@ -20,8 +20,8 @@
 
 #include <Configuration.hxx> // TODO; should go away, is already in Base class for ages
 
-#include <DIOLMotor.h>
-#include <ASIOLMotor.h>
+#include <DIoLMotor.h>
+#include <ASIoLMotor.h>
 
 namespace Device
 {
@@ -47,20 +47,19 @@ namespace Device
 // 2222222222222222222222222222222222222222222222222222222222222222222222222
 
 /* sample ctr */
-DIOLMotor::DIOLMotor (
-    const Configuration::IOLMotor& config,
-    Parent_DIOLMotor* parent
+DIoLMotor::DIoLMotor (
+    const Configuration::IoLMotor& config,
+    Parent_DIoLMotor* parent
 ):
-    Base_DIOLMotor( config, parent)
+    Base_DIoLMotor( config, parent)
 
     /* fill up constructor initialization list here */
 {
     /* fill up constructor body here */
-	LOG(Log::INF) << "Constructing IOLMotor::ID=" << config.id();
 }
 
 /* sample dtr */
-DIOLMotor::~DIOLMotor ()
+DIoLMotor::~DIoLMotor ()
 {
 }
 
@@ -68,7 +67,7 @@ DIOLMotor::~DIOLMotor ()
 
 /* Note: never directly call this function. */
 
-UaStatus DIOLMotor::writePositionSetPoint ( const std::vector<OpcUa_Double>& v)
+UaStatus DIoLMotor::writePositionSetPoint ( const std::vector<OpcUa_Double>& v)
 {
 
 	if (v.size() != 3)
@@ -100,8 +99,7 @@ UaStatus DIOLMotor::writePositionSetPoint ( const std::vector<OpcUa_Double>& v)
 // 3     Below you put bodies for custom methods defined for this class.   3
 // 3     You can do whatever you want, but please be decent.               3
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
-
-void DIOLMotor::update()
+void DIoLMotor::update()
 {
 	//LOG(Log::INF) << "Updating for IOLMotor::ID=" << id();
 
