@@ -18,27 +18,27 @@
  */
 
 
-#ifndef __DIoLLaserUnit__H__
-#define __DIoLLaserUnit__H__
+#ifndef __DIoLPiezoController__H__
+#define __DIoLPiezoController__H__
 
-#include <Base_DIoLLaserUnit.h>
+#include <Base_DIoLPiezoController.h>
 
 namespace Device
 {
 
 class
-    DIoLLaserUnit
-    : public Base_DIoLLaserUnit
+    DIoLPiezoController
+    : public Base_DIoLPiezoController
 {
 
 public:
     /* sample constructor */
-    explicit DIoLLaserUnit (
-        const Configuration::IoLLaserUnit& config,
-        Parent_DIoLLaserUnit* parent
+    explicit DIoLPiezoController (
+        const Configuration::IoLPiezoController& config,
+        Parent_DIoLPiezoController* parent
     ) ;
     /* sample dtr */
-    ~DIoLLaserUnit ();
+    ~DIoLPiezoController ();
 
     /* delegators for
     cachevariables and sourcevariables */
@@ -48,8 +48,8 @@ public:
 
 private:
     /* Delete copy constructor and assignment operator */
-    DIoLLaserUnit( const DIoLLaserUnit& other );
-    DIoLLaserUnit& operator=(const DIoLLaserUnit& other);
+    DIoLPiezoController( const DIoLPiezoController& other );
+    DIoLPiezoController& operator=(const DIoLPiezoController& other);
 
     // ----------------------------------------------------------------------- *
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
@@ -67,4 +67,4 @@ private:
 
 }
 
-#endif // __DIoLLaserUnit__H__
+#endif // __DIoLPiezoController__H__

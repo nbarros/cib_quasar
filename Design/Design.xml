@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<d:design projectShortName="IOL_SlowControl_Server" xmlns:d="http://cern.ch/quasar/Design" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cern.ch/quasar/Design Design.xsd ">
+<d:design projectShortName="IoLSlowControlServer" xmlns:d="http://cern.ch/quasar/Design" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cern.ch/quasar/Design Design.xsd ">
 <d:class name="IoLMotor">
-  <d:devicelogic></d:devicelogic>
+<d:devicelogic></d:devicelogic>
+  <d:configentry dataType="OpcUa_UInt16" name="id" storedInDeviceObject="true">
+  </d:configentry>
+  <d:configentry dataType="UaString" name="server_address" storedInDeviceObject="true">
+  </d:configentry>
   <d:cachevariable name="position" addressSpaceWrite="forbidden" dataType="OpcUa_Double" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
   	<d:array maximumSize="3" minimumSize="3"></d:array>
   </d:cachevariable>
@@ -10,12 +14,8 @@
   	nullPolicy="nullForbidden">
   	<d:array maximumSize="3" minimumSize="3" />
   </d:cachevariable>
-  <d:configentry dataType="OpcUa_UInt16" name="id"
-  	storedInDeviceObject="true">
-  </d:configentry>
-  <d:configentry dataType="UaString" name="server_address"
-  	storedInDeviceObject="true">
-  </d:configentry>
+  
+  
   <d:cachevariable initializeWith="configuration"
   	dataType="OpcUa_Float" name="refresh_rate_hz" nullPolicy="nullAllowed"
   	addressSpaceWrite="forbidden">
@@ -35,7 +35,9 @@
   <d:cachevariable initializeWith="configuration"
   	dataType="OpcUa_Double" name="speed" nullPolicy="nullAllowed"
   	addressSpaceWrite="forbidden">
-  </d:cachevariable><!--operation_status corresponds to a bitmask. The codes are documented in the manual--><d:cachevariable
+  </d:cachevariable>
+  <!--operation_status corresponds to a bitmask. The codes are documented in the manual-->
+  <d:cachevariable
   	initializeWith="valueAndStatus" dataType="OpcUa_UInt16"
   	name="operation_status" nullPolicy="nullAllowed"
   	addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
@@ -48,15 +50,18 @@
 		dataType="OpcUa_Float" name="rpi_mem" nullPolicy="nullAllowed"
 		addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 	</d:cachevariable>
+
 </d:class>
 	<d:class name="IoLPiezoController">
+		<d:devicelogic></d:devicelogic>
 		<d:cachevariable initializeWith="configuration"
 			dataType="OpcUa_UInt16" name="output_number" nullPolicy="nullAllowed"
 			addressSpaceWrite="forbidden"><!--Indicates the output number that will be controlled and is provided when adjusting--><d:configRestriction>
 	<d:restrictionByBounds minInclusive="0" maxInclusive="3" /></d:configRestriction>
 		</d:cachevariable>
 	</d:class>
-	<d:class name="IOLAttenuator">
+	<d:class name="IoLAttenuator">
+		<d:devicelogic></d:devicelogic>
 		<d:cachevariable initializeWith="configuration"
 			dataType="OpcUa_Double" name="resolution" nullPolicy="nullAllowed"
 			addressSpaceWrite="forbidden">
@@ -65,7 +70,7 @@
 	<d:class name="IoLLaserUnit">
 		<d:devicelogic></d:devicelogic>
 		<d:cachevariable initializeWith="configuration"
-			dataType="OpcUa_UInt32" name="qswitch" nullPolicy="nullAllowed"
+			dataType="OpcUa_UInt32" name="qswitch" nullPolicy="nullForbidden"
 			addressSpaceWrite="forbidden">
 		</d:cachevariable>
 		<d:cachevariable initializeWith="configuration"
@@ -86,14 +91,53 @@
 		</d:cachevariable>
 		<d:cachevariable initializeWith="valueAndStatus"
 			dataType="OpcUa_UInt32" name="flash_count" nullPolicy="nullForbidden"
-			addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+			addressSpaceWrite="forbidden"
+			initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
 		</d:cachevariable>
 		<d:cachevariable initializeWith="valueAndStatus"
 			dataType="OpcUa_UInt32" name="watchdog_timer" nullPolicy="nullAllowed"
 			addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 		</d:cachevariable>
 	</d:class>
-	<d:root>
-  <d:hasobjects class="IOLMotor" instantiateUsing="configuration"></d:hasobjects>
-</d:root>
+	
+	<d:class name="IoLCIB">
+		<d:configentry dataType="OpcUa_UInt16" name="id"></d:configentry>
+		<d:configentry dataType="UaString" name="server"
+			defaultValue="localhost">
+		</d:configentry>
+		<d:cachevariable initializeWith="valueAndStatus"
+			dataType="OpcUa_Float" name="load" nullPolicy="nullForbidden"
+			addressSpaceWrite="forbidden"
+			initialStatus="OpcUa_BadWaitingForInitialData" initialValue="-1.0">
+		</d:cachevariable>
+		<d:cachevariable initializeWith="configuration"
+			dataType="OpcUa_Double" name="" nullPolicy="nullAllowed"
+			addressSpaceWrite="forbidden">
+		</d:cachevariable>
+	</d:class>
+	<d:class name="IoLaserSystem">
+		<d:devicelogic></d:devicelogic><d:configentry dataType="OpcUa_UInt16" name="id"></d:configentry>
+		<d:configentry dataType="UaString" name="location"></d:configentry>
+		<d:cachevariable initializeWith="configuration"
+			dataType="OpcUa_Boolean" name="enabled" nullPolicy="nullForbidden"
+			addressSpaceWrite="forbidden">
+		</d:cachevariable>
+		<d:hasobjects instantiateUsing="configuration"
+			class="IoLLaserUnit" minOccurs="1" maxOccurs="1">
+		</d:hasobjects>
+		<d:hasobjects instantiateUsing="configuration" class="IoLMotor"
+			minOccurs="2" maxOccurs="3">
+		</d:hasobjects>
+		<d:hasobjects instantiateUsing="configuration"
+			class="IoLPiezoController" minOccurs="0" maxOccurs="2">
+		</d:hasobjects>
+		<d:hasobjects instantiateUsing="configuration"
+			class="IoLAttenuator" maxOccurs="1" minOccurs="1">
+		</d:hasobjects>
+		<d:hasobjects instantiateUsing="configuration" class="IoLCIB"
+			minOccurs="1" maxOccurs="1">
+		</d:hasobjects>
+	</d:class><d:root>
+  <d:hasobjects class="IoLaserSystem" instantiateUsing="configuration"></d:hasobjects>
+</d:root><!--comment-->
 </d:design>

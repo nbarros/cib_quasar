@@ -18,40 +18,38 @@
  */
 
 
-#ifndef __DIOLMotor__H__
-#define __DIOLMotor__H__
+#ifndef __DIoLaserSystem__H__
+#define __DIoLaserSystem__H__
 
-#include <Base_DIOLMotor.h>
+#include <Base_DIoLaserSystem.h>
 
 namespace Device
 {
 
 class
-    DIOLMotor
-    : public Base_DIOLMotor
+    DIoLaserSystem
+    : public Base_DIoLaserSystem
 {
 
 public:
     /* sample constructor */
-    explicit DIOLMotor (
-        const Configuration::IOLMotor& config,
-        Parent_DIOLMotor* parent
+    explicit DIoLaserSystem (
+        const Configuration::IoLaserSystem& config,
+        Parent_DIoLaserSystem* parent
     ) ;
     /* sample dtr */
-    ~DIOLMotor ();
+    ~DIoLaserSystem ();
 
     /* delegators for
     cachevariables and sourcevariables */
-    /* Note: never directly call this function. */
-    UaStatus writePositionSetPoint ( const std::vector<OpcUa_Double>& v);
 
 
     /* delegators for methods */
 
 private:
     /* Delete copy constructor and assignment operator */
-    DIOLMotor( const DIOLMotor& other );
-    DIOLMotor& operator=(const DIOLMotor& other);
+    DIoLaserSystem( const DIoLaserSystem& other );
+    DIoLaserSystem& operator=(const DIoLaserSystem& other);
 
     // ----------------------------------------------------------------------- *
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
@@ -59,16 +57,15 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
+
     void update();
 
-
 private:
-    std::vector<double> position_;
-    std::vector<double> positionSetPoint_;
+
 
 
 };
 
 }
 
-#endif // __DIOLMotor__H__
+#endif // __DIoLaserSystem__H__

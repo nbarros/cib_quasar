@@ -18,27 +18,27 @@
  */
 
 
-#ifndef __DIoLLaserUnit__H__
-#define __DIoLLaserUnit__H__
+#ifndef __DIoLAttenuator__H__
+#define __DIoLAttenuator__H__
 
-#include <Base_DIoLLaserUnit.h>
+#include <Base_DIoLAttenuator.h>
 
 namespace Device
 {
 
 class
-    DIoLLaserUnit
-    : public Base_DIoLLaserUnit
+    DIoLAttenuator
+    : public Base_DIoLAttenuator
 {
 
 public:
     /* sample constructor */
-    explicit DIoLLaserUnit (
-        const Configuration::IoLLaserUnit& config,
-        Parent_DIoLLaserUnit* parent
+    explicit DIoLAttenuator (
+        const Configuration::IoLAttenuator& config,
+        Parent_DIoLAttenuator* parent
     ) ;
     /* sample dtr */
-    ~DIoLLaserUnit ();
+    ~DIoLAttenuator ();
 
     /* delegators for
     cachevariables and sourcevariables */
@@ -48,8 +48,8 @@ public:
 
 private:
     /* Delete copy constructor and assignment operator */
-    DIoLLaserUnit( const DIoLLaserUnit& other );
-    DIoLLaserUnit& operator=(const DIoLLaserUnit& other);
+    DIoLAttenuator( const DIoLAttenuator& other );
+    DIoLAttenuator& operator=(const DIoLAttenuator& other);
 
     // ----------------------------------------------------------------------- *
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
@@ -67,4 +67,4 @@ private:
 
 }
 
-#endif // __DIoLLaserUnit__H__
+#endif // __DIoLAttenuator__H__

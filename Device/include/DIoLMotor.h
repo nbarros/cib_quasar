@@ -22,6 +22,7 @@
 #define __DIoLMotor__H__
 
 #include <Base_DIoLMotor.h>
+#include <vector>
 
 namespace Device
 {
