@@ -21,3 +21,6 @@ set(DEVICE_CUSTOM_SOURCES
 	# here place the list of your custom sources from Device module,
 	# e.g. src/MyFile1.cpp src/DeviceClass.cpp
 	)
+
+SET( QUASAR_SERVER_LIBS "${QUASAR_SERVER_LIBS}  -lcurl" )
+	

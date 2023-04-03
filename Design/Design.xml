@@ -28,6 +28,9 @@
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="rpi_mem" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 	</d:cachevariable>
     <d:method name="start_move" executionSynchronicity="synchronous">
+      <d:returnvalue dataType="UaString" name="response"/>
+    </d:method>
+    <d:method name="stop" executionSynchronicity="synchronous">
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
   </d:class>
   <d:class name="IoLPiezoController">
@@ -68,7 +71,7 @@
     </d:method>
   </d:class>
   <d:class name="IoLCIB">
-    <d:devicelogic></d:devicelogic>
+    <d:devicelogic/>
     <d:configentry dataType="OpcUa_UInt16" name="id"/>
     <d:configentry dataType="UaString" name="server" defaultValue="localhost">
 		</d:configentry>

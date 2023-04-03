@@ -22,6 +22,7 @@
 
 #include <DIoLMotor.h>
 #include <ASIoLMotor.h>
+#include <sstream>
 #include <json.hpp>
 using json = nlohmann::json;
 
@@ -29,6 +30,7 @@ extern "C" {
 #include <curl/curl.h>
 };
 
+using std::ostringstream;
 
 namespace Device
 {
@@ -61,11 +63,15 @@ DIoLMotor::DIoLMotor (
     Base_DIoLMotor( config, parent)
 
     /* fill up constructor initialization list here */
+	,m_position(-99999)
+	,m_position_setpoint(-99999)
 	, m_is_ready(false)
 	,is_moving_(false)
 	,m_acceleration(0.0)
+	,m_deceleration(0.0)
 	,m_speed(0.0)
 	,m_torque(0.0)
+	,m_temperature(0.0)
 	,m_address("")
 
 {
@@ -87,24 +93,19 @@ DIoLMotor::~DIoLMotor ()
 
 /* Note: never directly call this function. */
 
-UaStatus DIoLMotor::writePositionSetPoint ( const std::vector<OpcUa_Double>& v)
+UaStatus DIoLMotor::writePositionSetPoint ( const OpcUa_Double& v)
 {
 
-	if (v.size() != 3)
-	{
-		return OpcUa_BadInvalidArgument;
-	}
-
 	// check ranges
-	if ((v.at(0) < 0) || (v.at(0) > 50000))
+	if ((v < 0) || (v > 50000))
 	{
-		LOG(Log::ERR) << "Value out of range for positionSetPoint. Offending value = " << v.at(0);
+		LOG(Log::ERR) << "Value out of range for positionSetPoint. Offending value = " << v;
 		return OpcUa_BadOutOfRange;
 	}
 
 	if (v != m_position_setpoint)
 	{
-		LOG(Log::INF) << "Updating motor ID=" << id() << " with positionSetPoint = (" << v.at(0) << "," << v.at(1) << "," << v.at(2) << ")";
+		LOG(Log::INF) << "Updating motor ID=" << id() << " with positionSetPoint = (" << v << ")";
 		m_position_setpoint = v;
 	}
 
@@ -134,10 +135,17 @@ UaStatus DIoLMotor::callStart_move (UaString& response)
 	}
 
 	// if it reaches this point we can initiate the movement
-	move_motor();
+	return move_motor();
 
 
-	return OpcUa_Good;
+}
+
+UaStatus DIoLMotor::callStop (
+    UaString& response
+)
+{
+	// stopping is a serious business. Should be called immediately
+	return stop_motor();
 
 }
 
@@ -150,18 +158,22 @@ UaStatus DIoLMotor::callStart_move (UaString& response)
 void DIoLMotor::update()
 {
 	// method should be periodically poking the motors for their status
-
-	get_motor_info();
+	OpcUa_StatusCode status= OpcUa_Good;
+	if (get_motor_info() == OpcUa_Bad)
+	{
+		LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
+		status = OpcUa_BadResourceUnavailable;
+	}
 
 	//LOG(Log::INF) << "Updating for IOLMotor::ID=" << id();
 
 	// server updates
 	// i.e., form the server to the client
 	//position_ = {static_cast<double>(rand()),static_cast<double>(rand()),static_cast<double>(rand())};
-	getAddressSpaceLink()->setPosition(m_position,OpcUa_Good);
-	getAddressSpaceLink()->setSpeed(m_speed, OpcUa_Good);
-	getAddressSpaceLink()->setTorque(m_torque, OpcUa_Good);
-
+	getAddressSpaceLink()->setPosition(m_position,status);
+	getAddressSpaceLink()->setSpeed(m_speed, status);
+	getAddressSpaceLink()->setTorque(m_torque, status);
+	getAddressSpaceLink()->setTemperature_C(m_temperature, status);
 	//getAddressSpaceLink()->setAcceleration(m_acceleration, OpcUa_Good);
 
 
@@ -200,8 +212,21 @@ bool DIoLMotor::is_ready()
 	{
 		return false;
 	}
+	if (m_speed == 0.0)
+	{
+		return false;
+	}
+	if (m_acceleration == 0.0)
+	{
+		return false;
+	}
+	if (m_deceleration == 0.0)
+	{
+		return false;
+	}
+
 	LOG(Log::INF) << "Checking readiness for motor ID=" << id()
-			<< " with positionSetPoint = (" << m_position_setpoint;
+			<< " with positionSetPoint = (" << m_position_setpoint << ")";
 
 	return true;
 
@@ -216,9 +241,9 @@ size_t DIoLMotor::curl_write_function(void* ptr, size_t size, size_t nmemb, std:
 
 UaStatus DIoLMotor::get_motor_info()
 {
-	string addr = "http://" + m_server_address + "/api/info";
+	string addr = "http://" + server_address() + "/api/info";
 	static const uint16_t port = 5001;
-
+	OpcUa_StatusCode status= OpcUa_Good;
 	auto curl = curl_easy_init();
 	if (curl) {
 		curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
@@ -249,6 +274,9 @@ UaStatus DIoLMotor::get_motor_info()
 		{
 			LOG(Log::ERR) << "curl_easy_perform() failed: "
 				<< curl_easy_strerror(res);
+			curl_easy_cleanup(curl);
+			curl = NULL;
+
 			return OpcUa_Bad;
 		}
 
@@ -266,15 +294,166 @@ UaStatus DIoLMotor::get_motor_info()
 		m_temperature = answer["m_temp"];
 		m_torque = answer["torque"];
 
-		if (answer["status"] == "OK")
-		{
-			//
-		}
-
 		curl_easy_cleanup(curl);
 		curl = NULL;
 	}
 	return OpcUa_Good;
+}
+
+UaStatus DIoLMotor::move_motor()
+{
+	string addr = "http://" + server_address() + "/api/move";
+
+	static const uint16_t port = 5001;
+	OpcUa_StatusCode status= OpcUa_Good;
+
+	auto curl = curl_easy_init();
+	if (curl) {
+
+	    // NOTE: Zero values are not passed onto the query, and expects the server to assume defaults
+		ostringstream query("");
+		query << "pos=" << m_position_setpoint;
+		if (m_speed != 0)
+		{
+			query << "&speed=" << m_speed;
+		}
+		if (m_acceleration != 0)
+		{
+			query << "&accel=" << m_acceleration;
+		}
+		if (m_deceleration != 0)
+		{
+			query << "&decel=" << m_deceleration;
+		}
+		addr += "?";
+		addr += query.str();
+		CURLcode ret;
+
+		curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
+		curl_easy_setopt(curl, CURLOPT_PORT, port);
+
+		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+		//curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
+		curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.42.0");
+		curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
+		curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+
+		std::string response_string;
+		std::string header_string;
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_function);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
+		curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_string);
+
+//		char* url;
+//		long response_code;
+//		double elapsed;
+//		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+//		curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &elapsed);
+//		curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &url);
+
+		ret = curl_easy_perform(curl);
+		// Check for errors
+		if (ret != CURLE_OK)
+		{
+			LOG(Log::ERR) << "curl_easy_perform() failed: "
+				<< curl_easy_strerror(ret);
+			curl_easy_cleanup(curl);
+			curl = NULL;
+
+			return OpcUa_Bad;
+		}
+
+//        cout << response_string;
+		LOG(Log::INF) << "Received response [" << response_string << "]";
+		// now we should parse the answer
+		// it is meant to be a json object
+		json answer = json::parse(response_string);
+		/**
+		 * Typical answer: {"cur_pos":25000,"cur_speed":0,"m_temp":" 38.8","tar_pos":25000,"torque":"  1.9"}
+		 */
+		if (answer["status"] == string("OK"))
+		{
+			status = OpcUa_Good;
+		}
+		else
+		{
+			status =  OpcUa_Bad;
+		}
+
+		curl_easy_cleanup(curl);
+		curl = NULL;
+	} else
+	{
+		LOG(Log::ERR) << "Failed to get a connection handle";
+		status =  OpcUa_Bad;
+	}
+	return status;
+}
+
+UaStatus DIoLMotor::stop_motor()
+{
+	string addr = "http://" + server_address() + "/api/stop";
+
+	static const uint16_t port = 5001;
+	OpcUa_StatusCode status= OpcUa_Good;
+
+	auto curl = curl_easy_init();
+	if (curl) {
+
+		CURLcode ret;
+
+		curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
+		curl_easy_setopt(curl, CURLOPT_PORT, port);
+
+		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+		//curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
+		curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.42.0");
+		curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
+		curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+
+		std::string response_string;
+		std::string header_string;
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_function);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
+		curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_string);
+
+		ret = curl_easy_perform(curl);
+		// Check for errors
+		if (ret != CURLE_OK)
+		{
+			LOG(Log::ERR) << "curl_easy_perform() failed: "
+				<< curl_easy_strerror(ret);
+			curl_easy_cleanup(curl);
+			curl = NULL;
+
+			return OpcUa_Bad;
+		}
+
+//        cout << response_string;
+		LOG(Log::INF) << "Received response [" << response_string << "]";
+		// now we should parse the answer
+		// it is meant to be a json object
+		json answer = json::parse(response_string);
+		/**
+		 * Typical answer: {"cur_pos":25000,"cur_speed":0,"m_temp":" 38.8","tar_pos":25000,"torque":"  1.9"}
+		 */
+		if (answer["status"] == string("OK"))
+		{
+			status =  OpcUa_Good;
+		}
+		else
+		{
+			status = OpcUa_Bad;
+		}
+
+		curl_easy_cleanup(curl);
+		curl = NULL;
+	} else
+	{
+		LOG(Log::ERR) << "Failed to get a connection handle";
+		status = OpcUa_Bad;
+	}
+	return status;
 }
 
 }
