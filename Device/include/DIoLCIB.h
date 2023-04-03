@@ -18,27 +18,27 @@
  */
 
 
-#ifndef __DIoLAttenuator__H__
-#define __DIoLAttenuator__H__
+#ifndef __DIoLCIB__H__
+#define __DIoLCIB__H__
 
-#include <Base_DIoLAttenuator.h>
+#include <Base_DIoLCIB.h>
 
 namespace Device
 {
 
 class
-    DIoLAttenuator
-    : public Base_DIoLAttenuator
+    DIoLCIB
+    : public Base_DIoLCIB
 {
 
 public:
     /* sample constructor */
-    explicit DIoLAttenuator (
-        const Configuration::IoLAttenuator& config,
-        Parent_DIoLAttenuator* parent
+    explicit DIoLCIB (
+        const Configuration::IoLCIB& config,
+        Parent_DIoLCIB* parent
     ) ;
     /* sample dtr */
-    ~DIoLAttenuator ();
+    ~DIoLCIB ();
 
     /* delegators for
     cachevariables and sourcevariables */
@@ -48,8 +48,8 @@ public:
 
 private:
     /* Delete copy constructor and assignment operator */
-    DIoLAttenuator( const DIoLAttenuator& other );
-    DIoLAttenuator& operator=(const DIoLAttenuator& other);
+    DIoLCIB( const DIoLCIB& other );
+    DIoLCIB& operator=(const DIoLCIB& other);
 
     // ----------------------------------------------------------------------- *
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
@@ -57,11 +57,8 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
-    void update() {}
-    bool is_ready() {return m_is_ready;}
+
 private:
-    bool m_is_ready; // declares where it is ready for operation
-    // this essentially means that all settings are in a reasonable state
 
 
 
@@ -69,4 +66,4 @@ private:
 
 }
 
-#endif // __DIoLAttenuator__H__
+#endif // __DIoLCIB__H__

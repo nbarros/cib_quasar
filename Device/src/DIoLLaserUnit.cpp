@@ -68,6 +68,18 @@ DIoLLaserUnit::~DIoLLaserUnit ()
 
 
 /* delegators for methods */
+UaStatus DIoLLaserUnit::callStop (
+
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLLaserUnit::callCheck_status (
+    OpcUa_UInt16& status
+)
+{
+    return OpcUa_BadNotImplemented;
+}
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
 // 3     FULLY CUSTOM CODE STARTS HERE                                     3

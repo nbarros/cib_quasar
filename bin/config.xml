@@ -17,6 +17,5 @@
 		discharge_voltage="3000" rep_rate_divider="5">
 	</IoLLaserUnit>
 	<IoLPiezoController name="P1" output_number="2"></IoLPiezoController>
-	<IoLPiezoController name="P2" output_number="0"></IoLPiezoController>
-</IoLaserSystem>
+	<IoLPiezoController name="P2" output_number="0"></IoLPiezoController></IoLaserSystem>
 </configuration>

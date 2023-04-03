@@ -45,6 +45,12 @@ public:
 
 
     /* delegators for methods */
+    UaStatus callStop (
+
+    ) ;
+    UaStatus callCheck_status (
+        OpcUa_UInt16& status
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */

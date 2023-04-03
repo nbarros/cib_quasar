@@ -20,15 +20,8 @@
 
 #include <Configuration.hxx> // TODO; should go away, is already in Base class for ages
 
-#include <DIoLaserSystem.h>
-#include <ASIoLaserSystem.h>
-
-#include <DIoLLaserUnit.h>
-#include <DIoLMotor.h>
-#include <DIoLPiezoController.h>
-#include <DIoLAttenuator.h>
-
-#include <string>
+#include <DIoLCIB.h>
+#include <ASIoLCIB.h>
 
 namespace Device
 {
@@ -54,11 +47,11 @@ namespace Device
 // 2222222222222222222222222222222222222222222222222222222222222222222222222
 
 /* sample ctr */
-DIoLaserSystem::DIoLaserSystem (
-    const Configuration::IoLaserSystem& config,
-    Parent_DIoLaserSystem* parent
+DIoLCIB::DIoLCIB (
+    const Configuration::IoLCIB& config,
+    Parent_DIoLCIB* parent
 ):
-    Base_DIoLaserSystem( config, parent)
+    Base_DIoLCIB( config, parent)
 
     /* fill up constructor initialization list here */
 {
@@ -66,7 +59,7 @@ DIoLaserSystem::DIoLaserSystem (
 }
 
 /* sample dtr */
-DIoLaserSystem::~DIoLaserSystem ()
+DIoLCIB::~DIoLCIB ()
 {
 }
 
@@ -75,95 +68,11 @@ DIoLaserSystem::~DIoLaserSystem ()
 
 
 /* delegators for methods */
-UaStatus DIoLaserSystem::callLoad_config (
-    const UaString&  config,
-    UaString& response
-)
-{
-    // this is where the whole configuration json file is applied
-
-    std::string msg = "{\"status\":\"Failed\", \"messages\":[\"Method not completely implemented yet\"]}";
-    response = UaString(msg.c_str());
-//    return OpcUa_Bad;
-    return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLaserSystem::callCheck_ready (
-    OpcUa_Boolean& ready
-)
-{
-
-    // check all associated subsystems if they're ready
-  bool rdy = true;
-  for (Device::DIoLLaserUnit* lunit : iollaserunits())
-  {
-      rdy |= lunit->is_ready();
-  }
-  for (Device::DIoLMotor* lmotor : iolmotors ())
-  {
-      rdy |= lmotor->is_ready();
-  }
-  for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
-  {
-      rdy |= lctl->is_ready();
-  }
-  for (Device::DIoLAttenuator* latt : iolattenuators ())
-  {
-      rdy |= latt->is_ready();
-  }
-  return OpcUa_Good;
-}
-UaStatus DIoLaserSystem::callStop (
-
-)
-{
-    return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLaserSystem::callSet_target_position (
-    const std::vector<OpcUa_Double>&  target_pos,
-    UaString& answer
-)
-{
-    return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLaserSystem::callExecute_raster (
-    const std::vector<OpcUa_Double>&  start_pos,
-    const std::vector<OpcUa_Double>&  last_pos,
-    UaString& answer
-)
-{
-    return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLaserSystem::callExecute_scan (
-    const UaString&  plan,
-    UaString& answer
-)
-{
-    return OpcUa_BadNotImplemented;
-}
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
 // 3     FULLY CUSTOM CODE STARTS HERE                                     3
 // 3     Below you put bodies for custom methods defined for this class.   3
 // 3     You can do whatever you want, but please be decent.               3
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
-void DIoLaserSystem::update()
-{
-	// call update over all daughters
-    for (Device::DIoLLaserUnit* lunit : iollaserunits())
-    {
-    	lunit->update();
-    }
-    for (Device::DIoLMotor* lmotor : iolmotors ())
-    {
-    	lmotor->update();
-    }
-    for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
-    {
-    	lctl->update();
-    }
-    for (Device::DIoLAttenuator* latt : iolattenuators ())
-    {
-    	latt->update();
-    }
-}
+
 }

@@ -1,143 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<d:design projectShortName="IoLSlowControlServer" xmlns:d="http://cern.ch/quasar/Design" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cern.ch/quasar/Design Design.xsd ">
-<d:class name="IoLMotor">
-<d:devicelogic></d:devicelogic>
-  <d:configentry dataType="OpcUa_UInt16" name="id" storedInDeviceObject="true">
+<d:design xmlns:d="http://cern.ch/quasar/Design" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" projectShortName="IoLSlowControlServer" xsi:schemaLocation="http://cern.ch/quasar/Design Design.xsd ">
+  <d:class name="IoLMotor">
+    <d:devicelogic/>
+    <d:configentry dataType="OpcUa_UInt16" name="id" storedInDeviceObject="true">
   </d:configentry>
-  <d:configentry dataType="UaString" name="server_address" storedInDeviceObject="true">
+    <d:configentry dataType="UaString" name="server_address" storedInDeviceObject="true">
   </d:configentry>
-  <d:cachevariable name="position" addressSpaceWrite="forbidden" dataType="OpcUa_Double" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
-  	<d:array maximumSize="3" minimumSize="3"></d:array>
+    <d:cachevariable name="position" addressSpaceWrite="forbidden" dataType="OpcUa_Double" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
+      <d:array maximumSize="3" minimumSize="3"/>
+    </d:cachevariable>
+    <d:cachevariable name="positionSetPoint" addressSpaceWrite="delegated" dataType="OpcUa_Double" initializeWith="configuration" nullPolicy="nullForbidden">
+      <d:array maximumSize="3" minimumSize="3"/>
+    </d:cachevariable>
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Float" name="refresh_rate_hz" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
   </d:cachevariable>
-  <d:cachevariable name="positionSetPoint" addressSpaceWrite="delegated"
-  	dataType="OpcUa_Double" initializeWith="configuration"
-  	nullPolicy="nullForbidden">
-  	<d:array maximumSize="3" minimumSize="3" />
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="is_moving" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
   </d:cachevariable>
-  
-  
-  <d:cachevariable initializeWith="configuration"
-  	dataType="OpcUa_Float" name="refresh_rate_hz" nullPolicy="nullAllowed"
-  	addressSpaceWrite="forbidden">
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Double" name="torque" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
   </d:cachevariable>
-  <d:cachevariable initializeWith="valueAndStatus"
-  	dataType="OpcUa_Boolean" name="is_moving" nullPolicy="nullAllowed"
-  	addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Double" name="temperature_C" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
   </d:cachevariable>
-  <d:cachevariable initializeWith="configuration"
-  	dataType="OpcUa_Double" name="torque" nullPolicy="nullAllowed"
-  	addressSpaceWrite="forbidden">
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Double" name="speed" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
   </d:cachevariable>
-  <d:cachevariable initializeWith="valueAndStatus"
-  	dataType="OpcUa_Double" name="temperature_C" nullPolicy="nullAllowed"
-  	addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
-  </d:cachevariable>
-  <d:cachevariable initializeWith="configuration"
-  	dataType="OpcUa_Double" name="speed" nullPolicy="nullAllowed"
-  	addressSpaceWrite="forbidden">
-  </d:cachevariable>
-  <!--operation_status corresponds to a bitmask. The codes are documented in the manual-->
-  <d:cachevariable
-  	initializeWith="valueAndStatus" dataType="OpcUa_UInt16"
-  	name="operation_status" nullPolicy="nullAllowed"
-  	addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+    <!--operation_status corresponds to a bitmask. The codes are documented in the manual-->
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="operation_status" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 </d:cachevariable>
-	<d:cachevariable initializeWith="valueAndStatus"
-		dataType="OpcUa_Float" name="rpi_cpu" nullPolicy="nullAllowed"
-		addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="rpi_cpu" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 	</d:cachevariable>
-	<d:cachevariable initializeWith="valueAndStatus"
-		dataType="OpcUa_Float" name="rpi_mem" nullPolicy="nullAllowed"
-		addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="rpi_mem" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 	</d:cachevariable>
-
-</d:class>
-	<d:class name="IoLPiezoController">
-		<d:devicelogic></d:devicelogic>
-		<d:cachevariable initializeWith="configuration"
-			dataType="OpcUa_UInt16" name="output_number" nullPolicy="nullAllowed"
-			addressSpaceWrite="forbidden"><!--Indicates the output number that will be controlled and is provided when adjusting--><d:configRestriction>
-	<d:restrictionByBounds minInclusive="0" maxInclusive="3" /></d:configRestriction>
+    <d:method name="start_move" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  </d:class>
+  <d:class name="IoLPiezoController">
+    <d:devicelogic/>
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt16" name="output_number" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
+      <!--Indicates the output number that will be controlled and is provided when adjusting-->
+      <d:configRestriction>
+        <d:restrictionByBounds minInclusive="0" maxInclusive="3"/>
+      </d:configRestriction>
+    </d:cachevariable>
+  </d:class>
+  <d:class name="IoLAttenuator">
+    <d:devicelogic/>
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Double" name="resolution" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
 		</d:cachevariable>
-	</d:class>
-	<d:class name="IoLAttenuator">
-		<d:devicelogic></d:devicelogic>
-		<d:cachevariable initializeWith="configuration"
-			dataType="OpcUa_Double" name="resolution" nullPolicy="nullAllowed"
-			addressSpaceWrite="forbidden">
+  </d:class>
+  <d:class name="IoLLaserUnit">
+    <d:devicelogic/>
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="qswitch" nullPolicy="nullForbidden" addressSpaceWrite="forbidden">
 		</d:cachevariable>
-	</d:class>
-	<d:class name="IoLLaserUnit">
-		<d:devicelogic></d:devicelogic>
-		<d:cachevariable initializeWith="configuration"
-			dataType="OpcUa_UInt32" name="qswitch" nullPolicy="nullForbidden"
-			addressSpaceWrite="forbidden">
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="discharge_voltage" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
 		</d:cachevariable>
-		<d:cachevariable initializeWith="configuration"
-			dataType="OpcUa_UInt32" name="discharge_voltage" nullPolicy="nullAllowed"
-			addressSpaceWrite="forbidden">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Double" name="temperature" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 		</d:cachevariable>
-		<d:cachevariable initializeWith="valueAndStatus"
-			dataType="OpcUa_Double" name="temperature" nullPolicy="nullAllowed"
-			addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Double" name="rep_rate_hz" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
 		</d:cachevariable>
-		<d:cachevariable initializeWith="configuration"
-			dataType="OpcUa_Double" name="rep_rate_hz" nullPolicy="nullAllowed"
-			addressSpaceWrite="forbidden">
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt16" name="rep_rate_divider" nullPolicy="nullForbidden" addressSpaceWrite="forbidden">
 		</d:cachevariable>
-		<d:cachevariable initializeWith="configuration"
-			dataType="OpcUa_UInt16" name="rep_rate_divider" nullPolicy="nullForbidden"
-			addressSpaceWrite="forbidden">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="flash_count" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
 		</d:cachevariable>
-		<d:cachevariable initializeWith="valueAndStatus"
-			dataType="OpcUa_UInt32" name="flash_count" nullPolicy="nullForbidden"
-			addressSpaceWrite="forbidden"
-			initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="watchdog_timer" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 		</d:cachevariable>
-		<d:cachevariable initializeWith="valueAndStatus"
-			dataType="OpcUa_UInt32" name="watchdog_timer" nullPolicy="nullAllowed"
-			addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
-		</d:cachevariable>
-	</d:class>
-	
-	<d:class name="IoLCIB">
-		<d:configentry dataType="OpcUa_UInt16" name="id"></d:configentry>
-		<d:configentry dataType="UaString" name="server"
-			defaultValue="localhost">
+    <d:method name="stop" executionSynchronicity="synchronous">
+      <!--local method to stop operation-->
+    </d:method>
+    <d:method name="check_status" executionSynchronicity="synchronous">
+      <d:returnvalue dataType="OpcUa_UInt16" name="status"/>
+    </d:method>
+  </d:class>
+  <d:class name="IoLCIB">
+    <d:devicelogic></d:devicelogic>
+    <d:configentry dataType="OpcUa_UInt16" name="id"/>
+    <d:configentry dataType="UaString" name="server" defaultValue="localhost">
 		</d:configentry>
-		<d:cachevariable initializeWith="valueAndStatus"
-			dataType="OpcUa_Float" name="load" nullPolicy="nullForbidden"
-			addressSpaceWrite="forbidden"
-			initialStatus="OpcUa_BadWaitingForInitialData" initialValue="-1.0">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="load" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="-1.0">
 		</d:cachevariable>
-		<d:cachevariable initializeWith="configuration"
-			dataType="OpcUa_Double" name="" nullPolicy="nullAllowed"
-			addressSpaceWrite="forbidden">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="state" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="9999">
 		</d:cachevariable>
-	</d:class>
-	<d:class name="IoLaserSystem">
-		<d:devicelogic></d:devicelogic><d:configentry dataType="OpcUa_UInt16" name="id"></d:configentry>
-		<d:configentry dataType="UaString" name="location"></d:configentry>
-		<d:cachevariable initializeWith="configuration"
-			dataType="OpcUa_Boolean" name="enabled" nullPolicy="nullForbidden"
-			addressSpaceWrite="forbidden">
+  </d:class>
+  <d:class name="IoLaserSystem">
+    <d:devicelogic/>
+    <d:configentry dataType="OpcUa_UInt16" name="id"/>
+    <d:configentry dataType="UaString" name="location"/>
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Boolean" name="enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden">
 		</d:cachevariable>
-		<d:hasobjects instantiateUsing="configuration"
-			class="IoLLaserUnit" minOccurs="1" maxOccurs="1">
+    <d:hasobjects instantiateUsing="configuration" class="IoLLaserUnit" minOccurs="1" maxOccurs="1">
 		</d:hasobjects>
-		<d:hasobjects instantiateUsing="configuration" class="IoLMotor"
-			minOccurs="2" maxOccurs="3">
+    <d:hasobjects instantiateUsing="configuration" class="IoLMotor" minOccurs="2" maxOccurs="3">
 		</d:hasobjects>
-		<d:hasobjects instantiateUsing="configuration"
-			class="IoLPiezoController" minOccurs="0" maxOccurs="2">
+    <d:hasobjects instantiateUsing="configuration" class="IoLPiezoController" minOccurs="0" maxOccurs="3">
 		</d:hasobjects>
-		<d:hasobjects instantiateUsing="configuration"
-			class="IoLAttenuator" maxOccurs="1" minOccurs="1">
+    <d:hasobjects instantiateUsing="configuration" class="IoLAttenuator" maxOccurs="1" minOccurs="1">
 		</d:hasobjects>
-		<d:hasobjects instantiateUsing="configuration" class="IoLCIB"
-			minOccurs="1" maxOccurs="1">
+    <d:hasobjects instantiateUsing="configuration" class="IoLCIB" minOccurs="1" maxOccurs="1">
 		</d:hasobjects>
-	</d:class><d:root>
-  <d:hasobjects class="IoLaserSystem" instantiateUsing="configuration"></d:hasobjects>
-</d:root><!--comment-->
+    <d:method name="load_config" executionSynchronicity="synchronous">
+      <d:argument dataType="UaString" name="config"/>
+      <d:returnvalue dataType="UaString" name="response"/>
+    </d:method>
+    <d:method name="check_ready" executionSynchronicity="synchronous">
+      <d:returnvalue dataType="OpcUa_Boolean" name="ready"/>
+    </d:method>
+    <d:method name="stop" executionSynchronicity="synchronous">
+      <!--this method send immediate stop commands for all subsystems, starting by the iris. After this call one should recheck the state of the system as the motors may not be in the right state-->
+    </d:method>
+    <d:method name="set_target_position" executionSynchronicity="synchronous">
+      <d:argument dataType="OpcUa_Double" name="target_pos">
+        <d:array minimumSize="3" maximumSize="3"/>
+      </d:argument>
+      <d:returnvalue dataType="UaString" name="answer"/>
+    </d:method>
+    <d:method name="execute_raster" executionSynchronicity="synchronous">
+      <d:argument dataType="OpcUa_Double" name="start_pos">
+        <d:array minimumSize="3" maximumSize="3"/>
+      </d:argument>
+      <d:argument dataType="OpcUa_Double" name="last_pos">
+        <d:array maximumSize="3" minimumSize="3"/>
+      </d:argument>
+      <d:returnvalue dataType="UaString" name="answer"/>
+    </d:method>
+    <d:method name="execute_scan" executionSynchronicity="synchronous">
+      <d:argument dataType="UaString" name="plan"/>
+      <d:returnvalue dataType="UaString" name="answer"/>
+    </d:method>
+  </d:class>
+  <d:root>
+    <d:hasobjects class="IoLaserSystem" instantiateUsing="configuration"/>
+  </d:root>
+  <!--comment-->
 </d:design>

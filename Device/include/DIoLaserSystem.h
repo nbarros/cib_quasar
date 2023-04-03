@@ -45,6 +45,29 @@ public:
 
 
     /* delegators for methods */
+    UaStatus callLoad_config (
+        const UaString&  config,
+        UaString& response
+    ) ;
+    UaStatus callCheck_ready (
+        OpcUa_Boolean& ready
+    ) ;
+    UaStatus callStop (
+
+    ) ;
+    UaStatus callSet_target_position (
+        const std::vector<OpcUa_Double>&  target_pos,
+        UaString& answer
+    ) ;
+    UaStatus callExecute_raster (
+        const std::vector<OpcUa_Double>&  start_pos,
+        const std::vector<OpcUa_Double>&  last_pos,
+        UaString& answer
+    ) ;
+    UaStatus callExecute_scan (
+        const UaString&  plan,
+        UaString& answer
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */
