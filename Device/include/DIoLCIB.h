@@ -58,8 +58,10 @@ private:
 
 public:
 
-private:
+    bool is_ready() {return m_is_ready;}
 
+private:
+    bool m_is_ready;
 
 
 };

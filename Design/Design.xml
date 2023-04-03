@@ -7,10 +7,8 @@
     <d:configentry dataType="UaString" name="server_address" storedInDeviceObject="true">
   </d:configentry>
     <d:cachevariable name="position" addressSpaceWrite="forbidden" dataType="OpcUa_Double" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
-      <d:array maximumSize="3" minimumSize="3"/>
     </d:cachevariable>
     <d:cachevariable name="positionSetPoint" addressSpaceWrite="delegated" dataType="OpcUa_Double" initializeWith="configuration" nullPolicy="nullForbidden">
-      <d:array maximumSize="3" minimumSize="3"/>
     </d:cachevariable>
     <d:cachevariable initializeWith="configuration" dataType="OpcUa_Float" name="refresh_rate_hz" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
   </d:cachevariable>

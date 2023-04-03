@@ -52,8 +52,8 @@ DIoLAttenuator::DIoLAttenuator (
     Parent_DIoLAttenuator* parent
 ):
     Base_DIoLAttenuator( config, parent)
-
     /* fill up constructor initialization list here */
+	, m_is_ready(false)
 {
     /* fill up constructor body here */
 }

@@ -23,6 +23,9 @@
 
 #include <Base_DIoLMotor.h>
 #include <vector>
+#include <string>
+using vector = std::vector;
+using string = std::string;
 
 namespace Device
 {
@@ -57,6 +60,7 @@ private:
     DIoLMotor( const DIoLMotor& other );
     DIoLMotor& operator=(const DIoLMotor& other);
 
+    static size_t curl_write_function(void* ptr, size_t size, size_t nmemb, std::string* data);
     // ----------------------------------------------------------------------- *
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
     // -     Don't change this comment, otherwise merge tool may be troubled.  *
@@ -65,12 +69,22 @@ private:
 public:
     void update();
 
+    bool is_ready();
+
+    UaStatus get_motor_info();
+    UaStatus move_motor();
 
 private:
-    std::vector<double> position_;
-    std::vector<double> positionSetPoint_;
-
-
+    double m_position;
+    double m_position_setpoint;
+    bool m_is_ready; // declares where it is ready for operation
+        // this essentially means that all settings are in a reasonable state
+    bool is_moving_; // -- this variable will be set by a GPIO bit. That code is not ready yet
+    double m_acceleration;
+    double m_speed;
+    double m_torque;
+    double m_temperature;
+    string m_address;
 
 };
 

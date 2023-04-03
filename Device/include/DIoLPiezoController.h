@@ -58,6 +58,7 @@ private:
 
 public:
     void update() {}
+    bool is_ready() {return false;}
 
 private:
 
