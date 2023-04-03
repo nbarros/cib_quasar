@@ -48,6 +48,9 @@ public:
 
 
     /* delegators for methods */
+    UaStatus callStart_move (
+        UaString& response
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */
