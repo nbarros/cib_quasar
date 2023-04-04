@@ -6,6 +6,9 @@
   </d:configentry>
     <d:configentry dataType="UaString" name="server_address" storedInDeviceObject="true">
   </d:configentry>
+    <d:configentry dataType="OpcUa_UInt16" name="port"
+    	defaultValue="5000" storedInDeviceObject="true">
+    </d:configentry>
     <d:cachevariable name="position" addressSpaceWrite="forbidden" dataType="OpcUa_Double" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
     <d:cachevariable name="positionSetPoint" addressSpaceWrite="delegated" dataType="OpcUa_Double" initializeWith="configuration" nullPolicy="nullForbidden">
@@ -32,6 +35,7 @@
     </d:method>
     <d:method name="stop" executionSynchronicity="synchronous">
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+    
   </d:class>
   <d:class name="IoLPiezoController">
     <d:devicelogic/>

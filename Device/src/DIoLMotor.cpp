@@ -155,6 +155,7 @@ UaStatus DIoLMotor::callStop (
 // 3     Below you put bodies for custom methods defined for this class.   3
 // 3     You can do whatever you want, but please be decent.               3
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
+//TODO: Add an internal method on a timer to query the motor (if the connection is valid)
 void DIoLMotor::update()
 {
 	// method should be periodically poking the motors for their status
@@ -242,12 +243,12 @@ size_t DIoLMotor::curl_write_function(void* ptr, size_t size, size_t nmemb, std:
 UaStatus DIoLMotor::get_motor_info()
 {
 	string addr = "http://" + server_address() + "/api/info";
-	static const uint16_t port = 5001;
+	uint16_t lport = port();
 	OpcUa_StatusCode status= OpcUa_Good;
 	auto curl = curl_easy_init();
 	if (curl) {
 		curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
-	    curl_easy_setopt(curl, CURLOPT_PORT, port);
+	    curl_easy_setopt(curl, CURLOPT_PORT, lport);
 
 		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
 		//curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
