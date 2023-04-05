@@ -30,6 +30,10 @@ extern "C" {
 #include <curl/curl.h>
 };
 
+#include <chrono>
+#include <thread>
+#include <functional>
+
 using std::ostringstream;
 
 namespace Device
@@ -72,14 +76,26 @@ DIoLMotor::DIoLMotor (
 	,m_speed(0.0)
 	,m_torque(0.0)
 	,m_temperature(0.0)
-	,m_address("")
-
+	//,m_address("")
+	,m_refresh_ms(0)
+	,m_monitor(false)
+	,m_monitor_status(OpcUa_BadResourceUnavailable)
 {
     /* fill up constructor body here */
 	// initialize cURL
 	  curl_global_init(CURL_GLOBAL_ALL);
 
 	  // everything else will be processed in contained form
+
+	  //
+	  if (m_monitor)
+	  {
+		  if (m_refresh_ms != 0.0)
+		  {
+			timer_start(this);
+		  }
+	  }
+
 }
 
 /* sample dtr */
@@ -112,7 +128,24 @@ UaStatus DIoLMotor::writePositionSetPoint ( const OpcUa_Double& v)
     return OpcUa_Good;
 }
 
+/* Note: never directly call this function. */
 
+UaStatus DIoLMotor::writeRefresh_period_ms ( const OpcUa_UInt16& v)
+{
+	m_refresh_ms = v;
+	LOG(Log::INF) << "Updating refresh rate for motor " << id() << " to " << v << " ms";
+	if (v != 0 && !m_monitor)
+	{
+		timer_start(this);
+	}
+	else if (v == 0)
+	{
+		LOG(Log::WRN) << "Stopping the monitor timer" ;
+		m_monitor = false;
+	}
+
+    return OpcUa_Good;
+}
 /* delegators for methods */
 
 UaStatus DIoLMotor::callStart_move (UaString& response)
@@ -158,24 +191,33 @@ UaStatus DIoLMotor::callStop (
 //TODO: Add an internal method on a timer to query the motor (if the connection is valid)
 void DIoLMotor::update()
 {
+
 	// method should be periodically poking the motors for their status
 	OpcUa_StatusCode status= OpcUa_Good;
-	if (get_motor_info() == OpcUa_Bad)
-	{
-		LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
-		status = OpcUa_BadResourceUnavailable;
-	}
+	// this should no longer be called
+
+//	if (get_motor_info() == OpcUa_Bad)
+//	{
+//		LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
+//		status = OpcUa_BadResourceUnavailable;
+//	}
 
 	//LOG(Log::INF) << "Updating for IOLMotor::ID=" << id();
 
 	// server updates
 	// i.e., form the server to the client
 	//position_ = {static_cast<double>(rand()),static_cast<double>(rand()),static_cast<double>(rand())};
-	getAddressSpaceLink()->setPosition(m_position,status);
-	getAddressSpaceLink()->setSpeed(m_speed, status);
-	getAddressSpaceLink()->setTorque(m_torque, status);
-	getAddressSpaceLink()->setTemperature_C(m_temperature, status);
+	status |= getAddressSpaceLink()->setPosition(m_position,status);
+	//getAddressSpaceLink()->setSpeed(m_speed, status);
+	// -- the speed is obtained from the address space
+	//m_speed = getAddressSpaceLink()->getSpeed();
+	status |= getAddressSpaceLink()->setTorque(m_torque, status);
+	status |= getAddressSpaceLink()->setTemperature_C(m_temperature, status);
 	//getAddressSpaceLink()->setAcceleration(m_acceleration, OpcUa_Good);
+
+	// now the getters
+	status |= getAddressSpaceLink()->getSpeed(m_speed);
+
 
 
 
@@ -221,10 +263,10 @@ bool DIoLMotor::is_ready()
 	{
 		return false;
 	}
-	if (m_deceleration == 0.0)
-	{
-		return false;
-	}
+//	if (m_deceleration == 0.0)
+//	{
+//		return false;
+//	}
 
 	LOG(Log::INF) << "Checking readiness for motor ID=" << id()
 			<< " with positionSetPoint = (" << m_position_setpoint << ")";
@@ -240,11 +282,37 @@ size_t DIoLMotor::curl_write_function(void* ptr, size_t size, size_t nmemb, std:
 	    return size * nmemb;
 }
 
+//void DIoLMotor::timer_start(std::function<void(void)> func, uint16_t interval)
+void DIoLMotor::timer_start(DIoLMotor *obj)
+{
+	if (m_monitor)
+	{
+		LOG(Log::WRN) << "Trying to set a timer that has already been set up";
+		return;
+	}
+	m_monitor = true;
+
+  std::thread([obj]()
+  {
+    while (obj->get_monitor())
+    {
+      auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(obj->get_refresh_ms());
+	if (obj->get_motor_info() != OpcUa_Good)
+	{
+		LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
+	}
+
+      std::this_thread::sleep_until(x);
+    }
+  }).detach();
+}
+
+
 UaStatus DIoLMotor::get_motor_info()
 {
 	string addr = "http://" + server_address() + "/api/info";
 	uint16_t lport = port();
-	OpcUa_StatusCode status= OpcUa_Good;
+	//OpcUa_StatusCode status= OpcUa_Good;
 	auto curl = curl_easy_init();
 	if (curl) {
 		curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
@@ -277,13 +345,12 @@ UaStatus DIoLMotor::get_motor_info()
 				<< curl_easy_strerror(res);
 			curl_easy_cleanup(curl);
 			curl = NULL;
-
-			return OpcUa_Bad;
+			m_monitor_status = OpcUa_BadResourceUnavailable;
+			return OpcUa_BadResourceUnavailable;
 		}
 
 //        cout << response_string;
-		LOG(Log::INF) << "Received response [" << response_string
-					<< "]";
+		LOG(Log::INF) << "Received response [" << response_string << "]";
 		// now we should parse the answer
 		// it is meant to be a json object
 		json answer = json::parse(response_string);
@@ -298,6 +365,7 @@ UaStatus DIoLMotor::get_motor_info()
 		curl_easy_cleanup(curl);
 		curl = NULL;
 	}
+	m_monitor_status = OpcUa_Good;
 	return OpcUa_Good;
 }
 

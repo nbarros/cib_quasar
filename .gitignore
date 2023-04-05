@@ -52,3 +52,8 @@ build/
 *.exe
 *.out
 *.app
+
+# VSSCode and Eclipse project files
+.project
+.cproject
+.settings

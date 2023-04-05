@@ -48,6 +48,8 @@ public:
     cachevariables and sourcevariables */
     /* Note: never directly call this function. */
     UaStatus writePositionSetPoint ( const OpcUa_Double& v);
+    /* Note: never directly call this function. */
+    UaStatus writeRefresh_period_ms ( const OpcUa_UInt16& v);
 
 
     /* delegators for methods */
@@ -58,12 +60,17 @@ public:
         UaString& response
     ) ;
 
+
 private:
     /* Delete copy constructor and assignment operator */
     DIoLMotor( const DIoLMotor& other );
     DIoLMotor& operator=(const DIoLMotor& other);
 
     static size_t curl_write_function(void* ptr, size_t size, size_t nmemb, std::string* data);
+    //void timer_start(std::function<void(void)> func, unsigned int interval);
+    void timer_start(DIoLMotor *obj);
+
+
     // ----------------------------------------------------------------------- *
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
     // -     Don't change this comment, otherwise merge tool may be troubled.  *
@@ -77,6 +84,9 @@ public:
     UaStatus get_motor_info();
     UaStatus move_motor();
     UaStatus stop_motor();
+    const bool get_monitor() {return m_monitor;}
+    void set_monitor(bool m) {m_monitor = m;}
+    const uint16_t get_refresh_ms() {return m_refresh_ms;}
 
 private:
     double m_position;
@@ -89,7 +99,10 @@ private:
     double m_speed;
     double m_torque;
     double m_temperature;
-    string m_address;
+    uint16_t m_refresh_ms;
+    bool m_monitor;
+    OpcUa_StatusCode m_monitor_status;
+
 
 };
 

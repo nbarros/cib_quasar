@@ -13,7 +13,7 @@
     </d:cachevariable>
     <d:cachevariable name="positionSetPoint" addressSpaceWrite="delegated" dataType="OpcUa_Double" initializeWith="configuration" nullPolicy="nullForbidden">
     </d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Float" name="refresh_rate_hz" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt16" name="refresh_period_ms" nullPolicy="nullAllowed" addressSpaceWrite="delegated">
   </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="is_moving" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
   </d:cachevariable>
@@ -21,7 +21,7 @@
   </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Double" name="temperature_C" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
   </d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Double" name="speed" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Double" name="speed" nullPolicy="nullForbidden" addressSpaceWrite="regular">
   </d:cachevariable>
     <!--operation_status corresponds to a bitmask. The codes are documented in the manual-->
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="operation_status" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">

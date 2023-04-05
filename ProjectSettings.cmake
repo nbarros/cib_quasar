@@ -9,7 +9,7 @@ set(SERVER_INCLUDE_DIRECTORIES  )
 set(SERVER_LINK_LIBRARIES  "-lcurl")
 set(SERVER_LINK_DIRECTORIES  )
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+##set(CMAKE_VERBOSE_MAKEFILE ON)
 
 ##
 ## If ON, in addition to an executable, a shared object will be created.
