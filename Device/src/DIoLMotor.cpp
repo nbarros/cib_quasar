@@ -23,8 +23,6 @@
 #include <DIoLMotor.h>
 #include <ASIoLMotor.h>
 #include <sstream>
-#include <json.hpp>
-using json = nlohmann::json;
 
 extern "C" {
 #include <curl/curl.h>
@@ -74,7 +72,8 @@ DIoLMotor::DIoLMotor (
 	,is_moving_(false)
 	,m_acceleration(0.0)
 	,m_deceleration(0.0)
-	,m_speed(0.0)
+	,m_speed_setpoint(0.0)
+	,m_speed_readout(0.0)
 	,m_torque(0.0)
 	,m_temperature(0.0)
 	//,m_address("")
@@ -112,7 +111,7 @@ DIoLMotor::~DIoLMotor ()
 
 /* Note: never directly call this function. */
 
-UaStatus DIoLMotor::writePositionSetPoint ( const OpcUa_Double& v)
+UaStatus DIoLMotor::writePositionSetPoint ( const OpcUa_Int32& v)
 {
 
 	// check ranges
@@ -132,7 +131,7 @@ UaStatus DIoLMotor::writePositionSetPoint ( const OpcUa_Double& v)
 }
 /* Note: never directly call this function. */
 
-UaStatus DIoLMotor::writeRefresh_period_ms ( const OpcUa_UInt16& v)
+UaStatus DIoLMotor::writeRefresh_period_ms ( const OpcUa_UInt32& v)
 {
 	m_refresh_ms = v;
 	LOG(Log::INF) << "Updating refresh rate for motor " << id() << " to " << v << " ms";
@@ -153,26 +152,30 @@ UaStatus DIoLMotor::writeRefresh_period_ms ( const OpcUa_UInt16& v)
 
 UaStatus DIoLMotor::callStart_move (UaString& response)
 {
-	std::string resp;
+	json resp;
 
 	if (!is_ready())
 	{
-		resp = "{\"status\":\"FAIL\",\"message\":\"Motor is not ready to operate\"}";
-		response = UaString(resp.c_str());
+		resp["status"] = "ERROR";
+		resp["message"] = "Motor is not ready to operate";
+		response = UaString(resp.dump().c_str());
 		return OpcUa_BadInvalidState;
 	}
 
 	// check that position and position_set_point are not the same
 	if (m_position == m_position_setpoint)
 	{
-		resp = "{\"status\":\"FAIL\",\"message\":\"Motor is already at the destination\"}";
-		response = UaString(resp.c_str());
+		resp["status"] = "ERROR";
+		resp["message"] = "Motor is already at the destination";
+		response = UaString(resp.dump().c_str());
 		return OpcUa_BadInvalidState;
 	}
 
 	// if it reaches this point we can initiate the movement
-	return move_motor();
+	UaStatus st = move_motor(resp);
 
+	response = UaString(resp.dump().c_str());
+	return st;
 
 }
 
@@ -181,7 +184,10 @@ UaStatus DIoLMotor::callStop (
 )
 {
 	// stopping is a serious business. Should be called immediately
-	return stop_motor();
+	json resp;
+	UaStatus st = stop_motor(resp);
+	response = UaString(resp.dump().c_str());
+	return st;
 
 }
 
@@ -239,8 +245,8 @@ UaStatus DIoLMotor::callConfigure_motor (
 		  }
 		  if (it.key() == "speed")
 		  {
-			m_speed = it.value();
-			getAddressSpaceLink()->setSpeed(m_speed,OpcUa_Good);
+			m_speed_setpoint = it.value();
+			getAddressSpaceLink()->setSpeed_setpoint(m_speed_setpoint,OpcUa_Good);
 		  }
 		  if (it.key() == "acceleration")
 		  {
@@ -307,12 +313,12 @@ void DIoLMotor::update()
 //			LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
 //			msg_printed = true;
 //		}
-//		status = OpcUa_BadResourceUnavailable;
+		status = OpcUa_BadResourceUnavailable;
 //	} else
 //	{
 //		// reset the state until connection is lost again
 //		msg_printed = false;
-//	}
+	}
 
 	//LOG(Log::INF) << "Updating for IOLMotor::ID=" << id();
 
@@ -325,36 +331,15 @@ void DIoLMotor::update()
 	//m_speed = getAddressSpaceLink()->getSpeed();
 	status |= getAddressSpaceLink()->setTorque(m_torque, status);
 	status |= getAddressSpaceLink()->setTemperature_C(m_temperature, status);
+	status |= getAddressSpaceLink()->setSpeed_readout(m_speed_readout, status);
 	//getAddressSpaceLink()->setAcceleration(m_acceleration, OpcUa_Good);
 
 	// now the getters -- for now allow all to be updated, but eventually set limitations
 	// these getters are for variables with "regular" writing policy. We can change that
-	status |= getAddressSpaceLink()->getSpeed(m_speed);
+	status |= getAddressSpaceLink()->getSpeed_setpoint(m_speed_setpoint);
 	status |= getAddressSpaceLink()->getAcceleration(m_acceleration);
 	status |= getAddressSpaceLink()->getDeceleration(m_deceleration);
 
-
-
-
-	/** The code below is valid for regular writing mechanism
-	 *
-	// from the client to the server
-	//std::vector<double> pos2;
-	std::vector<double> tmp_positionSetPoint_ = {0,0,0};
-	OpcUa_StatusCode res = getAddressSpaceLink()->getPositionSetPoint(tmp_positionSetPoint_);
-	if (res == OpcUa_Good)
-	{
-		//LOG(Log::ERR) << "Failed to acquire PositionSetPoint " << ;
-		if (tmp_positionSetPoint_ != positionSetPoint_)
-		{
-			LOG(Log::INF) << "Updating motor ID=" << id() << " with positionSetPoint = (" << tmp_positionSetPoint_.at(0) << "," << tmp_positionSetPoint_.at(1) << "," << tmp_positionSetPoint_.at(2) << ")";
-			positionSetPoint_ = tmp_positionSetPoint_;
-		}
-	} else
-	{
-		// for now do nothing
-	}
-	*/
 }
 
 bool DIoLMotor::is_ready()
@@ -369,7 +354,7 @@ bool DIoLMotor::is_ready()
 	{
 		return false;
 	}
-	if (m_speed == 0.0)
+	if (m_speed_setpoint == 0.0)
 	{
 		return false;
 	}
@@ -424,8 +409,6 @@ void DIoLMotor::timer_start(DIoLMotor *obj)
 
 UaStatus DIoLMotor::get_motor_info()
 {
-
-
 	string addr = "http://";
 	if (m_server_host.length())
 	{
@@ -459,13 +442,6 @@ UaStatus DIoLMotor::get_motor_info()
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
 		curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_string);
 
-//		char* url;
-//		long response_code;
-//		double elapsed;
-//		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-//		curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &elapsed);
-//		curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &url);
-
 		CURLcode res = curl_easy_perform(curl);
 		// Check for errors
 		if (res != CURLE_OK)
@@ -478,7 +454,6 @@ UaStatus DIoLMotor::get_motor_info()
 			return OpcUa_BadResourceUnavailable;
 		}
 
-//        cout << response_string;
 		LOG(Log::INF) << "Received response [" << response_string << "]";
 		// now we should parse the answer
 		// it is meant to be a json object
@@ -487,7 +462,7 @@ UaStatus DIoLMotor::get_motor_info()
 		 * Typical answer: {"cur_pos":25000,"cur_speed":0,"m_temp":" 38.8","tar_pos":25000,"torque":"  1.9"}
 		 */
 		m_position = answer["cur_pos"];
-		m_speed = answer["cur_speed"];
+		m_speed_readout = answer["cur_speed"];
 		m_temperature = std::stod(answer["m_temp"].get<std::string>());
 		m_torque = std::stod(answer["torque"].get<std::string>());
 
@@ -495,10 +470,11 @@ UaStatus DIoLMotor::get_motor_info()
 		curl = NULL;
 	}
 	m_monitor_status = OpcUa_Good;
+
 	return OpcUa_Good;
 }
 
-UaStatus DIoLMotor::move_motor()
+UaStatus DIoLMotor::move_motor(json &resp)
 {
 
 	string addr = "http://";
@@ -517,20 +493,17 @@ UaStatus DIoLMotor::move_motor()
 		lport = port();
 	}
 
-	//	string addr = "http://" + server_address() + "/api/move";
-//
-//	uint16_t port = 5001;
 	OpcUa_StatusCode status= OpcUa_Good;
 
 	auto curl = curl_easy_init();
 	if (curl) {
 
-	    // NOTE: Zero values are not passed onto the query, and expects the server to assume defaults
+	    // NOTE: Zero values are not passed onto the query, and expects the server to assume some defaults
 		ostringstream query("");
 		query << "pos=" << m_position_setpoint;
-		if (m_speed != 0)
+		if (m_speed_setpoint != 0)
 		{
-			query << "&speed=" << m_speed;
+			query << "&speed=" << m_speed_setpoint;
 		}
 		if (m_acceleration != 0)
 		{
@@ -559,23 +532,21 @@ UaStatus DIoLMotor::move_motor()
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
 		curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_string);
 
-//		char* url;
-//		long response_code;
-//		double elapsed;
-//		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-//		curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &elapsed);
-//		curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &url);
-
 		ret = curl_easy_perform(curl);
 		// Check for errors
 		if (ret != CURLE_OK)
 		{
-			LOG(Log::ERR) << "curl_easy_perform() failed: "
-				<< curl_easy_strerror(ret);
+			ostringstream msg("");
+			msg << "curl_easy_perform() failed: " << curl_easy_strerror(ret);
+			resp["status"] = "ERROR";
+			resp["message"] = msg.str();
+
+			LOG(Log::ERR) << msg.str();
+
 			curl_easy_cleanup(curl);
 			curl = NULL;
 
-			return OpcUa_Bad;
+			return OpcUa_BadNoCommunication;
 		}
 
 //        cout << response_string;
@@ -594,18 +565,21 @@ UaStatus DIoLMotor::move_motor()
 		{
 			status =  OpcUa_Bad;
 		}
+		resp = answer;
 
 		curl_easy_cleanup(curl);
 		curl = NULL;
 	} else
 	{
-		LOG(Log::ERR) << "Failed to get a connection handle";
-		status =  OpcUa_Bad;
+		resp["status"] = "ERROR";
+		resp["message"] = "Failed to get a connection handle";
+		LOG(Log::ERR) << resp.at("message");
+		status =  OpcUa_BadNoCommunication;
 	}
 	return status;
 }
 
-UaStatus DIoLMotor::stop_motor()
+UaStatus DIoLMotor::stop_motor(json &resp)
 {
 	string addr = "http://";
 	if (m_server_host.length())
@@ -651,15 +625,20 @@ UaStatus DIoLMotor::stop_motor()
 		// Check for errors
 		if (ret != CURLE_OK)
 		{
-			LOG(Log::ERR) << "curl_easy_perform() failed: "
-				<< curl_easy_strerror(ret);
+			ostringstream msg("");
+			msg << "curl_easy_perform() failed: " << curl_easy_strerror(ret);
+			resp["status"] = "ERROR";
+			resp["message"] = msg.str();
+
+			LOG(Log::ERR) << msg.str();
+
 			curl_easy_cleanup(curl);
 			curl = NULL;
 
 			return OpcUa_BadCommunicationError;
 		}
 
-//        cout << response_string;
+		// cout << response_string;
 		LOG(Log::INF) << "Received response [" << response_string << "]";
 		// now we should parse the answer
 		// it is meant to be a json object
@@ -675,13 +654,16 @@ UaStatus DIoLMotor::stop_motor()
 		{
 			status = OpcUa_Bad;
 		}
-
+		resp = answer;
 		curl_easy_cleanup(curl);
 		curl = NULL;
 	} else
 	{
-		LOG(Log::ERR) << "Failed to get a connection handle";
-		status = OpcUa_BadNoCommunication;
+		resp["status"] = "ERROR";
+		resp["message"] = "Failed to get a connection handle";
+
+		LOG(Log::ERR) << resp.at("message");
+		status =  OpcUa_BadNoCommunication;
 	}
 	return status;
 }

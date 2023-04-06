@@ -27,9 +27,11 @@
 using std::vector;
 using string = std::string;
 
+#include <json.hpp>
+using json = nlohmann::json;
+
 namespace Device
 {
-
 
 class
     DIoLMotor
@@ -48,9 +50,9 @@ public:
     /* delegators for
     cachevariables and sourcevariables */
     /* Note: never directly call this function. */
-    UaStatus writePositionSetPoint ( const OpcUa_Double& v);
+    UaStatus writePositionSetPoint ( const OpcUa_Int32& v);
     /* Note: never directly call this function. */
-    UaStatus writeRefresh_period_ms ( const OpcUa_UInt16& v);
+    UaStatus writeRefresh_period_ms ( const OpcUa_UInt32& v);
 
 
     /* delegators for methods */
@@ -86,27 +88,29 @@ public:
     bool is_ready();
 
     UaStatus get_motor_info();
-    UaStatus move_motor();
-    UaStatus stop_motor();
+    UaStatus move_motor(json &resp);
+    UaStatus stop_motor(json &resp);
 
     const bool get_monitor() {return m_monitor;}
     void set_monitor(bool m) {m_monitor = m;}
 
+private:
     const uint16_t get_refresh_ms() {return m_refresh_ms;}
 
 
 private:
-    double m_position;
-    double m_position_setpoint;
+    int32_t m_position;
+    int32_t m_position_setpoint;
     bool m_is_ready; // declares where it is ready for operation
         // this essentially means that all settings are in a reasonable state
     bool is_moving_; // -- this variable will be set by a GPIO bit. That code is not ready yet
-    double m_acceleration;
-    double m_deceleration;
-    double m_speed;
+    uint32_t m_acceleration;
+    uint32_t m_deceleration;
+    uint32_t m_speed_setpoint;
+    uint32_t m_speed_readout; // current speed reported by the motor
     double m_torque;
     double m_temperature;
-    uint16_t m_refresh_ms;
+    uint32_t m_refresh_ms;
     bool m_monitor;
     OpcUa_StatusCode m_monitor_status;
     std::string m_server_host;

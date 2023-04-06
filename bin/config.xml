@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration xmlns="http://cern.ch/quasar/Configuration" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cern.ch/quasar/Configuration ../Configuration/Configuration.xsd ">
 <IoLaserSystem location="0x1" name="L1" enabled="true" id="1">
-	<IoLMotor name="m1" id="1" server_address="192.168.2.173" speed="3"
-		positionSetPoint="0.0" port="5000" refresh_period_ms="0"
-		acceleration="2" deceleration="2">
+	<IoLMotor name="m1" id="1" server_address="192.168.2.173" port="5000" refresh_period_ms="0"
+		acceleration="200" deceleration="200" speed_setpoint="1000">
 	</IoLMotor>
-	<IoLMotor name="m2" id="2" server_address="localhost" speed="2"
-		positionSetPoint="0.0" port="4501" refresh_period_ms="0" acceleration="2" deceleration="2">
+	<IoLMotor name="m2" id="2" server_address="localhost" port="4501" refresh_period_ms="0" acceleration="200" deceleration="200" speed_setpoint="1000">
 	</IoLMotor>
 	<IoLAttenuator resolution="0.01" name="A1"></IoLAttenuator>
 	<IoLLaserUnit rep_rate_hz="10.0" name="L1" qswitch="355"

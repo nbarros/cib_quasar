@@ -9,11 +9,14 @@
     <d:configentry dataType="OpcUa_UInt16" name="port"
     	defaultValue="5000" storedInDeviceObject="true">
     </d:configentry>
-    <d:cachevariable name="position" addressSpaceWrite="forbidden" dataType="OpcUa_Double" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
+    <d:cachevariable name="position" addressSpaceWrite="forbidden" dataType="OpcUa_Int32" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
-    <d:cachevariable name="positionSetPoint" addressSpaceWrite="delegated" dataType="OpcUa_Double" initializeWith="configuration" nullPolicy="nullForbidden">
+    <d:cachevariable name="positionSetPoint"
+    	addressSpaceWrite="delegated" dataType="OpcUa_Int32"
+    	initializeWith="valueAndStatus" nullPolicy="nullForbidden"
+    	initialValue="0" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt16" name="refresh_period_ms" nullPolicy="nullAllowed" addressSpaceWrite="delegated">
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="refresh_period_ms" nullPolicy="nullAllowed" addressSpaceWrite="delegated">
   </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="is_moving" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
   </d:cachevariable>
@@ -23,8 +26,11 @@
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Double" name="temperature_C" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
   </d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Double" name="speed" nullPolicy="nullForbidden" addressSpaceWrite="regular">
-  </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus"
+    	dataType="OpcUa_UInt32" name="speed_readout"
+    	nullPolicy="nullAllowed" addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData">
+    </d:cachevariable>
     <!--operation_status corresponds to a bitmask. The codes are documented in the manual-->
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="operation_status" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 </d:cachevariable>
@@ -41,11 +47,15 @@
     	<d:argument dataType="UaString" name="config_json"></d:argument>
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
     <d:cachevariable initializeWith="configuration"
-    	dataType="OpcUa_Double" name="acceleration" nullPolicy="nullForbidden"
+    	dataType="OpcUa_UInt32" name="acceleration" nullPolicy="nullForbidden"
     	addressSpaceWrite="regular">
     </d:cachevariable>
     <d:cachevariable initializeWith="configuration"
-    	dataType="OpcUa_Double" name="deceleration" nullPolicy="nullForbidden"
+    	dataType="OpcUa_UInt32" name="deceleration" nullPolicy="nullForbidden"
+    	addressSpaceWrite="regular">
+    </d:cachevariable>
+    <d:cachevariable initializeWith="configuration"
+    	dataType="OpcUa_UInt32" name="speed_setpoint" nullPolicy="nullForbidden"
     	addressSpaceWrite="regular">
     </d:cachevariable>
   </d:class>
