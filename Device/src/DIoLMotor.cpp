@@ -198,13 +198,17 @@ UaStatus DIoLMotor::callConfigure_motor (
 {
 	LOG(Log::INF) << "Received JSON configuration file ";
 
+	LOG(Log::INF) << "Raw content : " << config_json.toUtf8();
+	json resp;
+	try
+	{
+
+
 	// have to be careful about the escapes
 	// \n, \". etc. These seem to cause trouble
-
 	//json config(config_json.toUtf8());
 	//std::string tmp(reinterpret_cast<char*>(config_json.toOpcUaString()->data),config_json.toOpcUaString()->length);
 	json config = json::parse(config_json.toUtf8());
-	json resp;
 
 	// first confirm that this configuration is for the correct motor
 	LOG(Log::INF) << "Dumping : " << config.dump();
@@ -218,8 +222,6 @@ UaStatus DIoLMotor::callConfigure_motor (
 	}
 
 	// if the ids match, lets set the parameters
-	try
-	{
 		// special iterator member functions for objects
 		for (json::iterator it = config.begin(); it != config.end(); ++it)
 		{
