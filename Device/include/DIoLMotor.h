@@ -30,6 +30,7 @@ using string = std::string;
 namespace Device
 {
 
+
 class
     DIoLMotor
     : public Base_DIoLMotor
@@ -59,7 +60,10 @@ public:
     UaStatus callStop (
         UaString& response
     ) ;
-
+    UaStatus callConfigure_motor (
+        const UaString&  config_json,
+        UaString& response
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */
@@ -70,7 +74,7 @@ private:
     //void timer_start(std::function<void(void)> func, unsigned int interval);
     void timer_start(DIoLMotor *obj);
 
-
+    void refresh_server_info();
     // ----------------------------------------------------------------------- *
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
     // -     Don't change this comment, otherwise merge tool may be troubled.  *
@@ -84,9 +88,12 @@ public:
     UaStatus get_motor_info();
     UaStatus move_motor();
     UaStatus stop_motor();
+
     const bool get_monitor() {return m_monitor;}
     void set_monitor(bool m) {m_monitor = m;}
+
     const uint16_t get_refresh_ms() {return m_refresh_ms;}
+
 
 private:
     double m_position;
@@ -102,7 +109,8 @@ private:
     uint16_t m_refresh_ms;
     bool m_monitor;
     OpcUa_StatusCode m_monitor_status;
-
+    std::string m_server_host;
+    uint16_t m_server_port;
 
 };
 

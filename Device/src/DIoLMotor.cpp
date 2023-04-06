@@ -33,6 +33,7 @@ extern "C" {
 #include <chrono>
 #include <thread>
 #include <functional>
+#include <string>
 
 using std::ostringstream;
 
@@ -80,6 +81,8 @@ DIoLMotor::DIoLMotor (
 	,m_refresh_ms(0)
 	,m_monitor(false)
 	,m_monitor_status(OpcUa_BadResourceUnavailable)
+	,m_server_host("")
+	,m_server_port(0)
 {
     /* fill up constructor body here */
 	// initialize cURL
@@ -127,7 +130,6 @@ UaStatus DIoLMotor::writePositionSetPoint ( const OpcUa_Double& v)
 
     return OpcUa_Good;
 }
-
 /* Note: never directly call this function. */
 
 UaStatus DIoLMotor::writeRefresh_period_ms ( const OpcUa_UInt16& v)
@@ -136,6 +138,7 @@ UaStatus DIoLMotor::writeRefresh_period_ms ( const OpcUa_UInt16& v)
 	LOG(Log::INF) << "Updating refresh rate for motor " << id() << " to " << v << " ms";
 	if (v != 0 && !m_monitor)
 	{
+		LOG(Log::INF) << "Starting a timer on motor " << id() << " to refresh every " << v << " ms";
 		timer_start(this);
 	}
 	else if (v == 0)
@@ -182,6 +185,106 @@ UaStatus DIoLMotor::callStop (
 
 }
 
+UaStatus DIoLMotor::callConfigure_motor (
+    const UaString&  config_json,
+    UaString& response
+)
+{
+	LOG(Log::INF) << "Received JSON configuration file ";
+
+	// have to be careful about the escapes
+	// \n, \". etc. These seem to cause trouble
+
+	//json config(config_json.toUtf8());
+	//std::string tmp(reinterpret_cast<char*>(config_json.toOpcUaString()->data),config_json.toOpcUaString()->length);
+	json config = json::parse(config_json.toUtf8());
+	json resp;
+
+	// first confirm that this configuration is for the correct motor
+	LOG(Log::INF) << "Dumping : " << config.dump();
+	if (config.at("id").get<uint16_t>() != id())
+	{
+		LOG(Log::ERR) << "Mismatch in motor id on configuration token (" << id() << "!=" << config.at("id").get<uint16_t>();
+		resp["status"] = "FAIL";
+		resp["message"] = "Wrong motor id";
+		response = UaString(resp.dump().c_str());
+		return OpcUa_BadInvalidArgument;
+	}
+
+	// if the ids match, lets set the parameters
+	try
+	{
+		// special iterator member functions for objects
+		for (json::iterator it = config.begin(); it != config.end(); ++it)
+		{
+		  LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
+		  if (it.key() == "server_address")
+		  {
+			m_server_host = it.value();
+			if (m_server_host != server_address())
+			{
+				LOG(Log::WRN) << "Server host is being updated. This should be done with care as we cannot update address space configuration.";
+				resp["messages"].push_back("WARN : Server host is being updated. This should be done with care as we cannot update address space configuration.");
+			}
+		  }
+		  if (it.key() == "port")
+		  {
+			m_server_port = it.value();
+			if (m_server_port != port())
+			{
+				LOG(Log::WRN) << "Server port is being updated. This should be done with care.";
+				resp["messages"].push_back("WARN : Server port is being updated. This should be done with care as we cannot update address space configuration.");
+
+			}
+		  }
+		  if (it.key() == "speed")
+		  {
+			m_speed = it.value();
+			getAddressSpaceLink()->setSpeed(m_speed,OpcUa_Good);
+		  }
+		  if (it.key() == "acceleration")
+		  {
+			m_acceleration = it.value();
+			getAddressSpaceLink()->setAcceleration(m_acceleration,OpcUa_Good);
+		  }
+		  if (it.key() == "deceleration")
+		  {
+			  m_deceleration = it.value();
+			  getAddressSpaceLink()->setDeceleration(m_deceleration,OpcUa_Good);
+		  }
+		  if (it.key() == "refresh_period_ms")
+		  {
+			m_refresh_ms = it.value();
+			writeRefresh_period_ms(m_refresh_ms);
+			getAddressSpaceLink()->setRefresh_period_ms(m_refresh_ms, OpcUa_Good);
+		  }
+		}
+		resp["status"] = "OK";
+		resp["messages"].push_back("All updated.");
+		response = UaString(resp.dump().c_str());
+	}
+	catch(json::exception &e)
+	{
+		LOG(Log::ERR) << "Caught a parsing exception : " << e.what();
+		resp["status"] = "ERROR";
+		resp["message"] = e.what();
+		response = UaString(resp.dump().c_str());
+
+		return OpcUa_BadInvalidArgument;
+
+	}
+	catch(std::exception &e)
+	{
+		LOG(Log::ERR) << "Caught a parsing exception : " << e.what();
+		resp["status"] = "ERROR";
+		resp["message"] = e.what();
+		response = UaString(resp.dump().c_str());
+
+		return OpcUa_BadInvalidArgument;
+	}
+
+	return OpcUa_Good;
+}
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
 // 3     FULLY CUSTOM CODE STARTS HERE                                     3
@@ -196,10 +299,19 @@ void DIoLMotor::update()
 	OpcUa_StatusCode status= OpcUa_Good;
 	// this should no longer be called
 
-//	if (get_motor_info() == OpcUa_Bad)
-//	{
-//		LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
+//	bool msg_printed = false;
+	if (m_monitor_status != OpcUa_Good)
+	{
+//		if (!msg_printed)
+//		{
+//			LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
+//			msg_printed = true;
+//		}
 //		status = OpcUa_BadResourceUnavailable;
+//	} else
+//	{
+//		// reset the state until connection is lost again
+//		msg_printed = false;
 //	}
 
 	//LOG(Log::INF) << "Updating for IOLMotor::ID=" << id();
@@ -215,9 +327,11 @@ void DIoLMotor::update()
 	status |= getAddressSpaceLink()->setTemperature_C(m_temperature, status);
 	//getAddressSpaceLink()->setAcceleration(m_acceleration, OpcUa_Good);
 
-	// now the getters
+	// now the getters -- for now allow all to be updated, but eventually set limitations
+	// these getters are for variables with "regular" writing policy. We can change that
 	status |= getAddressSpaceLink()->getSpeed(m_speed);
-
+	status |= getAddressSpaceLink()->getAcceleration(m_acceleration);
+	status |= getAddressSpaceLink()->getDeceleration(m_deceleration);
 
 
 
@@ -259,10 +373,10 @@ bool DIoLMotor::is_ready()
 	{
 		return false;
 	}
-	if (m_acceleration == 0.0)
-	{
-		return false;
-	}
+//	if (m_acceleration == 0.0)
+//	{
+//		return false;
+//	}
 //	if (m_deceleration == 0.0)
 //	{
 //		return false;
@@ -310,8 +424,23 @@ void DIoLMotor::timer_start(DIoLMotor *obj)
 
 UaStatus DIoLMotor::get_motor_info()
 {
-	string addr = "http://" + server_address() + "/api/info";
-	uint16_t lport = port();
+
+
+	string addr = "http://";
+	if (m_server_host.length())
+	{
+		addr+= m_server_host;
+	} else
+	{
+		addr+= server_address();
+	}
+	addr += "/api/info";
+
+	uint16_t lport = m_server_port;
+	if (lport == 0)
+	{
+		lport = port();
+	}
 	//OpcUa_StatusCode status= OpcUa_Good;
 	auto curl = curl_easy_init();
 	if (curl) {
@@ -359,8 +488,8 @@ UaStatus DIoLMotor::get_motor_info()
 		 */
 		m_position = answer["cur_pos"];
 		m_speed = answer["cur_speed"];
-		m_temperature = answer["m_temp"];
-		m_torque = answer["torque"];
+		m_temperature = std::stod(answer["m_temp"].get<std::string>());
+		m_torque = std::stod(answer["torque"].get<std::string>());
 
 		curl_easy_cleanup(curl);
 		curl = NULL;
@@ -371,9 +500,26 @@ UaStatus DIoLMotor::get_motor_info()
 
 UaStatus DIoLMotor::move_motor()
 {
-	string addr = "http://" + server_address() + "/api/move";
 
-	static const uint16_t port = 5001;
+	string addr = "http://";
+	if (m_server_host.length())
+	{
+		addr+= m_server_host;
+	} else
+	{
+		addr+= server_address();
+	}
+	addr += "/api/move";
+
+	uint16_t lport = m_server_port;
+	if (lport == 0)
+	{
+		lport = port();
+	}
+
+	//	string addr = "http://" + server_address() + "/api/move";
+//
+//	uint16_t port = 5001;
 	OpcUa_StatusCode status= OpcUa_Good;
 
 	auto curl = curl_easy_init();
@@ -399,7 +545,7 @@ UaStatus DIoLMotor::move_motor()
 		CURLcode ret;
 
 		curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
-		curl_easy_setopt(curl, CURLOPT_PORT, port);
+		curl_easy_setopt(curl, CURLOPT_PORT, lport);
 
 		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
 		//curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
@@ -461,9 +607,24 @@ UaStatus DIoLMotor::move_motor()
 
 UaStatus DIoLMotor::stop_motor()
 {
-	string addr = "http://" + server_address() + "/api/stop";
+	string addr = "http://";
+	if (m_server_host.length())
+	{
+		addr+= m_server_host;
+	} else
+	{
+		addr+= server_address();
+	}
+	addr += "/api/stop";
 
-	static const uint16_t port = 5001;
+	uint16_t lport = m_server_port;
+	if (lport == 0)
+	{
+		lport = port();
+	}
+//	string addr = "http://" + server_address() + "/api/stop";
+//
+//	static const uint16_t port = 5001;
 	OpcUa_StatusCode status= OpcUa_Good;
 
 	auto curl = curl_easy_init();
@@ -472,7 +633,7 @@ UaStatus DIoLMotor::stop_motor()
 		CURLcode ret;
 
 		curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
-		curl_easy_setopt(curl, CURLOPT_PORT, port);
+		curl_easy_setopt(curl, CURLOPT_PORT, lport);
 
 		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
 		//curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
@@ -495,7 +656,7 @@ UaStatus DIoLMotor::stop_motor()
 			curl_easy_cleanup(curl);
 			curl = NULL;
 
-			return OpcUa_Bad;
+			return OpcUa_BadCommunicationError;
 		}
 
 //        cout << response_string;
@@ -520,7 +681,7 @@ UaStatus DIoLMotor::stop_motor()
 	} else
 	{
 		LOG(Log::ERR) << "Failed to get a connection handle";
-		status = OpcUa_Bad;
+		status = OpcUa_BadNoCommunication;
 	}
 	return status;
 }

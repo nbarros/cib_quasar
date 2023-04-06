@@ -17,8 +17,10 @@
   </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="is_moving" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
   </d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Double" name="torque" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
-  </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus"
+    	dataType="OpcUa_Double" name="torque" nullPolicy="nullAllowed"
+    	addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+    </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Double" name="temperature_C" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
   </d:cachevariable>
     <d:cachevariable initializeWith="configuration" dataType="OpcUa_Double" name="speed" nullPolicy="nullForbidden" addressSpaceWrite="regular">
@@ -35,7 +37,17 @@
     </d:method>
     <d:method name="stop" executionSynchronicity="synchronous">
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-    
+    <d:method name="configure_motor" executionSynchronicity="synchronous">
+    	<d:argument dataType="UaString" name="config_json"></d:argument>
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+    <d:cachevariable initializeWith="configuration"
+    	dataType="OpcUa_Double" name="acceleration" nullPolicy="nullForbidden"
+    	addressSpaceWrite="regular">
+    </d:cachevariable>
+    <d:cachevariable initializeWith="configuration"
+    	dataType="OpcUa_Double" name="deceleration" nullPolicy="nullForbidden"
+    	addressSpaceWrite="regular">
+    </d:cachevariable>
   </d:class>
   <d:class name="IoLPiezoController">
     <d:devicelogic/>
