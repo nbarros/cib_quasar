@@ -1,0 +1,9 @@
+{
+"id":1,
+"server_address":"192.168.2.173",
+"port":5000,
+"speed":2,
+"acceleration":3,
+"decceleration":2,
+"refresh_period_ms":5000
+}

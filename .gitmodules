@@ -1,0 +1,3 @@
+[submodule "UaoForQuasar"]
+	path = UaoForQuasar
+	url = https://github.com/quasar-team/UaoForQuasar.git

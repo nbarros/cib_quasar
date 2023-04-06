@@ -1,0 +1,1 @@
+g++ -std=c++11 -Wno-literal-suffix -Wno-write-strings -I./ open62541.c cib_sc_client.cpp -o cib_sc_client
