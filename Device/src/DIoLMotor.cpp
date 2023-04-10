@@ -32,6 +32,7 @@ extern "C" {
 #include <thread>
 #include <functional>
 #include <string>
+#include <random>
 
 using std::ostringstream;
 
@@ -127,6 +128,11 @@ UaStatus DIoLMotor::writePositionSetPoint ( const OpcUa_Int32& v)
 		m_position_setpoint = v;
 	}
 
+	// TODO: Should one allow the position setpoint to be updated before the destination has been set?
+	// note that the movement itself is not initiated until the move_motor method is called
+	// on the other hand, if we allow this to be set we can no longer keep track of the current destination
+
+
     return OpcUa_Good;
 }
 /* Note: never directly call this function. */
@@ -172,7 +178,12 @@ UaStatus DIoLMotor::callStart_move (UaString& response)
 	}
 
 	// if it reaches this point we can initiate the movement
-	UaStatus st = move_motor(resp);
+	UaStatus st = OpcUa_Good;
+#ifdef SIMULATION
+	sim_move_motor(resp);
+#else
+	move_motor(resp);
+#endif
 
 	response = UaString(resp.dump().c_str());
 	return st;
@@ -669,5 +680,115 @@ UaStatus DIoLMotor::stop_motor(json &resp)
 	}
 	return status;
 }
+
+UaStatus DIoLMotor::sim_get_motor_info()
+{
+
+	// -- simulate that we're just getting the current settings from the motor itself
+
+	// now we should parse the answer
+	// it is meant to be a json object
+	/**
+	 * Typical answer: {"cur_pos":25000,"cur_speed":0,"m_temp":" 38.8","tar_pos":25000,"torque":"  1.9"}
+	 */
+	// grab this from the
+	m_position = m_sim_pos;
+	// just set the speed equal to the setting
+	m_speed_readout = m_sim_speed;
+	// the temperature is just a random number between 36 and 37 degrees
+	std::random_device rd;
+	std::mt19937 mt(rd());
+	std::uniform_real_distribution<double> dist_temp(36.0, 37.0);
+	std::uniform_real_distribution<double> dist_torque(0.0, 2.0);
+	m_temperature = dist_temp(mt);
+	m_torque = dist_torque(mt);
+	m_monitor_status = OpcUa_Good;
+
+	return OpcUa_Good;
+}
+
+UaStatus DIoLMotor::sim_move_motor(json &resp)
+{
+
+	OpcUa_StatusCode status= OpcUa_Good;
+
+	if (curl) {
+
+	    // NOTE: Zero values are not passed onto the query, and expects the server to assume some defaults
+		ostringstream query("");
+		query << "pos=" << m_position_setpoint;
+		if (m_speed_setpoint != 0)
+		{
+			query << "&speed=" << m_speed_setpoint;
+		}
+		if (m_acceleration != 0)
+		{
+			query << "&accel=" << m_acceleration;
+		}
+		if (m_deceleration != 0)
+		{
+			query << "&decel=" << m_deceleration;
+		}
+		addr += "?";
+		addr += query.str();
+		CURLcode ret;
+
+		// initiate the thread to start the movement simulator
+		// note that the movement is *not* realistically simulated, i.e.,
+		// only the position is being monotonically updated a rate of
+		// <speed> steps per second
+
+
+		if (m_sim_moving)
+		{
+			resp["status"] = "ERROR";
+			resp["message"] = "Motor is already moving";
+			return OpcUa_Bad;
+		}
+
+		// if it is not yet moving start the thread
+
+		// set the simulation conditions
+		m_sim_speed = m_speed_setpoint;
+		// this permits that one changes the position set point
+		// without affecting the ongoing movement
+		m_sim_tpos = m_position_setpoint;
+
+		std::thread([]()
+		{
+
+			m_sim_moving = true;
+			while (m_sim_moving)
+			{
+				if (!m_sim_moving || (m_sim_tpos == m_sim_pos))
+				{
+					// stop the thread
+					break;
+				}
+
+				// update every 5 ms
+				auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000/m_sim_speed);
+				m_sim_pos += 1;
+
+				std::this_thread::sleep_until(x);
+			}
+		}).detach();
+
+		return status;
+}
+
+UaStatus DIoLMotor::sim_stop_motor(json &resp)
+{
+	OpcUa_StatusCode status= OpcUa_Good;
+
+	m_sim_moving = false;
+
+	resp["status"] = "OK";
+	//resp["message"] = "Failed to get a connection handle";
+
+	return status;
+}
+
+
 
 }

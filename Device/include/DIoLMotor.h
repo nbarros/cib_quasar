@@ -87,6 +87,12 @@ public:
 
     bool is_ready();
 
+
+    UaStatus sim_get_motor_info();
+    UaStatus sim_move_motor(json &resp);
+    UaStatus sim_stop_motor(json &resp);
+
+
     UaStatus get_motor_info();
     UaStatus move_motor(json &resp);
     UaStatus stop_motor(json &resp);
@@ -96,6 +102,12 @@ public:
 
 private:
     const uint16_t get_refresh_ms() {return m_refresh_ms;}
+    // these are internal variables to simulate the movement itself
+    void sim_mv();
+    int32_t m_sim_pos;
+    int32_t m_sim_speed;
+    int32_t m_sim_tpos;
+    bool m_sim_moving;
 
 
 private:
