@@ -14,7 +14,7 @@
     <d:cachevariable name="positionSetPoint"
     	addressSpaceWrite="delegated" dataType="OpcUa_Int32"
     	initializeWith="valueAndStatus" nullPolicy="nullForbidden"
-    	initialValue="0" initialStatus="OpcUa_BadWaitingForInitialData">
+    	initialValue="-99999" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
     <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="refresh_period_ms" nullPolicy="nullAllowed" addressSpaceWrite="delegated">
   </d:cachevariable>
@@ -108,7 +108,7 @@
   </d:class>
   <d:class name="IoLaserSystem">
     <d:devicelogic/>
-    <d:configentry dataType="OpcUa_UInt16" name="id"/>
+    <d:configentry dataType="OpcUa_UInt16" name="id" isKey="true" />
     <d:configentry dataType="UaString" name="location"/>
     <d:cachevariable initializeWith="configuration" dataType="OpcUa_Boolean" name="enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden">
 		</d:cachevariable>

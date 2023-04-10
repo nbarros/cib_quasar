@@ -61,45 +61,55 @@ namespace Device
 
 /* sample ctr */
 DIoLMotor::DIoLMotor (
-    const Configuration::IoLMotor& config,
-    Parent_DIoLMotor* parent
+		const Configuration::IoLMotor& config,
+		Parent_DIoLMotor* parent
 ):
-    Base_DIoLMotor( config, parent)
+    		Base_DIoLMotor( config, parent)
 
-    /* fill up constructor initialization list here */
-	,m_position(-99999)
-	,m_position_setpoint(-99999)
-	, m_is_ready(false)
-	,is_moving_(false)
-	,m_acceleration(0.0)
-	,m_deceleration(0.0)
-	,m_speed_setpoint(0.0)
-	,m_speed_readout(0.0)
-	,m_torque(0.0)
-	,m_temperature(0.0)
-	//,m_address("")
-	,m_refresh_ms(0)
-	,m_monitor(false)
-	,m_monitor_status(OpcUa_BadResourceUnavailable)
-	,m_server_host("")
-	,m_server_port(0)
-{
-    /* fill up constructor body here */
+			/* fill up constructor initialization list here */
+			,m_sim_pos(0)
+			,m_sim_speed(0)
+			,m_sim_tpos(0)
+			,m_sim_moving(false)
+			,m_position(-99999)
+			,m_position_setpoint(-99999)
+			,m_position_setpoint_status(OpcUa_BadWaitingForInitialData)
+			, m_is_ready(false)
+			,is_moving_(false)
+			,m_acceleration(0.0)
+			,m_deceleration(0.0)
+			,m_speed_setpoint(0.0)
+			,m_speed_readout(0.0)
+			,m_torque(0.0)
+			,m_temperature(0.0)
+			//,m_address("")
+			,m_refresh_ms(0)
+			,m_monitor(false)
+			,m_monitor_status(OpcUa_BadResourceUnavailable)
+			,m_server_host("")
+			,m_server_port(0)
+			{
+	/* fill up constructor body here */
 	// initialize cURL
-	  curl_global_init(CURL_GLOBAL_ALL);
+	curl_global_init(CURL_GLOBAL_ALL);
 
-	  // everything else will be processed in contained form
+	// Provide whatever clients a useful, crappy value for
+	// everything else will be processed in contained form
+	//getAddressSpaceLink()->setPositionSetPoint(m_position_setpoint, OpcUa_BadWaitingForInitialData);
 
-	  //
-	  if (m_monitor)
-	  {
-		  if (m_refresh_ms != 0.0)
-		  {
+#ifdef SIMULATION
+	LOG(Log::WRN)<< "***!!! RUNNING IN SIMULATION MODE !!!***";
+#endif
+	//
+	if (m_monitor)
+	{
+		if (m_refresh_ms != 0.0)
+		{
 			timer_start(this);
-		  }
-	  }
+		}
+	}
 
-}
+			}
 
 /* sample dtr */
 DIoLMotor::~DIoLMotor ()
@@ -126,6 +136,10 @@ UaStatus DIoLMotor::writePositionSetPoint ( const OpcUa_Int32& v)
 	{
 		LOG(Log::INF) << "Updating motor ID=" << id() << " with positionSetPoint = (" << v << ")";
 		m_position_setpoint = v;
+		if (m_position_setpoint_status != OpcUa_Good)
+		{
+			m_position_setpoint_status = OpcUa_Good;
+		}
 	}
 
 	// TODO: Should one allow the position setpoint to be updated before the destination has been set?
@@ -133,7 +147,7 @@ UaStatus DIoLMotor::writePositionSetPoint ( const OpcUa_Int32& v)
 	// on the other hand, if we allow this to be set we can no longer keep track of the current destination
 
 
-    return OpcUa_Good;
+	return OpcUa_Good;
 }
 /* Note: never directly call this function. */
 
@@ -152,18 +166,29 @@ UaStatus DIoLMotor::writeRefresh_period_ms ( const OpcUa_UInt32& v)
 		m_monitor = false;
 	}
 
-    return OpcUa_Good;
+	return OpcUa_Good;
 }
 /* delegators for methods */
 
 UaStatus DIoLMotor::callStart_move (UaString& response)
 {
 	json resp;
+	UaStatus st = OpcUa_Good;
 
 	if (!is_ready())
 	{
 		resp["status"] = "ERROR";
 		resp["message"] = "Motor is not ready to operate";
+		LOG(Log::ERR) << resp["message"].get<std::string>();
+		response = UaString(resp.dump().c_str());
+		return OpcUa_BadInvalidState;
+	}
+
+	if (m_position_setpoint_status != OpcUa_Good)
+	{
+		resp["status"] = "ERROR";
+		resp["message"] = "Target position not set";
+		LOG(Log::ERR) << resp["message"].get<std::string>();
 		response = UaString(resp.dump().c_str());
 		return OpcUa_BadInvalidState;
 	}
@@ -173,16 +198,28 @@ UaStatus DIoLMotor::callStart_move (UaString& response)
 	{
 		resp["status"] = "ERROR";
 		resp["message"] = "Motor is already at the destination";
+		LOG(Log::ERR) << resp["message"].get<std::string>();
 		response = UaString(resp.dump().c_str());
 		return OpcUa_BadInvalidState;
 	}
 
+
+	int32_t psp;
+	UaStatus ss = getAddressSpaceLink()->getPositionSetPoint(psp);
+	LOG(Log::INF) << "Current state of positionSetPoint ---> " << ss << " " << ss.toString().toUtf8();
+	if (ss != OpcUa_Good)
+	{
+		resp["status"] = "ERROR";
+		resp["message"] = "Invalid target position";
+		LOG(Log::ERR) << resp["message"].get<std::string>();
+		response = UaString(resp.dump().c_str());
+		return OpcUa_BadInvalidState;
+	}
 	// if it reaches this point we can initiate the movement
-	UaStatus st = OpcUa_Good;
 #ifdef SIMULATION
-	sim_move_motor(resp);
+	st = sim_move_motor(resp);
 #else
-	move_motor(resp);
+	st = move_motor(resp);
 #endif
 
 	response = UaString(resp.dump().c_str());
@@ -191,20 +228,25 @@ UaStatus DIoLMotor::callStart_move (UaString& response)
 }
 
 UaStatus DIoLMotor::callStop (
-    UaString& response
+		UaString& response
 )
 {
 	// stopping is a serious business. Should be called immediately
 	json resp;
-	UaStatus st = stop_motor(resp);
+	UaStatus st = OpcUa_Good;
+#ifdef SIMULATION
+	st = sim_stop_motor(resp);
+#else
+	st = stop_motor(resp);
+#endif
 	response = UaString(resp.dump().c_str());
 	return st;
 
 }
 
 UaStatus DIoLMotor::callConfigure_motor (
-    const UaString&  config_json,
-    UaString& response
+		const UaString&  config_json,
+		UaString& response
 )
 {
 	LOG(Log::INF) << "Received JSON configuration file ";
@@ -215,68 +257,68 @@ UaStatus DIoLMotor::callConfigure_motor (
 	{
 
 
-	// have to be careful about the escapes
-	// \n, \". etc. These seem to cause trouble
-	//json config(config_json.toUtf8());
-	//std::string tmp(reinterpret_cast<char*>(config_json.toOpcUaString()->data),config_json.toOpcUaString()->length);
-	json config = json::parse(config_json.toUtf8());
+		// have to be careful about the escapes
+		// \n, \". etc. These seem to cause trouble
+		//json config(config_json.toUtf8());
+		//std::string tmp(reinterpret_cast<char*>(config_json.toOpcUaString()->data),config_json.toOpcUaString()->length);
+		json config = json::parse(config_json.toUtf8());
 
-	// first confirm that this configuration is for the correct motor
-	LOG(Log::INF) << "Dumping : " << config.dump();
-	if (config.at("id").get<uint16_t>() != id())
-	{
-		LOG(Log::ERR) << "Mismatch in motor id on configuration token (" << id() << "!=" << config.at("id").get<uint16_t>();
-		resp["status"] = "FAIL";
-		resp["message"] = "Wrong motor id";
-		response = UaString(resp.dump().c_str());
-		return OpcUa_BadInvalidArgument;
-	}
+		// first confirm that this configuration is for the correct motor
+		LOG(Log::INF) << "Dumping : " << config.dump();
+		if (config.at("id").get<uint16_t>() != id())
+		{
+			LOG(Log::ERR) << "Mismatch in motor id on configuration token (" << id() << "!=" << config.at("id").get<uint16_t>();
+			resp["status"] = "FAIL";
+			resp["message"] = "Wrong motor id";
+			response = UaString(resp.dump().c_str());
+			return OpcUa_BadInvalidArgument;
+		}
 
-	// if the ids match, lets set the parameters
+		// if the ids match, lets set the parameters
 		// special iterator member functions for objects
 		for (json::iterator it = config.begin(); it != config.end(); ++it)
 		{
-		  LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
-		  if (it.key() == "server_address")
-		  {
-			m_server_host = it.value();
-			if (m_server_host != server_address())
+			LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
+			if (it.key() == "server_address")
 			{
-				LOG(Log::WRN) << "Server host is being updated. This should be done with care as we cannot update address space configuration.";
-				resp["messages"].push_back("WARN : Server host is being updated. This should be done with care as we cannot update address space configuration.");
+				m_server_host = it.value();
+				if (m_server_host != server_address())
+				{
+					LOG(Log::WRN) << "Server host is being updated. This should be done with care as we cannot update address space configuration.";
+					resp["messages"].push_back("WARN : Server host is being updated. This should be done with care as we cannot update address space configuration.");
+				}
 			}
-		  }
-		  if (it.key() == "port")
-		  {
-			m_server_port = it.value();
-			if (m_server_port != port())
+			if (it.key() == "port")
 			{
-				LOG(Log::WRN) << "Server port is being updated. This should be done with care.";
-				resp["messages"].push_back("WARN : Server port is being updated. This should be done with care as we cannot update address space configuration.");
+				m_server_port = it.value();
+				if (m_server_port != port())
+				{
+					LOG(Log::WRN) << "Server port is being updated. This should be done with care.";
+					resp["messages"].push_back("WARN : Server port is being updated. This should be done with care as we cannot update address space configuration.");
 
+				}
 			}
-		  }
-		  if (it.key() == "speed")
-		  {
-			m_speed_setpoint = it.value();
-			getAddressSpaceLink()->setSpeed_setpoint(m_speed_setpoint,OpcUa_Good);
-		  }
-		  if (it.key() == "acceleration")
-		  {
-			m_acceleration = it.value();
-			getAddressSpaceLink()->setAcceleration(m_acceleration,OpcUa_Good);
-		  }
-		  if (it.key() == "deceleration")
-		  {
-			  m_deceleration = it.value();
-			  getAddressSpaceLink()->setDeceleration(m_deceleration,OpcUa_Good);
-		  }
-		  if (it.key() == "refresh_period_ms")
-		  {
-			m_refresh_ms = it.value();
-			writeRefresh_period_ms(m_refresh_ms);
-			getAddressSpaceLink()->setRefresh_period_ms(m_refresh_ms, OpcUa_Good);
-		  }
+			if (it.key() == "speed")
+			{
+				m_speed_setpoint = it.value();
+				getAddressSpaceLink()->setSpeed_setpoint(m_speed_setpoint,OpcUa_Good);
+			}
+			if (it.key() == "acceleration")
+			{
+				m_acceleration = it.value();
+				getAddressSpaceLink()->setAcceleration(m_acceleration,OpcUa_Good);
+			}
+			if (it.key() == "deceleration")
+			{
+				m_deceleration = it.value();
+				getAddressSpaceLink()->setDeceleration(m_deceleration,OpcUa_Good);
+			}
+			if (it.key() == "refresh_period_ms")
+			{
+				m_refresh_ms = it.value();
+				writeRefresh_period_ms(m_refresh_ms);
+				getAddressSpaceLink()->setRefresh_period_ms(m_refresh_ms, OpcUa_Good);
+			}
 		}
 		resp["status"] = "OK";
 		resp["messages"].push_back("All updated.");
@@ -318,19 +360,19 @@ void DIoLMotor::update()
 	OpcUa_StatusCode status= OpcUa_Good;
 	// this should no longer be called
 
-//	bool msg_printed = false;
+	//	bool msg_printed = false;
 	if (m_monitor_status != OpcUa_Good)
 	{
-//		if (!msg_printed)
-//		{
-//			LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
-//			msg_printed = true;
-//		}
+		//		if (!msg_printed)
+		//		{
+		//			LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
+		//			msg_printed = true;
+		//		}
 		status = OpcUa_BadResourceUnavailable;
-//	} else
-//	{
-//		// reset the state until connection is lost again
-//		msg_printed = false;
+		//	} else
+		//	{
+		//		// reset the state until connection is lost again
+		//		msg_printed = false;
 	}
 
 	//LOG(Log::INF) << "Updating for IOLMotor::ID=" << id();
@@ -371,17 +413,17 @@ bool DIoLMotor::is_ready()
 	{
 		return false;
 	}
-//	if (m_acceleration == 0.0)
-//	{
-//		return false;
-//	}
-//	if (m_deceleration == 0.0)
-//	{
-//		return false;
-//	}
+	//	if (m_acceleration == 0.0)
+	//	{
+	//		return false;
+	//	}
+	//	if (m_deceleration == 0.0)
+	//	{
+	//		return false;
+	//	}
 
 	LOG(Log::INF) << "Checking readiness for motor ID=" << id()
-			<< " with positionSetPoint = (" << m_position_setpoint << ")";
+					<< " with positionSetPoint = (" << m_position_setpoint << ")";
 
 	return true;
 
@@ -391,7 +433,7 @@ bool DIoLMotor::is_ready()
 size_t DIoLMotor::curl_write_function(void* ptr, size_t size, size_t nmemb, std::string* data)
 {
 	data->append((char*)ptr, size * nmemb);
-	    return size * nmemb;
+	return size * nmemb;
 }
 
 //void DIoLMotor::timer_start(std::function<void(void)> func, uint16_t interval)
@@ -404,19 +446,23 @@ void DIoLMotor::timer_start(DIoLMotor *obj)
 	}
 	m_monitor = true;
 
-  std::thread([obj]()
-  {
-    while (obj->get_monitor())
-    {
-      auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(obj->get_refresh_ms());
-	if (obj->get_motor_info() != OpcUa_Good)
-	{
-		LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
-	}
+	std::thread([obj]()
+			{
+		while (obj->get_monitor())
+		{
+			auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(obj->get_refresh_ms());
+#ifdef SIMULATION
+			if (obj->sim_get_motor_info() != OpcUa_Good)
+#else
+				if (obj->get_motor_info() != OpcUa_Good)
+#endif
+				{
+					LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
+				}
 
-      std::this_thread::sleep_until(x);
-    }
-  }).detach();
+			std::this_thread::sleep_until(x);
+		}
+			}).detach();
 }
 
 
@@ -441,7 +487,7 @@ UaStatus DIoLMotor::get_motor_info()
 	auto curl = curl_easy_init();
 	if (curl) {
 		curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
-	    curl_easy_setopt(curl, CURLOPT_PORT, lport);
+		curl_easy_setopt(curl, CURLOPT_PORT, lport);
 
 		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
 		//curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
@@ -460,7 +506,7 @@ UaStatus DIoLMotor::get_motor_info()
 		if (res != CURLE_OK)
 		{
 			LOG(Log::ERR) << "curl_easy_perform() failed: "
-				<< curl_easy_strerror(res);
+					<< curl_easy_strerror(res);
 			curl_easy_cleanup(curl);
 			curl = NULL;
 			m_monitor_status = OpcUa_BadResourceUnavailable;
@@ -511,7 +557,7 @@ UaStatus DIoLMotor::move_motor(json &resp)
 	auto curl = curl_easy_init();
 	if (curl) {
 
-	    // NOTE: Zero values are not passed onto the query, and expects the server to assume some defaults
+		// NOTE: Zero values are not passed onto the query, and expects the server to assume some defaults
 		ostringstream query("");
 		query << "pos=" << m_position_setpoint;
 		if (m_speed_setpoint != 0)
@@ -562,7 +608,7 @@ UaStatus DIoLMotor::move_motor(json &resp)
 			return OpcUa_BadNoCommunication;
 		}
 
-//        cout << response_string;
+		//        cout << response_string;
 		LOG(Log::INF) << "Received response [" << response_string << "]";
 		// now we should parse the answer
 		// it is meant to be a json object
@@ -609,9 +655,9 @@ UaStatus DIoLMotor::stop_motor(json &resp)
 	{
 		lport = port();
 	}
-//	string addr = "http://" + server_address() + "/api/stop";
-//
-//	static const uint16_t port = 5001;
+	//	string addr = "http://" + server_address() + "/api/stop";
+	//
+	//	static const uint16_t port = 5001;
 	OpcUa_StatusCode status= OpcUa_Good;
 
 	auto curl = curl_easy_init();
@@ -712,69 +758,59 @@ UaStatus DIoLMotor::sim_move_motor(json &resp)
 
 	OpcUa_StatusCode status= OpcUa_Good;
 
-	if (curl) {
-
-	    // NOTE: Zero values are not passed onto the query, and expects the server to assume some defaults
-		ostringstream query("");
-		query << "pos=" << m_position_setpoint;
-		if (m_speed_setpoint != 0)
-		{
-			query << "&speed=" << m_speed_setpoint;
-		}
-		if (m_acceleration != 0)
-		{
-			query << "&accel=" << m_acceleration;
-		}
-		if (m_deceleration != 0)
-		{
-			query << "&decel=" << m_deceleration;
-		}
-		addr += "?";
-		addr += query.str();
-		CURLcode ret;
-
-		// initiate the thread to start the movement simulator
-		// note that the movement is *not* realistically simulated, i.e.,
-		// only the position is being monotonically updated a rate of
-		// <speed> steps per second
 
 
-		if (m_sim_moving)
-		{
-			resp["status"] = "ERROR";
-			resp["message"] = "Motor is already moving";
-			return OpcUa_Bad;
-		}
+	// initiate the thread to start the movement simulator
+	// note that the movement is *not* realistically simulated, i.e.,
+	// only the position is being monotonically updated a rate of
+	// <speed> steps per second
 
-		// if it is not yet moving start the thread
 
-		// set the simulation conditions
-		m_sim_speed = m_speed_setpoint;
-		// this permits that one changes the position set point
-		// without affecting the ongoing movement
-		m_sim_tpos = m_position_setpoint;
+	if (m_sim_moving)
+	{
+		resp["status"] = "ERROR";
+		resp["message"] = "Motor is already moving";
+		return OpcUa_Bad;
+	}
 
-		std::thread([]()
-		{
+	// if it is not yet moving start the thread
 
-			m_sim_moving = true;
-			while (m_sim_moving)
+	// set the simulation conditions
+	m_sim_speed = m_speed_setpoint;
+	// this permits that one changes the position set point
+	// without affecting the ongoing movement
+	m_sim_tpos = m_position_setpoint;
+
+	std::thread([this]()
 			{
-				if (!m_sim_moving || (m_sim_tpos == m_sim_pos))
+
+		this->m_sim_moving = true;
+		while (this->m_sim_moving)
+		{
+			if (!this->m_sim_moving || (this->m_sim_tpos == this->m_sim_pos))
+			{
+				// stop the thread
+				break;
+			}
+
+			// update every 5 ms
+			auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000/this->m_sim_speed);
+			if (this->m_sim_pos < this->m_sim_tpos)
+			{
+				this->m_sim_pos += 1;
+
+			} else
 				{
-					// stop the thread
-					break;
+				this->m_sim_pos -= 1;
 				}
 
-				// update every 5 ms
-				auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000/m_sim_speed);
-				m_sim_pos += 1;
+			std::this_thread::sleep_until(x);
+		}
+		LOG(Log::WRN) << "Dropping out of the sim_move thread";
+			}).detach();
 
-				std::this_thread::sleep_until(x);
-			}
-		}).detach();
-
-		return status;
+	resp["status"] = "OK";
+	return status;
 }
 
 UaStatus DIoLMotor::sim_stop_motor(json &resp)

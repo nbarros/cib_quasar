@@ -113,6 +113,8 @@ private:
 private:
     int32_t m_position;
     int32_t m_position_setpoint;
+    OpcUa_StatusCode m_position_setpoint_status;
+
     bool m_is_ready; // declares where it is ready for operation
         // this essentially means that all settings are in a reasonable state
     bool is_moving_; // -- this variable will be set by a GPIO bit. That code is not ready yet
