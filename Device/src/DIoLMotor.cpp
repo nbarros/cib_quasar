@@ -349,6 +349,8 @@ UaStatus DIoLMotor::callConfigure_motor (
 
 		return OpcUa_BadInvalidArgument;
 	}
+	// force an update
+	update();
 
 	return OpcUa_Good;
 }
@@ -749,6 +751,8 @@ UaStatus DIoLMotor::sim_get_motor_info()
 	 * Typical answer: {"cur_pos":25000,"cur_speed":0,"m_temp":" 38.8","tar_pos":25000,"torque":"  1.9"}
 	 */
 	// grab this from the
+	m_monitor_status = OpcUa_Good;
+
 	m_position = m_sim_pos;
 	// just set the speed equal to the setting
 	m_speed_readout = m_sim_speed;
@@ -759,7 +763,6 @@ UaStatus DIoLMotor::sim_get_motor_info()
 	std::uniform_real_distribution<double> dist_torque(0.0, 2.0);
 	m_temperature = dist_temp(mt);
 	m_torque = dist_torque(mt);
-	m_monitor_status = OpcUa_Good;
 
 	return OpcUa_Good;
 }

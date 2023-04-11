@@ -28,102 +28,7 @@ using std::string;
 using std::vector;
 using json = nlohmann::json;
 
-//
-//// This method iterates over the nodes
-//static UA_StatusCode
-//nodeIter(UA_NodeId childId, UA_Boolean isInverse, UA_NodeId referenceTypeId, void *handle)
-//{
-//    if(isInverse)
-//        return UA_STATUSCODE_GOOD;
-//    UA_NodeId *parent = (UA_NodeId *)handle;
-//    printf("%u, %u --- %u ---> NodeId %u, %u\n",
-//           parent->namespaceIndex, parent->identifier.numeric,
-//           referenceTypeId.identifier.numeric, childId.namespaceIndex,
-//           childId.identifier.numeric);
-//    return UA_STATUSCODE_GOOD;
-//}
-//
-//
-//UA_StatusCode list_endpoints( UA_Client *client)
-//{
-//    /* Listing endpoints */
-//    /* This is a kind of discovery model */
-//    UA_EndpointDescription *endpointArray = NULL;
-//    size_t endpointArraySize = 0;
-//    UA_StatusCode retval = UA_Client_getEndpoints(client, "opc.tcp://localhost:4841",
-//                                                  &endpointArraySize, &endpointArray);
-//    if (retval != UA_STATUSCODE_GOOD)
-//    {
-//        UA_Array_delete(endpointArray, endpointArraySize, &UA_TYPES[UA_TYPES_ENDPOINTDESCRIPTION]);
-//        UA_Client_delete(client);
-//        return UA_STATUSCODE_BADINTERNALERROR;
-//    }
-//    printf("%i endpoints found\n", (int)endpointArraySize);
-//    for (size_t i = 0; i < endpointArraySize; i++)
-//    {
-//        printf("URL of endpoint %i is %.*s\n", (int)i,
-//               (int)endpointArray[i].endpointUrl.length,
-//               endpointArray[i].endpointUrl.data);
-//    }
-//    UA_Array_delete(endpointArray, endpointArraySize, &UA_TYPES[UA_TYPES_ENDPOINTDESCRIPTION]);
-//    return retval;
-//}
-//
-//UA_StatusCode browse_obj_loop(UA_Client *client)
-//{
-//    UA_StatusCode retval = UA_STATUSCODE_GOOD;
-//    /* Browse some objects */
-//    printf("Browsing nodes in objects folder:\n");
-//    UA_BrowseRequest bReq;
-//    UA_BrowseRequest_init(&bReq);
-//    bReq.requestedMaxReferencesPerNode = 0;
-//    bReq.nodesToBrowse = UA_BrowseDescription_new();
-//    bReq.nodesToBrowseSize = 1;
-//    bReq.nodesToBrowse[0].nodeId = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER); /* browse objects folder */
-//    bReq.nodesToBrowse[0].resultMask = UA_BROWSERESULTMASK_ALL;                  /* return everything */
-//    UA_BrowseResponse bResp = UA_Client_Service_browse(client, bReq);
-//    printf("%-9s %-16s %-16s %-16s\n", "NAMESPACE", "NODEID", "BROWSE NAME", "DISPLAY NAME");
-//    for (size_t i = 0; i < bResp.resultsSize; ++i)
-//    {
-//        for (size_t j = 0; j < bResp.results[i].referencesSize; ++j)
-//        {
-//            UA_ReferenceDescription *ref = &(bResp.results[i].references[j]);
-//            if (ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_NUMERIC)
-//            {
-//                printf("%-9d %-16d %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
-//                       ref->nodeId.nodeId.identifier.numeric, (int)ref->browseName.name.length,
-//                       ref->browseName.name.data, (int)ref->displayName.text.length,
-//                       ref->displayName.text.data);
-//            }
-//            else if (ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_STRING)
-//            {
-//                printf("%-9d %-16.*s %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
-//                       (int)ref->nodeId.nodeId.identifier.string.length,
-//                       ref->nodeId.nodeId.identifier.string.data,
-//                       (int)ref->browseName.name.length, ref->browseName.name.data,
-//                       (int)ref->displayName.text.length, ref->displayName.text.data);
-//            }
-//            /* TODO: distinguish further types */
-//        }
-//    }
-//    UA_BrowseRequest_clear(&bReq);
-//    UA_BrowseResponse_clear(&bResp);
-//    return retval;
-//}
-//
-//UA_StatusCode browse_obj_iterator(UA_Client *client)
-//{
-//    UA_StatusCode retval = UA_STATUSCODE_GOOD;
-//
-//    /* Same thing, this time using the node iterator... */
-//    UA_NodeId *parent = UA_NodeId_new();
-//    *parent = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER);
-//    retval |= UA_Client_forEachChildNodeCall(client, UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER),
-//                                   nodeIter, (void *)parent);
-//    UA_NodeId_delete(parent);
-//
-//    return retval;
-//}
+
 
 int main()
 {
@@ -229,7 +134,9 @@ int main()
     fconf.close();
 
     /**
+     *
      * Read the current position
+     *
      */
     /// Read it back again
      cout << "\nReading the value of node for L1.m1.position " << endl;
@@ -391,13 +298,18 @@ int main()
 
 
 
-    printf("-- \n\n Periodically checking the current position : L1.m1.position).\n");
+    printf("-- \n\n Periodically checking the current position for 10 s: L1.m1.position).\n");
 
+
+	auto t_now = std::chrono::steady_clock::now();
+    auto tf = t_now + std::chrono::seconds(10);
 
     // -- if this was going well now we could set a loop and check where is the position
     bool stop = false;
-    while ((current_pos != target_pos) && !stop)
+    while ((current_pos != target_pos) && !stop && (t_now < tf))
     {
+    	t_now = std::chrono::steady_clock::now();
+
     	// read back the position every 500 ms
     	// note that the CIB itself is only querying the server a set period, so there is a chance that we are asking
     	// more often than the CIB is getting updated. This would be visible in repeated reads of the same value
@@ -420,13 +332,41 @@ int main()
 	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
+
+    // FIXME: What to do if the client disconnects? Should one stop operation?
+
+    UA_Variant_init(&input);
+
+    retval = UA_Client_call(client, UA_NODEID_STRING(2, "L1.m1"),
+    		UA_NODEID_STRING(2, "L1.m1.stop"), 0, &input, &outputSize, &output);
+    if(retval == UA_STATUSCODE_GOOD)
+    {
+    	cout << " Method call was successful, and got " << outputSize << "  returned values (expect 1)" << endl;
+
+        // All methods in the CIB return a json string
+        std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
+        cout << "Received response : " << response <<endl;
+        json jresp = json::parse(response);
+
+        cout << "Command executed with status : " << jresp.at("status") << " and messages : " <<endl;
+        for (auto e : jresp.at("messages"))
+        {
+        	cout << "--> [" << e << "]" << endl;
+        }
+    } else
+    {
+        cout << "Failed with code 0x" << std::hex << retval << std::dec
+ 				<< " name : [" << UA_StatusCode_name(retval) << "]" << endl;
+        // note that even if it failed, the return variant may still carry out a response
+
+    }
+    UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
+    UA_Variant_clear(&input);
+
     cout << "Work is done. Time to go to the beach..." << endl;
 
 
     printf("\n\n\n");
-
-
-
 
     UA_Client_disconnect(client);
     UA_Client_delete(client);
