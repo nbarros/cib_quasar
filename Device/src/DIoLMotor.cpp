@@ -178,8 +178,9 @@ UaStatus DIoLMotor::callStart_move (UaString& response)
 	if (!is_ready())
 	{
 		resp["status"] = "ERROR";
-		resp["message"] = "Motor is not ready to operate";
-		LOG(Log::ERR) << resp["message"].get<std::string>();
+		std::string msg = "Motor is not ready to operate";
+		resp["messages"].push_back(msg);
+		LOG(Log::ERR) << msg;
 		response = UaString(resp.dump().c_str());
 		return OpcUa_BadInvalidState;
 	}
@@ -187,8 +188,9 @@ UaStatus DIoLMotor::callStart_move (UaString& response)
 	if (m_position_setpoint_status != OpcUa_Good)
 	{
 		resp["status"] = "ERROR";
-		resp["message"] = "Target position not set";
-		LOG(Log::ERR) << resp["message"].get<std::string>();
+		std::string msg = "Target position not set";
+		resp["messages"].push_back(msg);
+		LOG(Log::ERR) << msg;
 		response = UaString(resp.dump().c_str());
 		return OpcUa_BadInvalidState;
 	}
@@ -197,8 +199,9 @@ UaStatus DIoLMotor::callStart_move (UaString& response)
 	if (m_position == m_position_setpoint)
 	{
 		resp["status"] = "ERROR";
-		resp["message"] = "Motor is already at the destination";
-		LOG(Log::ERR) << resp["message"].get<std::string>();
+		std::string msg = "Motor is already at the destination";
+		resp["messages"].push_back(msg);
+		LOG(Log::ERR) << msg;
 		response = UaString(resp.dump().c_str());
 		return OpcUa_BadInvalidState;
 	}
@@ -210,8 +213,10 @@ UaStatus DIoLMotor::callStart_move (UaString& response)
 	if (ss != OpcUa_Good)
 	{
 		resp["status"] = "ERROR";
-		resp["message"] = "Invalid target position";
-		LOG(Log::ERR) << resp["message"].get<std::string>();
+		std::string msg = "Invalid target position";
+		resp["messages"].push_back(msg);
+		LOG(Log::ERR) << msg;
+
 		response = UaString(resp.dump().c_str());
 		return OpcUa_BadInvalidState;
 	}
@@ -269,7 +274,8 @@ UaStatus DIoLMotor::callConfigure_motor (
 		{
 			LOG(Log::ERR) << "Mismatch in motor id on configuration token (" << id() << "!=" << config.at("id").get<uint16_t>();
 			resp["status"] = "FAIL";
-			resp["message"] = "Wrong motor id";
+			std::string msg = "Wrong motor id";
+			resp["messages"].push_back(msg);
 			response = UaString(resp.dump().c_str());
 			return OpcUa_BadInvalidArgument;
 		}
@@ -328,7 +334,7 @@ UaStatus DIoLMotor::callConfigure_motor (
 	{
 		LOG(Log::ERR) << "Caught a parsing exception : " << e.what();
 		resp["status"] = "ERROR";
-		resp["message"] = e.what();
+		resp["messages"].push_back(e.what());
 		response = UaString(resp.dump().c_str());
 
 		return OpcUa_BadInvalidArgument;
@@ -338,7 +344,7 @@ UaStatus DIoLMotor::callConfigure_motor (
 	{
 		LOG(Log::ERR) << "Caught a parsing exception : " << e.what();
 		resp["status"] = "ERROR";
-		resp["message"] = e.what();
+		resp["messages"].push_back(e.what());
 		response = UaString(resp.dump().c_str());
 
 		return OpcUa_BadInvalidArgument;
@@ -598,7 +604,7 @@ UaStatus DIoLMotor::move_motor(json &resp)
 			ostringstream msg("");
 			msg << "curl_easy_perform() failed: " << curl_easy_strerror(ret);
 			resp["status"] = "ERROR";
-			resp["message"] = msg.str();
+			resp["messages"].push_back(msg.str());
 
 			LOG(Log::ERR) << msg.str();
 
@@ -625,14 +631,16 @@ UaStatus DIoLMotor::move_motor(json &resp)
 			status =  OpcUa_Bad;
 		}
 		resp = answer;
+		resp["messages"].push_back("move_motor called");
 
 		curl_easy_cleanup(curl);
 		curl = NULL;
 	} else
 	{
 		resp["status"] = "ERROR";
-		resp["message"] = "Failed to get a connection handle";
-		LOG(Log::ERR) << resp.at("message");
+		std::string msg = "Failed to get a connection handle";
+		resp["messages"].push_back(msg);
+		LOG(Log::ERR) << msg;
 		status =  OpcUa_BadNoCommunication;
 	}
 	return status;
@@ -687,7 +695,7 @@ UaStatus DIoLMotor::stop_motor(json &resp)
 			ostringstream msg("");
 			msg << "curl_easy_perform() failed: " << curl_easy_strerror(ret);
 			resp["status"] = "ERROR";
-			resp["message"] = msg.str();
+			resp["messages"].push_back(msg.str());
 
 			LOG(Log::ERR) << msg.str();
 
@@ -714,14 +722,17 @@ UaStatus DIoLMotor::stop_motor(json &resp)
 			status = OpcUa_Bad;
 		}
 		resp = answer;
+		resp["messages"].push_back("stop_motor called");
+
 		curl_easy_cleanup(curl);
 		curl = NULL;
 	} else
 	{
 		resp["status"] = "ERROR";
-		resp["message"] = "Failed to get a connection handle";
+		std::string msg = "Failed to get a connection handle";
+		resp["messages"].push_back(msg);
 
-		LOG(Log::ERR) << resp.at("message");
+		LOG(Log::ERR) << msg;
 		status =  OpcUa_BadNoCommunication;
 	}
 	return status;
@@ -769,7 +780,8 @@ UaStatus DIoLMotor::sim_move_motor(json &resp)
 	if (m_sim_moving)
 	{
 		resp["status"] = "ERROR";
-		resp["message"] = "Motor is already moving";
+		std::string msg = "Motor is already moving";
+		resp["messages"].push_back(msg);
 		return OpcUa_Bad;
 	}
 
@@ -810,6 +822,8 @@ UaStatus DIoLMotor::sim_move_motor(json &resp)
 			}).detach();
 
 	resp["status"] = "OK";
+	resp["messages"].push_back("Motor movement initiated");
+
 	return status;
 }
 
@@ -820,6 +834,7 @@ UaStatus DIoLMotor::sim_stop_motor(json &resp)
 	m_sim_moving = false;
 
 	resp["status"] = "OK";
+	resp["messages"].push_back("motor stopped");
 	//resp["message"] = "Failed to get a connection handle";
 
 	return status;
