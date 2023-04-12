@@ -80,6 +80,8 @@ int main()
     		"6.Periodically check the value of position to see what the motor is doing\n"
     << endl;
 
+
+
     std::ifstream fconf("m1_config.json");
     json jconf = json::parse(fconf);
     cout << "Passing configuration :\n" << jconf.dump() << endl;
@@ -90,39 +92,51 @@ int main()
 
     // pass our configuration argument
     UA_Variant input;
+    size_t outputSize;
+    UA_Variant *output;
+
+
     UA_Variant_init(&input);
 
 	UA_String argString = UA_String_fromChars(jconf.dump().c_str());
 	UA_Variant_setScalarCopy(&input, &argString, &UA_TYPES[UA_TYPES_STRING]);
-    size_t outputSize;
-    UA_Variant *output;
 
-    /* prototype of the client call
-        UA_StatusCode UA_Client_call(UA_Client * client,
-        							const UA_NodeId objectId,
-        							const UA_NodeId methodId,
-        							size_t inputSize,
-        							const UA_Variant *input,
-        							size_t *outputSize,
-        							UA_Variant **output)
-    */
+    // prototype of the client call
+    //    UA_StatusCode UA_Client_call(UA_Client * client,
+    //    							const UA_NodeId objectId,
+    //    							const UA_NodeId methodId,
+    //    							size_t inputSize,
+    //    							const UA_Variant *input,
+    //    							size_t *outputSize,
+    //    							UA_Variant **output)
+    //
     retval = UA_Client_call(client, UA_NODEID_STRING(2, "L1.m1"),
     		UA_NODEID_STRING(2, "L1.m1.configure_motor"), 1, &input, &outputSize, &output);
     if(retval == UA_STATUSCODE_GOOD)
     {
     	cout << " Method call was successful, and got " << outputSize << "  returned values (expect 1)" << endl;
 
-
         // All methods in the CIB return a json string
         std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
         cout << "Received response : " << response <<endl;
         json jresp = json::parse(response);
 
+        /**
+         *  all methods yield a response object with three entries:
+         *  "status" : A string summarizing the execution
+         *  "status_code" : A OpcUa_StatusCode that summarizes the execution (more information in case of error
+         *  "messages" : An array of messages that are added by order (good for history tracking)
+         *
+         *
+         */
+
+        cout << "Command execution status code : " << UA_StatusCode_name(jresp.at("status_code").get<UA_StatusCode>()) << endl;
         cout << "Command executed with status : " << jresp.at("status") << " and messages : " <<endl;
         for (auto e : jresp.at("messages"))
         {
         	cout << "--> [" << e << "]" << endl;
         }
+
         UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
     } else
     {
@@ -139,7 +153,7 @@ int main()
      *
      */
     /// Read it back again
-     cout << "\nReading the value of node for L1.m1.position " << endl;
+     cout << "\n\nReading the value of node for L1.m1.position " << endl;
      UA_Int32 current_pos = -99999;
      UA_Variant *val = UA_Variant_new();
      retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "L1.m1.position"), val);
@@ -205,7 +219,7 @@ int main()
 
 
     /// Read it back again
-    cout << "\nReading the value of node for L1.m1.positionSetPoint to be sure it is what I set it to be" << endl;
+    cout << "\n\nReading the value of node for L1.m1.positionSetPoint to be sure it is what I set it to be" << endl;
     UA_Int32 psetp; // new variable to make sure I am not cheating
     val = UA_Variant_new();
     retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "L1.m1.positionSetPoint"), val);
@@ -255,6 +269,8 @@ int main()
 
     retval = UA_Client_call(client, UA_NODEID_STRING(2, "L1.m1"),
     		UA_NODEID_STRING(2, "L1.m1.start_move"), 0, &input, &outputSize, &output);
+
+    // this should always be true...
     if(retval == UA_STATUSCODE_GOOD)
     {
     	cout << " Method call was successful, and got " << outputSize << "  returned values (expect 1)" << endl;
@@ -264,7 +280,16 @@ int main()
         cout << "Received response : " << response <<endl;
         json jresp = json::parse(response);
 
-        cout << "Command executed with status : " << jresp.at("status") << " and messages : " <<endl;
+
+        UA_StatusCode rstat = jresp.at("status_code").get<UA_StatusCode>();
+        if (rstat == UA_STATUSCODE_GOOD)
+        {
+            cout << "Command execution status code was successful: " << UA_StatusCode_name(rstat) << endl;
+        } else
+        {
+        	cout << "Command failed with code : " << UA_StatusCode_name(rstat) << endl;
+        }
+        cout << "Command returned messages : " <<endl;
         for (auto e : jresp.at("messages"))
         {
         	cout << "--> [" << e << "]" << endl;
@@ -273,23 +298,6 @@ int main()
     {
         cout << "Failed with code 0x" << std::hex << retval << std::dec
  				<< " name : [" << UA_StatusCode_name(retval) << "]" << endl;
-        // note that even if it failed, the return variant may still carry out a response
-//        cout << "Method reports " << outputSize << " response objects." << endl;
-//
-//
-//        // All methods in the CIB return a json string
-//        std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
-//        cout << "Received response : " << response <<endl;
-//        json jresp = json::parse(response);
-//
-//        cout << "Command executed with status : " << jresp.at("status") << " and messages : " <<endl;
-//        for (auto e : jresp.at("messages"))
-//        {
-//        	cout << "--> [" << e << "]" << endl;
-//        }
-//        UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
-
-
     }
     UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
     UA_Variant_clear(&input);
@@ -334,11 +342,12 @@ int main()
 
 
     // FIXME: What to do if the client disconnects? Should one stop operation?
+    // TODO: Implement a watch on server side that if there is no client connected, the operation stops.
 
     UA_Variant_init(&input);
-
     retval = UA_Client_call(client, UA_NODEID_STRING(2, "L1.m1"),
     		UA_NODEID_STRING(2, "L1.m1.stop"), 0, &input, &outputSize, &output);
+    // the method call should always be good. The real code is in the output variant
     if(retval == UA_STATUSCODE_GOOD)
     {
     	cout << " Method call was successful, and got " << outputSize << "  returned values (expect 1)" << endl;
@@ -348,7 +357,16 @@ int main()
         cout << "Received response : " << response <<endl;
         json jresp = json::parse(response);
 
-        cout << "Command executed with status : " << jresp.at("status") << " and messages : " <<endl;
+
+        UA_StatusCode rstat = jresp.at("status_code").get<UA_StatusCode>();
+        if (rstat == UA_STATUSCODE_GOOD)
+        {
+            cout << "Command execution was successful: " << UA_StatusCode_name(rstat) << endl;
+        } else
+        {
+        	cout << "Command failed with code : " << UA_StatusCode_name(rstat) << endl;
+        }
+        cout << "Command returned messages : " <<endl;
         for (auto e : jresp.at("messages"))
         {
         	cout << "--> [" << e << "]" << endl;
