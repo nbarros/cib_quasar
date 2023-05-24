@@ -20,8 +20,26 @@
 
 #include <Configuration.hxx> // TODO; should go away, is already in Base class for ages
 
-#include <DIoLLaserUnit.h>
-#include <ASIoLLaserUnit.h>
+#include <DIoLPowerMeter.h>
+#include <ASIoLPowerMeter.h>
+
+//#include <PowerMeter.hh>
+#include <sstream>
+
+
+#include <chrono>
+#include <thread>
+#include <functional>
+#include <string>
+#include <random>
+
+#define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
+
+#define log_e(m,s) log_msg("ERROR",m,s)
+#define log_w(m,s) log_msg("WARN",m,s)
+#define log_i(m,s) log_msg("INFO",m,s)
+
+using std::ostringstream;
 
 namespace Device
 {
@@ -47,61 +65,71 @@ namespace Device
 // 2222222222222222222222222222222222222222222222222222222222222222222222222
 
 /* sample ctr */
-DIoLLaserUnit::DIoLLaserUnit (
-    const Configuration::IoLLaserUnit& config,
-    Parent_DIoLLaserUnit* parent
+DIoLPowerMeter::DIoLPowerMeter (
+    const Configuration::IoLPowerMeter& config,
+    Parent_DIoLPowerMeter* parent
 ):
-    Base_DIoLLaserUnit( config, parent)
+    Base_DIoLPowerMeter( config, parent)
 
     /* fill up constructor initialization list here */
-	, m_is_ready(false)
-
 {
     /* fill up constructor body here */
 }
 
 /* sample dtr */
-DIoLLaserUnit::~DIoLLaserUnit ()
+DIoLPowerMeter::~DIoLPowerMeter ()
 {
 }
 
 /* delegates for cachevariables */
 
-/* Note: never directly call this function. */
-
-UaStatus DIoLLaserUnit::writeQswitch ( const OpcUa_UInt32& v)
-{
-    return OpcUa_BadNotImplemented;
-}
-/* Note: never directly call this function. */
-
-UaStatus DIoLLaserUnit::writeDischarge_voltage ( const OpcUa_UInt32& v)
-{
-    return OpcUa_BadNotImplemented;
-}
-/* Note: never directly call this function. */
-
-UaStatus DIoLLaserUnit::writePre_shot_time ( const OpcUa_UInt32& v)
-{
-    return OpcUa_BadNotImplemented;
-}
-/* Note: never directly call this function. */
-
-UaStatus DIoLLaserUnit::writePulse_length ( const OpcUa_UInt32& v)
-{
-    return OpcUa_BadNotImplemented;
-}
 
 
 /* delegators for methods */
-UaStatus DIoLLaserUnit::callStop (
-
+UaStatus DIoLPowerMeter::callSet_average (
+    OpcUa_UInt16 target_value,
+    UaString& response
 )
 {
     return OpcUa_BadNotImplemented;
 }
-UaStatus DIoLLaserUnit::callCheck_status (
-    OpcUa_UInt16& status
+UaStatus DIoLPowerMeter::callSet_range (
+    OpcUa_Int16 target_value,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLPowerMeter::callSet_pulse_width (
+    OpcUa_UInt16 target_value,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLPowerMeter::callSet_threshold (
+    OpcUa_UInt16 target_value,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLPowerMeter::callSet_wavelength (
+    OpcUa_UInt16 target_value,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLPowerMeter::callSet_measurement_mode (
+    OpcUa_UInt16 target_value,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLPowerMeter::callReset (
+
 )
 {
     return OpcUa_BadNotImplemented;

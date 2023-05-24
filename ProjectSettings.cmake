@@ -3,6 +3,7 @@
 ## information how to use this file.
 ## ----------------------------------------------------
 
+#set(CUSTOM_SERVER_MODULES AccessControl)
 set(CUSTOM_SERVER_MODULES )
 set(EXECUTABLE OpcUaServer)
 set(SERVER_INCLUDE_DIRECTORIES  )

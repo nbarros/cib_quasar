@@ -42,6 +42,14 @@ public:
 
     /* delegators for
     cachevariables and sourcevariables */
+    /* Note: never directly call this function. */
+    UaStatus writeQswitch ( const OpcUa_UInt32& v);
+    /* Note: never directly call this function. */
+    UaStatus writeDischarge_voltage ( const OpcUa_UInt32& v);
+    /* Note: never directly call this function. */
+    UaStatus writePre_shot_time ( const OpcUa_UInt32& v);
+    /* Note: never directly call this function. */
+    UaStatus writePulse_length ( const OpcUa_UInt32& v);
 
 
     /* delegators for methods */

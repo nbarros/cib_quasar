@@ -110,7 +110,6 @@ private:
     bool m_sim_moving;
 
 
-private:
     int32_t m_position;
     int32_t m_position_setpoint;
     OpcUa_StatusCode m_position_setpoint_status;

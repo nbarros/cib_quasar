@@ -118,16 +118,17 @@ UaStatus DIoLaserSystem::callStop (
 {
     return OpcUa_BadNotImplemented;
 }
-UaStatus DIoLaserSystem::callSet_target_position (
-    const std::vector<OpcUa_Double>&  target_pos,
+UaStatus DIoLaserSystem::callFire_at_position (
+    const std::vector<OpcUa_Int32>&  target_pos,
+    OpcUa_UInt16 num_pulses,
     UaString& answer
 )
 {
     return OpcUa_BadNotImplemented;
 }
-UaStatus DIoLaserSystem::callExecute_raster (
-    const std::vector<OpcUa_Double>&  start_pos,
-    const std::vector<OpcUa_Double>&  last_pos,
+UaStatus DIoLaserSystem::callFire_segment (
+    const std::vector<OpcUa_Int32>&  start_pos,
+    const std::vector<OpcUa_Int32>&  last_pos,
     UaString& answer
 )
 {

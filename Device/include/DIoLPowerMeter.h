@@ -18,62 +18,66 @@
  */
 
 
-#ifndef __DIoLaserSystem__H__
-#define __DIoLaserSystem__H__
+#ifndef __DIoLPowerMeter__H__
+#define __DIoLPowerMeter__H__
 
-#include <Base_DIoLaserSystem.h>
+#include <Base_DIoLPowerMeter.h>
 
+//class device::PowerMeter;
 namespace Device
 {
 
 class
-    DIoLaserSystem
-    : public Base_DIoLaserSystem
+    DIoLPowerMeter
+    : public Base_DIoLPowerMeter
 {
 
 public:
     /* sample constructor */
-    explicit DIoLaserSystem (
-        const Configuration::IoLaserSystem& config,
-        Parent_DIoLaserSystem* parent
+    explicit DIoLPowerMeter (
+        const Configuration::IoLPowerMeter& config,
+        Parent_DIoLPowerMeter* parent
     ) ;
     /* sample dtr */
-    ~DIoLaserSystem ();
+    ~DIoLPowerMeter ();
 
     /* delegators for
     cachevariables and sourcevariables */
 
 
     /* delegators for methods */
-    UaStatus callLoad_config (
-        const UaString&  config,
+    UaStatus callSet_average (
+        OpcUa_UInt16 target_value,
         UaString& response
     ) ;
-    UaStatus callCheck_ready (
-        OpcUa_Boolean& ready
+    UaStatus callSet_range (
+        OpcUa_Int16 target_value,
+        UaString& response
     ) ;
-    UaStatus callStop (
+    UaStatus callSet_pulse_width (
+        OpcUa_UInt16 target_value,
+        UaString& response
+    ) ;
+    UaStatus callSet_threshold (
+        OpcUa_UInt16 target_value,
+        UaString& response
+    ) ;
+    UaStatus callSet_wavelength (
+        OpcUa_UInt16 target_value,
+        UaString& response
+    ) ;
+    UaStatus callSet_measurement_mode (
+        OpcUa_UInt16 target_value,
+        UaString& response
+    ) ;
+    UaStatus callReset (
 
-    ) ;
-    UaStatus callFire_at_position (
-        const std::vector<OpcUa_Int32>&  target_pos,
-        OpcUa_UInt16 num_pulses,
-        UaString& answer
-    ) ;
-    UaStatus callFire_segment (
-        const std::vector<OpcUa_Int32>&  start_pos,
-        const std::vector<OpcUa_Int32>&  last_pos,
-        UaString& answer
-    ) ;
-    UaStatus callExecute_scan (
-        const UaString&  plan,
-        UaString& answer
     ) ;
 
 private:
     /* Delete copy constructor and assignment operator */
-    DIoLaserSystem( const DIoLaserSystem& other );
-    DIoLaserSystem& operator=(const DIoLaserSystem& other);
+    DIoLPowerMeter( const DIoLPowerMeter& other );
+    DIoLPowerMeter& operator=(const DIoLPowerMeter& other);
 
     // ----------------------------------------------------------------------- *
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
@@ -82,14 +86,12 @@ private:
 
 public:
 
-    void update();
-
 private:
-
+    //device::PowerMeter *m_dev;
 
 
 };
 
 }
 
-#endif // __DIoLaserSystem__H__
+#endif // __DIoLPowerMeter__H__
