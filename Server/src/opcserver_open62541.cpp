@@ -48,5 +48,10 @@ int OpcServer::stop(OpcUa_Int32 secondsTillShutdown, const UaLocalizedText& shut
     return 0;
 }
 
+void OpcServer::addAccessControl(BaseAccessControl* pAccessControl)
+{
+  LOG(Log::INF) << "Received AccessControl object. Passing it to the server.";
+  m_server.linkAccessControl(pAccessControl);
+}
 
 #endif //  BACKEND_OPEN62541

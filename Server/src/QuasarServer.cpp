@@ -30,6 +30,7 @@
 #include <DRoot.h>
 #include <DIoLaserSystem.h>
 
+
 QuasarServer::QuasarServer() : BaseQuasarServer()
 {
 
@@ -42,13 +43,16 @@ QuasarServer::~QuasarServer()
 
 void QuasarServer::mainLoop()
 {
-    printServerMsg("Press "+std::string(SHUTDOWN_SEQUENCE)+" to shutdown server");
+  // we need to link the access control after the server was initialized,
+
+
+  printServerMsg("Press "+std::string(SHUTDOWN_SEQUENCE)+" to shutdown server");
 
     // Wait for user command to terminate the server thread.
 
     while(ShutDownFlag() == 0)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
         for (Device::DIoLaserSystem* iolsys : Device::DRoot::getInstance()->iolasersystems())
         {
         	iolsys->update();
@@ -60,6 +64,7 @@ void QuasarServer::mainLoop()
 void QuasarServer::initialize()
 {
     LOG(Log::INF) << "Initializing Quasar server.";
+//    m_pServer->addAccessControl(new AccessControl());
 
 }
 

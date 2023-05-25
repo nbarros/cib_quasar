@@ -65,6 +65,7 @@
 #include <Utils.h>
 
 #include <OpcuaToolkitInfo.hpp>
+#include <AccessControl.h>
 
 using namespace std;
 using namespace boost::program_options;
@@ -148,6 +149,9 @@ int BaseQuasarServer::serverRun(
         return -1;
     }
 
+    m_pServer->addAccessControl(new AccessControl());
+
+
     if (onlyCreateCertificate)
     {
         LOG(Log::WRN) << Quasar::TermColors::ForeYellow() << "Note: the argument to create server certificate will be deprecated soon. Please stop using it." << Quasar::TermColors::StyleReset();
@@ -159,7 +163,6 @@ int BaseQuasarServer::serverRun(
             std::bind(&BaseQuasarServer::configurationInitializerHandler, this, configFileName, m_nodeManager));
 
     m_pServer->addNodeManager(m_nodeManager);
-
     int serverReturnCode = 0;
 
     try

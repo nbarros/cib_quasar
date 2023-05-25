@@ -4,6 +4,7 @@
 #define MAIN_OPCSERVER_H
 
 #include <uaserver.h>
+#include <BaseAccessControl.h>
 
 // forward-decls
 namespace AddressSpace { class ASNodeManager; }
@@ -22,6 +23,8 @@ public:
     int setServerConfig(const UaString& configurationFile, const UaString& applicationPath);
 
     int addNodeManager(AddressSpace::ASNodeManager* pNodeManager);
+
+    void addAccessControl(BaseAccessControl* pAccessControl);
 
     /* This is just to create a certificate and quit right away */
     int createCertificate (
