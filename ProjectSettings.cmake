@@ -4,7 +4,7 @@
 ## ----------------------------------------------------
 
 #set(CUSTOM_SERVER_MODULES AccessControl)
-set(CUSTOM_SERVER_MODULES )
+set(CUSTOM_SERVER_MODULES LaserControl)
 set(EXECUTABLE OpcUaServer)
 set(SERVER_INCLUDE_DIRECTORIES  )
 set(SERVER_LINK_LIBRARIES  "-lcurl")
