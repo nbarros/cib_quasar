@@ -23,7 +23,8 @@
 
 #include <Base_DIoLPowerMeter.h>
 
-//class device::PowerMeter;
+class device::PowerMeter;
+
 namespace Device
 {
 
@@ -85,9 +86,11 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
+    void update();
 
 private:
-    //device::PowerMeter *m_dev;
+    device::PowerMeter *m_pm;
+    std::string m_comport;
 
 
 };

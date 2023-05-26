@@ -130,10 +130,21 @@
   </d:class>
     <d:class name="IoLPowerMeter">
   	<d:devicelogic></d:devicelogic>
- 	<d:configentry dataType="UaString" name="id"></d:configentry>
- 	<d:configentry dataType="UaString" name="port"></d:configentry>
- 	<d:configentry dataType="OpcUa_UInt16" name="baud_rate"></d:configentry>
- 	<d:cachevariable initializeWith="configuration"
+  	<d:configentry dataType="UaString" name="serial_number"
+  		storedInDeviceObject="true">
+  	</d:configentry>
+  	<d:configentry dataType="UaString" name="port"
+  		storedInDeviceObject="true">
+  	</d:configentry>
+  	<d:configentry dataType="OpcUa_UInt16" name="baud_rate"
+  		storedInDeviceObject="true">
+  	</d:configentry>
+  	<d:cachevariable initializeWith="valueAndStatus"
+  		dataType="UaString" name="device_port"
+  		nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
+  		initialStatus="OpcUa_BadWaitingForInitialData" initialValue="N/A">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="configuration"
  		dataType="OpcUa_Int16" name="range_selected"
  		nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
  		defaultConfigInitializerValue="2">
@@ -167,6 +178,11 @@
   		nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
   		defaultConfigInitializerValue="1">
   	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus"
+  		dataType="UaString" name="status" nullPolicy="nullForbidden"
+  		addressSpaceWrite="forbidden"
+  		initialStatus="OpcUa_BadWaitingForInitialData" initialValue="unknown">
+  	</d:cachevariable>
   	<!-- A couple of variables that just list the available options for various range selectable methods -->
   	<d:cachevariable initializeWith="valueAndStatus"
   		dataType="UaString" name="range_options"
@@ -188,8 +204,11 @@
   		nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
   		initialStatus="OpcUa_BadWaitingForInitialData" initialValue='invalid'>
   	</d:cachevariable>
-  	<!-- Operational methods. these are the only ones that are exposed to the operator. Some require specific authentication -->  	
-  	<d:method name="set_average" executionSynchronicity="synchronous">
+  	<!-- Operational methods. these are the only ones that are exposed to the operator. Some require specific authentication --><d:method
+  		name="init" executionSynchronicity="synchronous">
+	<d:returnvalue dataType="UaString" name="response"></d:returnvalue>
+</d:method>
+    	<d:method name="set_average" executionSynchronicity="synchronous">
   		<d:argument dataType="OpcUa_UInt16" name="target_value"></d:argument>
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue>
   	</d:method>

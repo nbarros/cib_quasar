@@ -166,5 +166,10 @@ void DIoLaserSystem::update()
     {
     	latt->update();
     }
+    for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+    {
+      lmeter->update();
+    }
+
 }
 }

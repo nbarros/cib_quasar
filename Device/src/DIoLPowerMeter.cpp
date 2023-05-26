@@ -23,7 +23,8 @@
 #include <DIoLPowerMeter.h>
 #include <ASIoLPowerMeter.h>
 
-//#include <PowerMeter.hh>
+#include <PowerMeter.hh>
+#include <utilities.hh>
 #include <sstream>
 
 
@@ -72,13 +73,34 @@ DIoLPowerMeter::DIoLPowerMeter (
     Base_DIoLPowerMeter( config, parent)
 
     /* fill up constructor initialization list here */
+    ,m_pm(nullptr)
 {
     /* fill up constructor body here */
+    // first probe the for the port that this meter is attached to
+
+    m_comport = util::find_port(config.id());
+    if (m_comport.size() == 0)
+    {
+      throw std::runtime_error("Couldn't find device port");
+    }
+    // now one can initate the object
+    try
+    {
+      m_pm = new device::PowerMeter(m_comport,getBaudRate());
+    }
+    catch(std::exception &e)
+    {
+      LOG(Log::ERR) << "DIoLPowerMeter::DIoLPowerMeter : Failed to initialize the connection to the device";
+      LOG(Log::ERR) << "DIoLPowerMeter::DIoLPowerMeter : Setting object in an unitialized state";
+
+    }
+
 }
 
 /* sample dtr */
 DIoLPowerMeter::~DIoLPowerMeter ()
 {
+  if (m_pm) delete m_pm;
 }
 
 /* delegates for cachevariables */
@@ -141,4 +163,11 @@ UaStatus DIoLPowerMeter::callReset (
 // 3     You can do whatever you want, but please be decent.               3
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
 
+void DIoLPowerMeter::update()
+{
+  OpcUa_StatusCode status= OpcUa_Good;
+  uint16_t range;
+  m_pm->get_range_fast(range);
+  getAddressSpaceLink()->setRange_selected(range, status);
+}
 }
