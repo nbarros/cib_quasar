@@ -84,6 +84,9 @@ public:
     UaStatus callReset (
 
     ) ;
+    UaStatus callStop (
+        UaString& response
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */

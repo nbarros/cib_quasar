@@ -826,7 +826,7 @@ UaStatus DIoLPowerMeter::callReset (
   {
     m_pm->reset();
   }
-
+  
   // clear all ranges
   // set the status to offline
   m_status = sOffline;
@@ -835,8 +835,14 @@ UaStatus DIoLPowerMeter::callReset (
   m_ave_windows.clear();
   m_measurement_modes.clear();
   m_status_map.clear();
-
   return OpcUa_Good;
+}
+
+UaStatus DIoLPowerMeter::callStop (
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
 }
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
