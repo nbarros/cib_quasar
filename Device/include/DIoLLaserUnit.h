@@ -22,6 +22,11 @@
 #define __DIoLLaserUnit__H__
 
 #include <Base_DIoLLaserUnit.h>
+#include <json.hpp>
+using json = nlohmann::json;
+namespace device {
+  class Laser;
+}
 
 namespace Device
 {
@@ -43,13 +48,17 @@ public:
     /* delegators for
     cachevariables and sourcevariables */
     /* Note: never directly call this function. */
-    UaStatus writeQswitch ( const OpcUa_UInt32& v);
+    UaStatus writeQswitch_us ( const OpcUa_UInt32& v);
     /* Note: never directly call this function. */
-    UaStatus writeDischarge_voltage ( const OpcUa_UInt32& v);
+    UaStatus writeDischarge_voltage_kV ( const OpcUa_Float& v);
     /* Note: never directly call this function. */
-    UaStatus writePre_shot_time ( const OpcUa_UInt32& v);
+    UaStatus writeRep_rate_hz ( const OpcUa_Double& v);
     /* Note: never directly call this function. */
-    UaStatus writePulse_length ( const OpcUa_UInt32& v);
+    UaStatus writeRep_rate_divider ( const OpcUa_UInt16& v);
+    /* Note: never directly call this function. */
+    UaStatus writeExt_shutter_time_pre_shot ( const OpcUa_UInt32& v);
+    /* Note: never directly call this function. */
+    UaStatus writeExt_shutter_open_time_us ( const OpcUa_UInt32& v);
 
 
     /* delegators for methods */
@@ -58,6 +67,21 @@ public:
     ) ;
     UaStatus callCheck_status (
         OpcUa_UInt16& status
+    ) ;
+    UaStatus callConfigure_laser (
+        const UaString&  config,
+        UaString& response
+    ) ;
+    UaStatus callSingle_shot (
+        UaString& response
+    ) ;
+    UaStatus callSwitch_shutter (
+        OpcUa_Boolean open,
+        UaString& response
+    ) ;
+    UaStatus callFire_standalone (
+        OpcUa_Boolean fire,
+        UaString& response
     ) ;
 
 private:
@@ -71,12 +95,15 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
+    enum Status{sOffline=0x0,sUnconfigured=1,sReady=2,sFiring=3};
+    UaStatus init_device(json &resp);
     void update() {}
 
     bool is_ready() {return m_is_ready;}
 private:
     bool m_is_ready;
-
+    Status m_status;
+    device::Laser *m_laser;
 
 
 };

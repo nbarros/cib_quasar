@@ -69,25 +69,37 @@ DIoLLaserUnit::~DIoLLaserUnit ()
 
 /* Note: never directly call this function. */
 
-UaStatus DIoLLaserUnit::writeQswitch ( const OpcUa_UInt32& v)
+UaStatus DIoLLaserUnit::writeQswitch_us ( const OpcUa_UInt32& v)
 {
     return OpcUa_BadNotImplemented;
 }
 /* Note: never directly call this function. */
 
-UaStatus DIoLLaserUnit::writeDischarge_voltage ( const OpcUa_UInt32& v)
+UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Float& v)
 {
     return OpcUa_BadNotImplemented;
 }
 /* Note: never directly call this function. */
 
-UaStatus DIoLLaserUnit::writePre_shot_time ( const OpcUa_UInt32& v)
+UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
 {
     return OpcUa_BadNotImplemented;
 }
 /* Note: never directly call this function. */
 
-UaStatus DIoLLaserUnit::writePulse_length ( const OpcUa_UInt32& v)
+UaStatus DIoLLaserUnit::writeRep_rate_divider ( const OpcUa_UInt16& v)
+{
+    return OpcUa_BadNotImplemented;
+}
+/* Note: never directly call this function. */
+
+UaStatus DIoLLaserUnit::writeExt_shutter_time_pre_shot ( const OpcUa_UInt32& v)
+{
+    return OpcUa_BadNotImplemented;
+}
+/* Note: never directly call this function. */
+
+UaStatus DIoLLaserUnit::writeExt_shutter_open_time_us ( const OpcUa_UInt32& v)
 {
     return OpcUa_BadNotImplemented;
 }
@@ -102,6 +114,33 @@ UaStatus DIoLLaserUnit::callStop (
 }
 UaStatus DIoLLaserUnit::callCheck_status (
     OpcUa_UInt16& status
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLLaserUnit::callConfigure_laser (
+    const UaString&  config,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLLaserUnit::callSingle_shot (
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLLaserUnit::callSwitch_shutter (
+    OpcUa_Boolean open,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLLaserUnit::callFire_standalone (
+    OpcUa_Boolean fire,
+    UaString& response
 )
 {
     return OpcUa_BadNotImplemented;
