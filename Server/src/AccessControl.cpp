@@ -7,14 +7,14 @@
 
 #include <LogIt.h>
 #include <statuscode.h>
-#include "../include/AccessControl.h"
+#include <AccessControl.h>
 
 const UA_String AccessControl::anonymous_policy = UA_STRING_STATIC("open62541-anonymous-policy");
 const UA_String AccessControl::username_policy = UA_STRING_STATIC("open62541-username-policy");
 
 AccessControl::AccessControl ()
 {
-  LOG(Log::INF) << "AccessControl::AccessControl : Building access control object.";
+  ////LOG(Log::INF) << "AccessControl::AccessControl : Building access control object.";
 }
 
 AccessControl::~AccessControl ()
@@ -30,23 +30,23 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
                         const UA_NodeId *sessionId,
                         const UA_ExtensionObject *userIdentityToken,
                         void **sessionContext) {
-  LOG(Log::ERR) << "AccessControl::activateSession : Activating session.";
+  ////LOG(Log::ERR) << "AccessControl::activateSession : Activating session.";
 
   AccessControl::AccessControlContext *context = (AccessControl::AccessControlContext*)ac->context;
 
     /* The empty token is interpreted as anonymous */
     if(userIdentityToken->encoding == UA_EXTENSIONOBJECT_ENCODED_NOBODY)
     {
-      LOG(Log::INF) << "activateSession : Received an empty token.";
+      ////LOG(Log::INF) << "activateSession : Received an empty token.";
         if(!context->allowAnonymous)
         {
-          LOG(Log::ERR) << "activateSession : anonymous tokens are not accepted. Returning invalid.";
+          ////LOG(Log::ERR) << "activateSession : anonymous tokens are not accepted. Returning invalid.";
             return UA_STATUSCODE_BADIDENTITYTOKENINVALID;
         }
         /* No userdata atm */
         //TODO: Allow anonymous but add a context that restricts the usage
         *sessionContext = NULL;
-        LOG(Log::WRN) << "activateSession : Allowing anonymous token. sessionContext will be empty. Returning good.";
+        ////LOG(Log::WRN) << "activateSession : Allowing anonymous token. sessionContext will be empty. Returning good.";
 
         return UA_STATUSCODE_GOOD;
     }
@@ -54,16 +54,16 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
     /* Could the token be decoded? */
     if(userIdentityToken->encoding < UA_EXTENSIONOBJECT_DECODED)
     {
-      LOG(Log::ERR) << "activateSession : Token could not be decoded. Returning invalid.";
+      ////LOG(Log::ERR) << "activateSession : Token could not be decoded. Returning invalid.";
       return UA_STATUSCODE_BADIDENTITYTOKENINVALID;
     }
     /* Anonymous login */
     if(userIdentityToken->content.decoded.type == &UA_TYPES[UA_TYPES_ANONYMOUSIDENTITYTOKEN])
     {
-      LOG(Log::INF) << "activateSession : Received an anonymous token.";
+      ////LOG(Log::INF) << "activateSession : Received an anonymous token.";
         if(!context->allowAnonymous)
         {
-          LOG(Log::ERR) << "activateSession : anonymous tokens are not accepted. Returning invalid.";
+          ////LOG(Log::ERR) << "activateSession : anonymous tokens are not accepted. Returning invalid.";
            return UA_STATUSCODE_BADIDENTITYTOKENINVALID;
         }
         const UA_AnonymousIdentityToken *token = (UA_AnonymousIdentityToken*)
@@ -74,13 +74,13 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
          * policyId == ANONYMOUS_POLICY */
         if(token->policyId.data && !UA_String_equal(&token->policyId, &AccessControl::anonymous_policy))
         {
-          LOG(Log::ERR) << "activateSession : Received an anonymous policy token. Returning invalid.";
+          //LOG(Log::ERR) << "activateSession : Received an anonymous policy token. Returning invalid.";
 
             return UA_STATUSCODE_BADIDENTITYTOKENINVALID;
         }
         /* No userdata atm */
         *sessionContext = NULL;
-        LOG(Log::WRN) << "activateSession : Allowing anonymous policy token. sessionContext will be empty. Returning good.";
+        //LOG(Log::WRN) << "activateSession : Allowing anonymous policy token. sessionContext will be empty. Returning good.";
 
         return UA_STATUSCODE_GOOD;
     }
@@ -88,17 +88,17 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
     /* Username and password */
     if(userIdentityToken->content.decoded.type == &UA_TYPES[UA_TYPES_USERNAMEIDENTITYTOKEN]) {
       printf("\n\nTrying a username/password \n");
-      LOG(Log::INF) << "activateSession : Received an username/password token.";
+      //LOG(Log::INF) << "activateSession : Received an username/password token.";
 
 
         const UA_UserNameIdentityToken *userToken =
             (UA_UserNameIdentityToken*)userIdentityToken->content.decoded.data;
-        LOG(Log::INF) << "activateSession : Decoded data : " << userToken->userName.data
-            << ":" << userToken->password.data;
+        //LOG(Log::INF) << "activateSession : Decoded data : " << userToken->userName.data
+        //    << ":" << userToken->password.data;
 
         if(!UA_String_equal(&userToken->policyId, &AccessControl::username_policy))
         {
-          LOG(Log::ERR) << "activateSession : policyId does not match username policy. Returning invalid.";
+          //LOG(Log::ERR) << "activateSession : policyId does not match username policy. Returning invalid.";
 
             return UA_STATUSCODE_BADIDENTITYTOKENINVALID;
         }
@@ -109,7 +109,7 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
         /* Empty username and password */
         if(userToken->userName.length == 0 && userToken->password.length == 0)
         {
-          LOG(Log::ERR) << "activateSession : user/pwd token with 0 length : (" << userToken->userName.length << ":"<<  userToken->password.length << ")";
+          //LOG(Log::ERR) << "activateSession : user/pwd token with 0 length : (" << userToken->userName.length << ":"<<  userToken->password.length << ")";
 
             return UA_STATUSCODE_BADIDENTITYTOKENINVALID;
         }
@@ -126,7 +126,7 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
         }
         if(!match)
         {
-          LOG(Log::ERR) << "activateSession : Didn't find any user/pwd match.";
+          //LOG(Log::ERR) << "activateSession : Didn't find any user/pwd match.";
 
           return UA_STATUSCODE_BADUSERACCESSDENIED;
 
@@ -139,13 +139,13 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
         printf("Context will have [%s] [%s]\n\n",userToken->userName.data,username->data);
         *sessionContext = username;
         printf("Context has [%s]\n\n",static_cast<UA_ByteString *>(*sessionContext)->data);
-        LOG(Log::INF) << "activateSession : all good. sessionContext is set.";
+        //LOG(Log::INF) << "activateSession : all good. sessionContext is set.";
 
         return UA_STATUSCODE_GOOD;
     }
 
     /* Unsupported token type */
-    LOG(Log::ERR) << "activateSession : Unsupported token. Returning invalid.";
+    //LOG(Log::ERR) << "activateSession : Unsupported token. Returning invalid.";
 
     return UA_STATUSCODE_BADIDENTITYTOKENINVALID;
 }
@@ -228,7 +228,7 @@ AccessControl::getUserExecutableOnObject(UA_Server *server, UA_AccessControl *ac
   //  UA_Server_readBrowseName(UA_Server *server, const UA_NodeId nodeId,
   //                           UA_QualifiedName *outBrowseName)
 
-  printf("\n\nBrowse result for node %s and user %s : %d\n\n",nqname.name.data,context->data,is_operator);
+//  printf("\n\nBrowse result for node %s and user %s : %d\n\n",nqname.name.data,context->data,is_operator);
 
   return is_operator;
 //
@@ -265,11 +265,11 @@ AccessControl::allowBrowseNode(UA_Server *server, UA_AccessControl *ac,
   UA_String_init(&str_nodeId);
   UA_NodeId_print(nodeId, &str_nodeId);
 
-  printf("Checking browse permission for nodeId %s session context %p %s node context %p\n",
-         str_nodeId.data,
-         sessionContext,
-         static_cast<UA_ByteString *>(sessionContext)->data,
-         nodeContext);
+//  printf("Checking browse permission for nodeId %s session context %p %s node context %p\n",
+//         str_nodeId.data,
+//         sessionContext,
+//         static_cast<UA_ByteString *>(sessionContext)->data,
+//         nodeContext);
 
   // -- try to figure out if node is a method
   //UA_ServerConfig* config = UA_Server_getConfig(server);
@@ -299,7 +299,7 @@ AccessControl::allowBrowseNode(UA_Server *server, UA_AccessControl *ac,
   //  UA_Server_readBrowseName(UA_Server *server, const UA_NodeId nodeId,
   //                           UA_QualifiedName *outBrowseName)
 
-  printf("\n\nBrowse result for node %s and user %s : %d\n\n",nqname.name.data,context->data,result);
+//  printf("\n\nBrowse result for node %s and user %s : %d\n\n",nqname.name.data,context->data,result);
 
   return result;
 
@@ -342,14 +342,14 @@ UA_Boolean
 AccessControl::getUserExecutable(UA_Server *server, UA_AccessControl *ac,
                           const UA_NodeId *sessionId, void *sessionContext,
                           const UA_NodeId *methodId, void *methodContext) {
-  printf("\n\nCalled getUserExecutable\n\n");
+//  printf("\n\nCalled getUserExecutable\n\n");
 
 
   UA_String str_nodeId;
   UA_String_init(&str_nodeId);
   UA_NodeId_print(methodId, &str_nodeId);
 
-  printf("Checking permission for method %s and context %p %s\n",str_nodeId.data,sessionContext, static_cast<UA_ByteString *>(sessionContext)->data);
+//  printf("Checking permission for method %s and context %p %s\n",str_nodeId.data,sessionContext, static_cast<UA_ByteString *>(sessionContext)->data);
   //printf("method %s and context %p \n",str_nodeId.data);
   UA_String *context = static_cast<UA_ByteString *>(sessionContext);
   UA_String  u = UA_String_fromChars("nuno");
@@ -358,14 +358,14 @@ AccessControl::getUserExecutable(UA_Server *server, UA_AccessControl *ac,
     return true;
   }
   else {
-    printf("\n\nDeclining execute permissions\n\n");
+//    printf("\n\nDeclining execute permissions\n\n");
     return false;
   }
 }
 
 void AccessControl::link_callbacks(UA_Server *s)
 {
-  LOG(Log::INF) <<  "AccessControl::link_callbacks : Linking callbacks";
+  //LOG(Log::INF) <<  "AccessControl::link_callbacks : Linking callbacks";
   UA_ServerConfig* config = UA_Server_getConfig(s);
 
   UA_UsernamePasswordLogin logins[2] = {
@@ -383,12 +383,12 @@ void AccessControl::link_callbacks(UA_Server *s)
         LOG(Log::ERR) <<
         "UA_AccessControl_default returned: " << UaStatus(retval).toString().toUtf8();
       }
-      else
-      {
-        LOG(Log::INF) <<
-        "UA_AccessControl_default returned: " << UaStatus(retval).toString().toUtf8();
-
-      }
+//      else
+//      {
+//        //LOG(Log::INF) <<
+//        //"UA_AccessControl_default returned: " << UaStatus(retval).toString().toUtf8();
+//
+//      }
 
      // now attach the callbacks that matter
 

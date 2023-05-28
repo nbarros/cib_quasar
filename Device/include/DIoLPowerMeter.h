@@ -22,8 +22,12 @@
 #define __DIoLPowerMeter__H__
 
 #include <Base_DIoLPowerMeter.h>
+#include <json.hpp>
+using json = nlohmann::json;
 
-class device::PowerMeter;
+namespace device {
+  class PowerMeter;
+}
 
 namespace Device
 {
@@ -47,6 +51,12 @@ public:
 
 
     /* delegators for methods */
+    UaStatus callInit (
+        UaString& response
+    ) ;
+    UaStatus callSet_port (
+        const UaString&  device_port
+    ) ;
     UaStatus callSet_average (
         OpcUa_UInt16 target_value,
         UaString& response
@@ -86,11 +96,46 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
-    void update();
 
+    enum Status{sOffline=0x0,sUnconfigured=1,sReady=2};
+    void update();
+    UaStatus init_device(json &resp);
 private:
+    void automatic_port_search();
+    void refresh_all_ranges();
+    void refresh_measurement_modes();
+    void refresh_measurement_ranges();
+    void refresh_pulse_width_ranges();
+    void refresh_average_ranges();
+    void refresh_threshold_limits();
+    void refresh_energy_reading();
+    void refresh_average_reading();
+
+    // check if there is a new energy reading.
+    // update the value if yes
+    //void refresh_energy_reading();
+
+    //UaStatus init_connection(json &resp);
+
     device::PowerMeter *m_pm;
     std::string m_comport;
+    Status m_status;
+
+    uint16_t m_measurement_mode;
+    int16_t m_sel_range;
+    uint16_t m_wavelength;
+    uint16_t m_e_threshold;
+    uint16_t m_ave_setting;
+    uint16_t m_pulse_width;
+    double m_energy_reading;
+    double m_average_reading;
+
+    std::map<int16_t,std::string> m_ranges;
+    std::map<uint16_t,std::string> m_pulse_widths;
+    std::map<uint16_t,std::string> m_ave_windows;
+    std::map<uint16_t,std::string> m_measurement_modes;
+    std::map<Status,std::string> m_status_map;
+    std::pair<uint16_t,uint16_t> m_threshold_limits;
 
 
 };

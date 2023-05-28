@@ -27,6 +27,7 @@
 #include <DIoLMotor.h>
 #include <DIoLPiezoController.h>
 #include <DIoLAttenuator.h>
+#include <DIoLPowerMeter.h>
 
 #include <string>
 
