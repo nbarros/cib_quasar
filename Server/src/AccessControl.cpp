@@ -45,7 +45,19 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
         }
         /* No userdata atm */
         //TODO: Allow anonymous but add a context that restricts the usage
-        *sessionContext = NULL;
+//        char* anonymous_string = "anonymous";
+//        UA_ByteString* bstr = UA_ByteString_new();
+//        bstr->data = (UA_Byte*) anonymous_string;
+//        bstr->length = 10;
+//
+//        UA_ByteString *username = UA_ByteString_new();
+        UA_ByteString username = UA_BYTESTRING_ALLOC("anonymous");
+//        if(username)
+//          UA_ByteString_copy("anonymous", username);
+        //printf("Context will have [%s] [%s]\n\n",userToken->userName.data,username->data);
+        *sessionContext = &username;
+
+        //*sessionContext = NULL;
         ////LOG(Log::WRN) << "activateSession : Allowing anonymous token. sessionContext will be empty. Returning good.";
 
         return UA_STATUSCODE_GOOD;
@@ -79,7 +91,10 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
             return UA_STATUSCODE_BADIDENTITYTOKENINVALID;
         }
         /* No userdata atm */
-        *sessionContext = NULL;
+       // *sessionContext = NULL;
+        UA_ByteString username = UA_BYTESTRING_ALLOC("anonymous");
+        *sessionContext = &username;
+
         //LOG(Log::WRN) << "activateSession : Allowing anonymous policy token. sessionContext will be empty. Returning good.";
 
         return UA_STATUSCODE_GOOD;
@@ -87,7 +102,7 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
 
     /* Username and password */
     if(userIdentityToken->content.decoded.type == &UA_TYPES[UA_TYPES_USERNAMEIDENTITYTOKEN]) {
-      printf("\n\nTrying a username/password \n");
+      //printf("\n\nTrying a username/password \n");
       //LOG(Log::INF) << "activateSession : Received an username/password token.";
 
 
@@ -118,7 +133,7 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
         for(size_t i = 0; i < context->usernamePasswordLoginSize; i++) {
             if(UA_String_equal(&userToken->userName, &context->usernamePasswordLogin[i].username) &&
                UA_String_equal(&userToken->password, &context->usernamePasswordLogin[i].password)) {
-              printf("\n\nFound a match\n");
+              //printf("\n\nFound a match\n");
 
               match = true;
                 break;
@@ -136,9 +151,9 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
         UA_ByteString *username = UA_ByteString_new();
         if(username)
             UA_ByteString_copy(&userToken->userName, username);
-        printf("Context will have [%s] [%s]\n\n",userToken->userName.data,username->data);
+        //printf("Context will have [%s] [%s]\n\n",userToken->userName.data,username->data);
         *sessionContext = username;
-        printf("Context has [%s]\n\n",static_cast<UA_ByteString *>(*sessionContext)->data);
+        //printf("Context has [%s]\n\n",static_cast<UA_ByteString *>(*sessionContext)->data);
         //LOG(Log::INF) << "activateSession : all good. sessionContext is set.";
 
         return UA_STATUSCODE_GOOD;

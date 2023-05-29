@@ -114,8 +114,7 @@ DIoLMotor::DIoLMotor (
 			timer_start(this);
 		}
 	}
-
-					}
+}
 
 /* sample dtr */
 DIoLMotor::~DIoLMotor ()
@@ -502,7 +501,6 @@ size_t DIoLMotor::curl_write_function(void* ptr, size_t size, size_t nmemb, std:
 	return size * nmemb;
 }
 
-//void DIoLMotor::timer_start(std::function<void(void)> func, uint16_t interval)
 void DIoLMotor::timer_start(DIoLMotor *obj)
 {
 	if (m_monitor)
@@ -579,7 +577,7 @@ UaStatus DIoLMotor::get_motor_info()
 			return OpcUa_BadResourceUnavailable;
 		}
 
-		LOG(Log::INF) << "Received response [" << response_string << "]";
+		//LOG(Log::INF) << "Received response [" << response_string << "]";
 		// now we should parse the answer
 		// it is meant to be a json object
 		json answer = json::parse(response_string);

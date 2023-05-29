@@ -22,7 +22,24 @@
 
 #include <DIoLLaserUnit.h>
 #include <ASIoLLaserUnit.h>
-
+#include <utilities.hh>
+#include <Laser.hh>
+#include <string>
+#include <sstream>
+#include <thread>
+#include <chrono>
+using json = nlohmann::json;
+//
+#define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
+//
+#define log_e(m,s) log_msg("ERROR",m,s)
+#define log_w(m,s) log_msg("WARN",m,s)
+#define log_i(m,s) log_msg("INFO",m,s)
+//
+using std::ostringstream;
+using std::map;
+using std::string;
+//
 namespace Device
 {
 // 1111111111111111111111111111111111111111111111111111111111111111111111111
@@ -55,14 +72,40 @@ DIoLLaserUnit::DIoLLaserUnit (
 
     /* fill up constructor initialization list here */
 	, m_is_ready(false)
-
+	, m_status(sOffline)
+	, m_laser(nullptr)
+	,m_divider(0)
+	//FIXME: What is the pump HV default?
+  ,m_pump_hv(0.0)
+  ,m_rate_hz(10.0)
+  ,m_qswitch(200)
+  ,m_shutter_open(false)
+  ,m_comport("auto")
+  ,m_baud_rate(9600)
 {
     /* fill up constructor body here */
+
+    // set the variables that are configuration parameters
+    m_comport = port();
+    LOG(Log::INF) << "DIoLLaserUnit::DIoLLaserUnit : Port set to [" << m_comport << "]";
+    if (m_comport == "auto")
+    {
+      LOG(Log::WRN) << "DIoLLaserUnit::DIoLLaserUnit : Attempting automatic port detection based off serial number [" << serial_number() << "]";
+      automatic_port_search();
+    }
+
+    // -- initialize the status map
+    m_status_map.insert({sOffline,"offline"});
+    m_status_map.insert({sUnconfigured,"unconfigured"});
+    m_status_map.insert({sReady,"ready"});
+    m_status_map.insert({sLasing,"lasing"});
+
 }
 
 /* sample dtr */
 DIoLLaserUnit::~DIoLLaserUnit ()
 {
+  if (m_laser) delete m_laser;
 }
 
 /* delegates for cachevariables */
@@ -71,36 +114,234 @@ DIoLLaserUnit::~DIoLLaserUnit ()
 
 UaStatus DIoLLaserUnit::writeQswitch_us ( const OpcUa_UInt32& v)
 {
-    return OpcUa_BadNotImplemented;
+  LOG(Log::INF) << "Setting QSwitch";
+  std::ostringstream msg;
+  // we need the system to be at least in unconfigured state
+  // as we need the device connection to be established
+  if (m_status == sOffline)
+  {
+    return OpcUa_BadInvalidState;
+  }
+  if (!m_laser)
+    return OpcUa_BadInvalidState;
+  uint32_t nv = v;
+   // check range
+  if (nv > 999) nv = 999; // avoid overflow
+  try
+  {
+    m_laser->set_qswitch(nv);
+  }
+  catch(serial::PortNotOpenedException &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("qswitch"," ") << "Port not open [" << e.what() << "]";
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+  }
+  catch(serial::SerialException &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("qswitch","Failed with a Serial exception :") << e.what();
+    return OpcUa_Bad;
+  }
+  catch(std::exception &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("qswitch","Failed with an STL exception :") << e.what();
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+
+  }
+  catch(...)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("qswitch","Failed with an unknown exception.");
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+
+  }
+  return OpcUa_Good;
 }
 /* Note: never directly call this function. */
 
 UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Float& v)
 {
-    return OpcUa_BadNotImplemented;
+  LOG(Log::INF) << "Setting discharge voltage";
+  std::ostringstream msg;
+  // we need the system to be at least in unconfigured state
+  // as we need the device connection to be established
+  if (m_status == sOffline)
+  {
+    return OpcUa_BadInvalidState;
+  }
+  if (!m_laser)
+    return OpcUa_BadInvalidState;
+   // check range
+  if ((v < 0) || (v > 1.3))
+    {
+    return OpcUa_BadOutOfRange; // avoid overflow
+    }
+  try
+  {
+    m_laser->set_pump_voltage(v);
+  }
+  catch(serial::PortNotOpenedException &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("voltage"," ") << "Port not open [" << e.what() << "]";
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+  }
+  catch(serial::SerialException &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("voltage","Failed with a Serial exception :") << e.what();
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+  }
+  catch(std::exception &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("voltage","Failed with an STL exception :") << e.what();
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+
+  }
+  catch(...)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("voltage","Failed with an unknown exception.");
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+
+  }
+  return OpcUa_Good;
 }
 /* Note: never directly call this function. */
 
 UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
 {
-    return OpcUa_BadNotImplemented;
+  LOG(Log::INF) << "Setting Repetition rate";
+  std::ostringstream msg;
+  // we need the system to be at least in unconfigured state
+  // as we need the device connection to be established
+  if (m_status == sOffline)
+  {
+    return OpcUa_BadInvalidState;
+  }
+  if (!m_laser)
+    return OpcUa_BadInvalidState;
+   // check range
+  if (v <= 0.0 || v > 20.0)
+  {
+    return OpcUa_BadOutOfRange; // This shouldn't even be changed
+  }
+  try
+  {
+    m_laser->set_repetition_rate(v);
+  }
+  catch(serial::PortNotOpenedException &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("rate"," ") << "Port not open [" << e.what() << "]";
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+  }
+  catch(serial::SerialException &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("rate","Failed with a Serial exception :") << e.what();
+    return OpcUa_Bad;
+  }
+  catch(std::exception &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("rate","Failed with an STL exception :") << e.what();
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+
+  }
+  catch(...)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("rate","Failed with an unknown exception.");
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+
+  }
+  return OpcUa_Good;
 }
 /* Note: never directly call this function. */
 
 UaStatus DIoLLaserUnit::writeRep_rate_divider ( const OpcUa_UInt16& v)
 {
-    return OpcUa_BadNotImplemented;
+  LOG(Log::INF) << "Setting Rate Divider / Prescale";
+  std::ostringstream msg;
+  // we need the system to be at least in unconfigured state
+  // as we need the device connection to be established
+  if (m_status == sOffline)
+  {
+    return OpcUa_BadInvalidState;
+  }
+  if (!m_laser)
+    return OpcUa_BadInvalidState;
+   // check range
+  uint16_t nv = v;
+  if ( v > 99)
+  {
+    nv = 99;
+    msg.clear(); msg.str("");
+    msg << log_w("prescale"," ") << "Setting out of bounds. Truncating to max [ " << v << " --> " << nv << "]";
+    LOG(Log::WRN) << msg.str();
+
+  }
+  try
+  {
+    m_laser->set_prescale(nv);
+  }
+  catch(serial::PortNotOpenedException &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("prescale"," ") << "Port not open [" << e.what() << "]";
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+  }
+  catch(serial::SerialException &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("prescale","Failed with a Serial exception :") << e.what();
+    return OpcUa_Bad;
+  }
+  catch(std::exception &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("prescale","Failed with an STL exception :") << e.what();
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+
+  }
+  catch(...)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("prescale","Failed with an unknown exception.");
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+
+  }
+  return OpcUa_Good;
 }
 /* Note: never directly call this function. */
 
 UaStatus DIoLLaserUnit::writeExt_shutter_time_pre_shot ( const OpcUa_UInt32& v)
 {
+    // FIXME : Implement this in CIB register
     return OpcUa_BadNotImplemented;
 }
 /* Note: never directly call this function. */
 
 UaStatus DIoLLaserUnit::writeExt_shutter_open_time_us ( const OpcUa_UInt32& v)
 {
+  // FIXME : Implement this in CIB register
     return OpcUa_BadNotImplemented;
 }
 
@@ -110,40 +351,447 @@ UaStatus DIoLLaserUnit::callStop (
 
 )
 {
-    return OpcUa_BadNotImplemented;
+  std::ostringstream msg("");
+  // force a stop on the laser firing
+  // start by closing hte shutter, and
+  // since this is a usually kind of critical method, do not even care to check whether the
+  // laser is firing or not, just stop and close the shutter
+  if (!m_laser)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("stop","There is no connection to the laser. Doing nothing.");
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+  }
+
+  try
+  {
+    m_laser->fire_stop();
+    m_laser->shutter_close();
+    // downgrade anything above ready to ready to operate
+    // states below remain as they are
+    if (m_status > sReady)
+    {
+      m_status = sReady;
+    }
+    // requery the laser system for its present status, in case there are issues to report
+    refresh_status();
+  }
+  catch(serial::PortNotOpenedException &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("stop"," ") << "Port not open [" << e.what() << "]";
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+  }
+  catch(serial::SerialException &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("stop","Failed with a Serial exception :") << e.what();
+    return OpcUa_Bad;
+  }
+  catch(std::exception &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("stop","Failed with an STL exception :") << e.what();
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+
+  }
+  catch(...)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("stop","Failed with an unknown exception.");
+    LOG(Log::ERR) << msg.str();
+    return OpcUa_Bad;
+
+  }
+  return OpcUa_Good;
 }
 UaStatus DIoLLaserUnit::callCheck_status (
-    OpcUa_UInt16& status
+    OpcUa_UInt16& status,
+    UaString& description
 )
 {
-    return OpcUa_BadNotImplemented;
+  std::ostringstream msg("");
+   // force a stop on the laser firing
+   // start by closing hte shutter, and
+   // since this is a usually kind of critical method, do not even care to check whether the
+   // laser is firing or not, just stop and close the shutter
+   if (!m_laser)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("status","There is no connection to the laser. Doing nothing.");
+     LOG(Log::ERR) << msg.str();
+     return OpcUa_BadInvalidState;
+   }
+
+   try
+   {
+     std::string desc;
+
+     m_laser->security(status, desc);
+     description = UaString(desc.c_str());
+     getAddressSpaceLink()->setStatus_code(status,OpcUa_Good);
+   }
+   catch(serial::PortNotOpenedException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("status"," ") << "Port not open [" << e.what() << "]";
+     LOG(Log::ERR) << msg.str();
+     return OpcUa_Bad;
+   }
+   catch(serial::SerialException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("status","Failed with a Serial exception :") << e.what();
+     return OpcUa_Bad;
+   }
+   catch(std::exception &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("status","Failed with an STL exception :") << e.what();
+     LOG(Log::ERR) << msg.str();
+     return OpcUa_Bad;
+
+   }
+   catch(...)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("status","Failed with an unknown exception.");
+     LOG(Log::ERR) << msg.str();
+     return OpcUa_Bad;
+
+   }
+   return OpcUa_Good;
+
 }
 UaStatus DIoLLaserUnit::callConfigure_laser (
     const UaString&  config,
     UaString& response
 )
 {
+    // FIXME: Implement the json interpretation
+
     return OpcUa_BadNotImplemented;
 }
 UaStatus DIoLLaserUnit::callSingle_shot (
     UaString& response
 )
 {
-    return OpcUa_BadNotImplemented;
+  std::ostringstream msg("");
+  json resp;
+  bool caught_exception = false;
+  if (!m_laser)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot","There is no connection to the laser. Doing nothing.");
+     LOG(Log::ERR) << msg.str();
+     resp["status"] = "ERROR";
+     resp["messages"].push_back(msg.str());
+     resp["status_code"] = OpcUa_BadInvalidState;
+     response = UaString(resp.dump().c_str());
+     return OpcUa_Good;
+   }
+  // if the laser is not in the sReady state, also do nothing
+  // likely some parameter is not set yet
+  // also fail if the laser is firing
+  if (m_status != sReady)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("single_shot","The laser is in the wrong state") << " (expected " << static_cast<uint16_t>(sReady) << " have " << static_cast<uint16_t>(m_status) << ")";
+    LOG(Log::ERR) << msg.str();
+    resp["status"] = "ERROR";
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_BadInvalidState;
+    response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+
+  // if the shutter is not open, there is no point in firing
+  //
+  if (!m_shutter_open)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("single_shot","The laser shutter is not open");
+    LOG(Log::ERR) << msg.str();
+    resp["status"] = "ERROR";
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_BadInvalidState;
+    response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  // everything seems ready. Fire away
+   try
+   {
+     // FIXME: This logic is not doing anything about the external shutter
+     // once the external shutter is in place, one should actually stop using this command and instead
+     // drive a single shot from the CIB (so that the external shutter is also timely opened)
+     m_status = sLasing;
+     // FIXME: If the operational status is propagated to the address space, we need to update it here
+     m_laser->single_shot(true); // ensure that the prescale is rescaled
+     m_status = sReady;
+     // FIXME: The operation status should perhaps be reported back to SC
+     //getAddressSpaceLink()->setStatus_code(status,OpcUa_Good);
+   }
+   catch(serial::PortNotOpenedException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot"," ") << "Port not open [" << e.what() << "]";
+     caught_exception = true;
+   }
+   catch(serial::SerialException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot","Failed with a Serial exception :") << e.what();
+     caught_exception = true;
+   }
+   catch(std::exception &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot","Failed with an STL exception :") << e.what();
+     caught_exception = true;
+   }
+   catch(...)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot","Failed with an unknown exception.");
+     caught_exception = true;
+   }
+   if (caught_exception)
+   {
+     LOG(Log::ERR) << msg.str();
+     resp["status"] = "ERROR";
+     resp["messages"].push_back(msg.str());
+     resp["status_code"] = OpcUa_Bad;
+     response = UaString(resp.dump().c_str());
+   }
+   else {
+     // all was good
+     msg.clear(); msg.str("");
+     msg << log_i("single_shot","Laser single shot fired");
+     LOG(Log::INF) << msg.str();
+     resp["status"] = "OK";
+     resp["messages"].push_back(msg.str());
+     resp["status_code"] = OpcUa_Good;
+   }
+   return OpcUa_Good;
 }
 UaStatus DIoLLaserUnit::callSwitch_shutter (
     OpcUa_Boolean open,
     UaString& response
 )
 {
-    return OpcUa_BadNotImplemented;
+  std::ostringstream msg("");
+  json resp;
+  bool caught_exception = false;
+  if (!m_laser)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("shutter","There is no connection to the laser. Doing nothing.");
+     LOG(Log::ERR) << msg.str();
+     resp["status"] = "ERROR";
+     resp["messages"].push_back(msg.str());
+     resp["status_code"] = OpcUa_BadInvalidState;
+     response = UaString(resp.dump().c_str());
+     return OpcUa_Good;
+   }
+  // if the laser is not in the sReady state, also do nothing
+  // likely some parameter is not set yet
+  // also fail if the laser is firing
+  if (m_status != sReady)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("shutter","The laser is in the wrong state") << " (expected " << static_cast<uint16_t>(sReady) << " have " << static_cast<uint16_t>(m_status) << ")";
+    LOG(Log::ERR) << msg.str();
+    resp["status"] = "ERROR";
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_BadInvalidState;
+    response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  // everything seems ready. open the shutter
+  try
+   {
+     m_laser->shutter(static_cast<device::Laser::Shutter>(open));
+     m_shutter_open = open;
+     getAddressSpaceLink()->setLaser_shutter_open(m_shutter_open, OpcUa_Good);
+     // FIXME: We may need another state in the state machine for open shutter
+   }
+   catch(serial::PortNotOpenedException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("shutter"," ") << "Port not open [" << e.what() << "]";
+     caught_exception = true;
+   }
+   catch(serial::SerialException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("shutter","Failed with a Serial exception :") << e.what();
+     caught_exception = true;
+   }
+   catch(std::exception &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("shutter","Failed with an STL exception :") << e.what();
+     caught_exception = true;
+   }
+   catch(...)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("shutter","Failed with an unknown exception.");
+     caught_exception = true;
+   }
+   if (caught_exception)
+   {
+     LOG(Log::ERR) << msg.str();
+     resp["status"] = "ERROR";
+     resp["messages"].push_back(msg.str());
+     resp["status_code"] = OpcUa_Bad;
+     response = UaString(resp.dump().c_str());
+   }
+   else {
+     // all was good
+     msg.clear(); msg.str("");
+     msg << log_i("shutter","Shutter open");
+     LOG(Log::INF) << msg.str();
+     resp["status"] = "OK";
+     resp["messages"].push_back(msg.str());
+     resp["status_code"] = OpcUa_Good;
+   }
+   return OpcUa_Good;
 }
+
 UaStatus DIoLLaserUnit::callFire_standalone (
     OpcUa_Boolean fire,
     UaString& response
 )
 {
-    return OpcUa_BadNotImplemented;
+  // FIXME: Note that this method does not do anything about the external shutter
+  // it assumes that the external shutter is either not in place or has been in some other way operated to open
+  // for these shots
+  // ultimately, this is just meant to be used in commissioning. For normal operation
+  // one will use the CIB directly to control the laser firing
+  std::ostringstream msg("");
+  json resp;
+  bool caught_exception = false;
+  if (!m_laser)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("fire","There is no connection to the laser. Doing nothing.");
+     LOG(Log::ERR) << msg.str();
+     resp["status"] = "ERROR";
+     resp["messages"].push_back(msg.str());
+     resp["status_code"] = OpcUa_BadInvalidState;
+     response = UaString(resp.dump().c_str());
+     return OpcUa_Good;
+   }
+  // if the shutter is not open, there is no point in firing
+  //
+  if (!m_shutter_open)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("fire","The laser shutter is not open");
+    LOG(Log::ERR) << msg.str();
+    resp["status"] = "ERROR";
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_BadInvalidState;
+    response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+
+  // if the laser is not in the sReady state, also do nothing
+  // likely some parameter is not set yet
+  // also fail if the laser is firing
+  // if the laser is firing, calling it again should fail
+  // this logic is a bit more complicated
+  // since it depends on the tuple (status,fire)
+  // sReady && true : OK
+  // sLasing && false : OK
+  // others : Fail
+  if (!(((m_status == sReady) && fire) || (m_status == sLasing && !fire)))
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("fire","The laser is in the wrong state") << " (expected " << static_cast<uint16_t>(sReady) << " have " << static_cast<uint16_t>(m_status) << ")";
+    LOG(Log::ERR) << msg.str();
+    resp["status"] = "ERROR";
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_BadInvalidState;
+    response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+
+  // everything seems ready. Fire away
+   try
+   {
+
+     if (fire)
+     {
+       // we are starting the laser
+       m_laser->fire_start();
+       m_status = sLasing;
+       timer_start(this);
+       // FIXME: We should start another thread to periodically query the shot count
+     }
+     else
+     {
+       m_laser->fire_stop();
+       m_status = sReady;
+       // stop the counter
+       set_counting_flashes(false);
+     }
+     // FIXME: This logic is not doing anything about the external shutter
+     // once the external shutter is in place, one should actually stop using this command and instead
+     // drive a single shot from the CIB (so that the external shutter is also timely opened)
+     m_status = sLasing;
+     // FIXME: If the operational status is propagated to the address space, we need to update it here
+     m_laser->fire(static_cast<device::Laser::Fire>(fire)); // ensure that the prescale is rescaled
+     m_status = sReady;
+     // FIXME: The operation status should perhaps be reported back to SC
+     //getAddressSpaceLink()->setStatus_code(status,OpcUa_Good);
+   }
+   catch(serial::PortNotOpenedException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot"," ") << "Port not open [" << e.what() << "]";
+     caught_exception = true;
+   }
+   catch(serial::SerialException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot","Failed with a Serial exception :") << e.what();
+     caught_exception = true;
+   }
+   catch(std::exception &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot","Failed with an STL exception :") << e.what();
+     caught_exception = true;
+   }
+   catch(...)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot","Failed with an unknown exception.");
+     caught_exception = true;
+   }
+   if (caught_exception)
+   {
+     LOG(Log::ERR) << msg.str();
+     resp["status"] = "ERROR";
+     resp["messages"].push_back(msg.str());
+     resp["status_code"] = OpcUa_Bad;
+     response = UaString(resp.dump().c_str());
+   }
+   else {
+     // all was good
+     msg.clear(); msg.str("");
+     msg << log_i("single_shot","Laser single shot fired");
+     LOG(Log::INF) << msg.str();
+     resp["status"] = "OK";
+     resp["messages"].push_back(msg.str());
+     resp["status_code"] = OpcUa_Good;
+   }
+   return OpcUa_Good;
 }
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
@@ -151,5 +799,182 @@ UaStatus DIoLLaserUnit::callFire_standalone (
 // 3     Below you put bodies for custom methods defined for this class.   3
 // 3     You can do whatever you want, but please be decent.               3
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
+
+void DIoLLaserUnit::automatic_port_search()
+{
+ try
+ {
+  // the automatic port search queries all available ports, their descriptions and IDs for an occurrence of the device
+  // serial number
+  // this has been shown to work for most cases, but there is always a chance that something fails
+  // for example, the wrong serial number was provided
+  m_comport = util::find_port(serial_number());
+  if (m_comport.size() == 0)
+  {
+    LOG(Log::ERR) << "DIoLLaserUnit::automatic_port_search : Couldn't find device port";
+  }
+
+  m_status = sOffline;
+ }
+ catch(...)
+ {
+   m_status = sOffline;
+   LOG(Log::ERR) << "DIoLLaserUnit::automatic_port_search : Caught an exception searching for the port";
+   m_comport = "";
+ }
+}
+
+void DIoLLaserUnit::refresh_status()
+{
+  json resp;
+  refresh_status(resp);
+}
+
+void DIoLLaserUnit::refresh_status(json &resp)
+{
+  std::ostringstream msg("");
+  uint16_t status = 99;
+  std::string desc;
+  bool got_exception = false;
+  if (!m_laser)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("status","There is no connection to the laser. Doing nothing.");
+     LOG(Log::ERR) << msg.str();
+     //resp["status"] = "ERROR";
+     return;
+   }
+
+   try
+   {
+     m_laser->security(status, desc);
+     getAddressSpaceLink()->setStatus_code(status,OpcUa_Good);
+   }
+   catch(serial::PortNotOpenedException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("status"," ") << "Port not open [" << e.what() << "]";
+     LOG(Log::ERR) << msg.str();
+     got_exception = true;
+   }
+   catch(serial::SerialException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("status","Failed with a Serial exception :") << e.what();
+     got_exception = true;
+   }
+   catch(std::exception &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("status","Failed with an STL exception :") << e.what();
+     LOG(Log::ERR) << msg.str();
+     got_exception = true;
+   }
+   catch(...)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("status","Failed with an unknown exception.");
+     LOG(Log::ERR) << msg.str();
+     got_exception = true;
+   }
+   if (got_exception)
+   {
+     getAddressSpaceLink()->setStatus_code(status,OpcUa_BadDataUnavailable);
+   }
+}
+
+void DIoLLaserUnit::timer_start(DIoLLaserUnit *obj)
+{
+  if (m_count_flashes)
+  {
+    LOG(Log::WRN) << "Trying to set a timer that has already been set up. Skipping.";
+    return;
+  }
+  m_count_flashes = true;
+
+  std::thread([obj]()
+  {
+    while (obj->get_counting_flashes())
+    {
+      // We know that the laser will be firing at 10 Hz, that means 100 ms
+      auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+      if (obj->refresh_shot_count() != OpcUa_Good)
+      {
+        LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
+      }
+
+      std::this_thread::sleep_until(x);
+    }
+  }).detach();
+}
+
+UaStatus DIoLLaserUnit::refresh_shot_count()
+{
+  std::ostringstream msg("");
+  json resp;
+  bool caught_exception = false;
+
+  // this should never happen
+  if (!m_laser)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("count","Something very wrong happened. Trying to refresh shot count without a serial connection.");
+     LOG(Log::ERR) << msg.str();
+     return OpcUa_BadInvalidState;
+   }
+  static uint32_t count = 0;
+  // everything seems ready. Get counter
+   try
+   {
+     m_laser->get_shot_count(count);
+     // set the local cache
+     m_shot_count = count;
+     // FIXME: This should perhaps be in the update()
+     getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_Good);
+   }
+   catch(serial::PortNotOpenedException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot"," ") << "Port not open [" << e.what() << "]";
+     caught_exception = true;
+   }
+   catch(serial::SerialException &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot","Failed with a Serial exception :") << e.what();
+     caught_exception = true;
+   }
+   catch(std::exception &e)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot","Failed with an STL exception :") << e.what();
+     caught_exception = true;
+   }
+   catch(...)
+   {
+     msg.clear(); msg.str("");
+     msg << log_e("single_shot","Failed with an unknown exception.");
+     caught_exception = true;
+   }
+   if (caught_exception)
+   {
+     LOG(Log::ERR) << msg.str();
+     getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_BadDataUnavailable);
+   }
+
+  return OpcUa_Good;
+}
+
+void DIoLLaserUnit::update()
+{
+  // do just periodic checks, that are meant to happen less often than usual
+  // for example, check the laser unit status
+
+  if (m_laser)
+  {
+    json resp;
+    refresh_status(resp);
+  }
+}
 
 }

@@ -165,11 +165,18 @@
     <!--units in microseconds. how long should the shutter remain open-->   
     <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="ext_shutter_open_time_us" nullPolicy="nullForbidden" addressSpaceWrite="delegated">
     </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus"
+    	dataType="OpcUa_UInt16" name="status_code"
+    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="999">
+    </d:cachevariable>
     <d:method name="stop" executionSynchronicity="synchronous">
       <!--local method to stop operation-->
     </d:method>
     <d:method name="check_status" executionSynchronicity="synchronous">
-      <d:returnvalue dataType="OpcUa_UInt16" name="status" />
+      <d:returnvalue dataType="OpcUa_UInt16" name="status" /><d:returnvalue
+      	dataType="UaString" name="description">
+</d:returnvalue>
     </d:method>
     <d:method name="configure_laser" executionSynchronicity="synchronous">
     	<d:argument dataType="UaString" name="config"></d:argument>
@@ -219,7 +226,7 @@
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_Boolean" name="external_interlock"
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialValue="false" initialStatus="OpcUa_BadWaitingForInitialData">
+    	initialValue="OpcUa_False" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
   </d:class>
   <d:class name="IoLaserSystem">

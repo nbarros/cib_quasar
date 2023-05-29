@@ -66,7 +66,8 @@ public:
 
     ) ;
     UaStatus callCheck_status (
-        OpcUa_UInt16& status
+        OpcUa_UInt16& status,
+        UaString& description
     ) ;
     UaStatus callConfigure_laser (
         const UaString&  config,
@@ -95,17 +96,39 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
-    enum Status{sOffline=0x0,sUnconfigured=1,sReady=2,sFiring=3};
+    enum Status{sOffline=0x0,sUnconfigured=1,sReady=2,sLasing=3};
     UaStatus init_device(json &resp);
-    void update() {}
-
-    bool is_ready() {return m_is_ready;}
+    void update();
+    //
+    bool get_counting_flashes() {return m_count_flashes;}
+    void set_counting_flashes(bool s) {m_count_flashes = s;}
+    UaStatus refresh_shot_count();
+    bool is_ready() {return (m_status == sReady);}
 private:
+    // -- private methods
+    void automatic_port_search();
+    void refresh_status(json &resp);
+    void refresh_status(void);
+    void timer_start(DIoLLaserUnit *obj);
+    //
+    //
     bool m_is_ready;
     Status m_status;
+    //
     device::Laser *m_laser;
-
-
+    uint16_t m_divider;
+    float m_pump_hv;
+    float m_rate_hz;
+    uint32_t m_qswitch;
+    bool m_shutter_open;
+    uint32_t m_shot_count;
+    //
+    std::string m_comport;
+    uint16_t m_baud_rate;
+    bool m_count_flashes;
+    //
+    //
+    std::map<Status,std::string> m_status_map;
 };
 
 }
