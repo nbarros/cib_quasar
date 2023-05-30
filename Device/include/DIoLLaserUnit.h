@@ -62,8 +62,12 @@ public:
 
 
     /* delegators for methods */
+    UaStatus callSet_port (
+        const UaString&  device_port,
+        UaString& response
+    ) ;
     UaStatus callStop (
-
+        UaString& response
     ) ;
     UaStatus callCheck_status (
         OpcUa_UInt16& status,
@@ -96,7 +100,22 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
-    enum Status{sOffline=0x0,sUnconfigured=1,sReady=2,sLasing=3};
+    enum Status{sOffline=0x0,sInit=1,sReady=2,sLasing=3};
+    // bitfield with the settings that are already configured
+    typedef struct {
+      uint8_t hv :1;
+      uint8_t r_div :1;
+      uint8_t rate : 1;
+      uint8_t qsw : 1;
+      void init(uint8_t v) {hv = v & 0x1; r_div = v & 0x2; rate = v & 0x4; qsw = v & 0x8;};
+    } laser_word;
+
+    typedef union conf_word
+    {
+      laser_word word;
+      bool is_ready() {return (*reinterpret_cast<uint8_t*>(&word) == 0xF);};
+    } conf_word;
+
     UaStatus init_device(json &resp);
     void update();
     //
@@ -109,6 +128,12 @@ private:
     void automatic_port_search();
     void refresh_status(json &resp);
     void refresh_status(void);
+    // methods that internally deal with the device writing logic
+    UaStatus write_divider(const uint16_t v,json &resp);
+    UaStatus write_rate(const float v,json &resp);
+    UaStatus write_hv(const float v,json &resp);
+    UaStatus write_qswitch(const uint16_t v,json &resp);
+    //
     void timer_start(DIoLLaserUnit *obj);
     //
     //
@@ -129,6 +154,8 @@ private:
     //
     //
     std::map<Status,std::string> m_status_map;
+    std::string m_name;
+    conf_word m_config;
 };
 
 }

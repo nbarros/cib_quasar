@@ -257,7 +257,7 @@ UaStatus DIoLMotor::callStart_move (UaString& response)
 #else
 	st = move_motor(resp);
 #endif
-
+	//
 	response = UaString(resp.dump().c_str());
 	return st;
 
@@ -315,7 +315,7 @@ UaStatus DIoLMotor::callConfigure_motor (
 			resp["status_code"] = OpcUa_BadInvalidArgument;
 
 			response = UaString(resp.dump().c_str());
-			return OpcUa_BadInvalidArgument;
+			return OpcUa_Good;
 		}
 
 		// if the ids match, lets set the parameters

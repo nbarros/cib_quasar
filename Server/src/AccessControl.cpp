@@ -9,8 +9,10 @@
 #include <statuscode.h>
 #include <AccessControl.h>
 
-const UA_String AccessControl::anonymous_policy = UA_STRING_STATIC("open62541-anonymous-policy");
-const UA_String AccessControl::username_policy = UA_STRING_STATIC("open62541-username-policy");
+#define ANON_POLICY "open62541-anonymous-policy"
+#define USER_POLICY "open62541-username-policy"
+const UA_String AccessControl::anonymous_policy = UA_STRING_STATIC(ANON_POLICY);
+const UA_String AccessControl::username_policy = UA_STRING_STATIC(USER_POLICY);
 
 AccessControl::AccessControl ()
 {
@@ -20,6 +22,171 @@ AccessControl::AccessControl ()
 AccessControl::~AccessControl ()
 {
   // TODO Auto-generated destructor stub
+}
+
+
+//UA_StatusCode
+//UA_AccessControl_default(UA_ServerConfig *config, UA_Boolean allowAnonymous,
+//                         const UA_ByteString *userTokenPolicyUri,
+//                         size_t usernamePasswordLoginSize,
+//                         const UA_UsernamePasswordLogin *usernamePasswordLogin)
+
+UA_StatusCode AccessControl::init_access_control(UA_ServerConfig *config, UA_Boolean allowAnonymous,
+                                                const UA_ByteString *userTokenPolicyUri,
+                                                size_t usernamePasswordLoginSize,
+                                                const UA_UsernamePasswordLogin *usernamePasswordLogin)
+{
+  // grab the ac structure from the server
+  UA_AccessControl *ac = &config->accessControl;
+  // set all the callbacks
+  ac->clear = AccessControl::clear;
+  ac->activateSession = AccessControl::activateSession;
+  ac->closeSession = AccessControl::closeSession;
+  ac->getUserRightsMask = AccessControl::getUserRightsMask;
+  ac->getUserAccessLevel = AccessControl::getUserAccessLevel;
+  ac->getUserExecutable = AccessControl::getUserExecutable;
+  ac->getUserExecutableOnObject = AccessControl::getUserExecutableOnObject;
+  ac->allowAddNode = AccessControl::allowAddNode;
+  ac->allowAddReference = AccessControl::allowAddReference;
+  ac->allowBrowseNode = AccessControl::allowBrowseNode;
+
+#ifdef UA_ENABLE_SUBSCRIPTIONS
+    ac->allowTransferSubscription = AccessControl::allowTransferSubscription;
+#endif
+
+#ifdef UA_ENABLE_HISTORIZING
+    ac->allowHistoryUpdateUpdateData = allowHistoryUpdateUpdateData_default;
+    ac->allowHistoryUpdateDeleteRawModified = allowHistoryUpdateDeleteRawModified_default;
+#endif
+
+    ac->allowDeleteNode = AccessControl::allowDeleteNode;
+    ac->allowDeleteReference = AccessControl::allowDeleteReference;
+
+    AccessControl::AccessControlContext *context = (AccessControl::AccessControlContext*)
+            UA_malloc(sizeof(AccessControl::AccessControlContext));
+    if(!context)
+        return UA_STATUSCODE_BADOUTOFMEMORY;
+    memset(context, 0, sizeof(AccessControl::AccessControlContext));
+    ac->context = context;
+
+    /* Allow anonymous? */
+    context->allowAnonymous = allowAnonymous;
+    if(allowAnonymous) {
+        UA_LOG_INFO(&config->logger, UA_LOGCATEGORY_SERVER,
+                    "AccessControl: Anonymous login is enabled");
+    }
+
+    /* Copy username/password to the access control plugin */
+    if(usernamePasswordLoginSize > 0) {
+        context->usernamePasswordLogin = (UA_UsernamePasswordLogin*)
+            UA_malloc(usernamePasswordLoginSize * sizeof(UA_UsernamePasswordLogin));
+        if(!context->usernamePasswordLogin)
+            return UA_STATUSCODE_BADOUTOFMEMORY;
+        context->usernamePasswordLoginSize = usernamePasswordLoginSize;
+        for(size_t i = 0; i < usernamePasswordLoginSize; i++) {
+            UA_String_copy(&usernamePasswordLogin[i].username, &context->usernamePasswordLogin[i].username);
+            UA_String_copy(&usernamePasswordLogin[i].password, &context->usernamePasswordLogin[i].password);
+        }
+    }
+
+    /* Set the allowed policies */
+    size_t policies = 0;
+    if(allowAnonymous)
+        policies++;
+    if(usernamePasswordLoginSize > 0)
+        policies++;
+    ac->userTokenPoliciesSize = 0;
+    ac->userTokenPolicies = (UA_UserTokenPolicy *)
+        UA_Array_new(policies, &UA_TYPES[UA_TYPES_USERTOKENPOLICY]);
+    if(!ac->userTokenPolicies)
+        return UA_STATUSCODE_BADOUTOFMEMORY;
+    ac->userTokenPoliciesSize = policies;
+
+    policies = 0;
+    if(allowAnonymous) {
+        ac->userTokenPolicies[policies].tokenType = UA_USERTOKENTYPE_ANONYMOUS;
+        ac->userTokenPolicies[policies].policyId = UA_STRING_ALLOC(ANON_POLICY);
+        //ac->userTokenPolicies[policies].policyId = AccessControl::anonymous_policy;
+        if (!ac->userTokenPolicies[policies].policyId.data)
+            return UA_STATUSCODE_BADOUTOFMEMORY;
+        policies++;
+    }
+
+    if(usernamePasswordLoginSize > 0) {
+        ac->userTokenPolicies[policies].tokenType = UA_USERTOKENTYPE_USERNAME;
+        ac->userTokenPolicies[policies].policyId = UA_STRING_ALLOC(USER_POLICY);
+//        ac->userTokenPolicies[policies].policyId = AccessControl::username_policy; //UA_STRING_ALLOC(USERNAME_POLICY);
+        if(!ac->userTokenPolicies[policies].policyId.data)
+            return UA_STATUSCODE_BADOUTOFMEMORY;
+
+//#if UA_LOGLEVEL <= 400
+//        const UA_String noneUri = UA_STRING("http://opcfoundation.org/UA/SecurityPolicy#None");
+//        if(UA_ByteString_equal(userTokenPolicyUri, &noneUri)) {
+//            UA_LOG_WARNING(&config->logger, UA_LOGCATEGORY_SERVER,
+//                           "Username/Password configured, but no encrypting SecurityPolicy. "
+//                           "This can leak credentials on the network.");
+//        }
+//#endif
+        return UA_ByteString_copy(userTokenPolicyUri,
+                                  &ac->userTokenPolicies[policies].securityPolicyUri);
+    }
+    return UA_STATUSCODE_GOOD;
+}
+
+
+void AccessControl::clear(UA_AccessControl *ac)
+{
+  UA_Array_delete((void*)(uintptr_t)ac->userTokenPolicies,
+                    ac->userTokenPoliciesSize,
+                    &UA_TYPES[UA_TYPES_USERTOKENPOLICY]);
+    ac->userTokenPolicies = NULL;
+    ac->userTokenPoliciesSize = 0;
+
+    AccessControl::AccessControlContext *context = (AccessControl::AccessControlContext*)ac->context;
+
+    if (context) {
+        for(size_t i = 0; i < context->usernamePasswordLoginSize; i++) {
+            UA_String_clear(&context->usernamePasswordLogin[i].username);
+            UA_String_clear(&context->usernamePasswordLogin[i].password);
+        }
+        if(context->usernamePasswordLoginSize > 0)
+            UA_free(context->usernamePasswordLogin);
+        UA_free(ac->context);
+        ac->context = NULL;
+    }
+}
+
+#ifdef UA_ENABLE_SUBSCRIPTIONS
+
+UA_Boolean
+AccessControl::allowTransferSubscription(UA_Server *server, UA_AccessControl *ac,
+                                  const UA_NodeId *oldSessionId, void *oldSessionContext,
+                                  const UA_NodeId *newSessionId, void *newSessionContext)
+{
+    if(oldSessionContext == newSessionContext)
+        return true;
+    if(oldSessionContext && newSessionContext)
+        return UA_ByteString_equal((UA_ByteString*)oldSessionContext,
+                                   (UA_ByteString*)newSessionContext);
+    return false;
+}
+
+#endif
+
+void
+AccessControl::closeSession(UA_Server *server, UA_AccessControl *ac,
+                     const UA_NodeId *sessionId, void *sessionContext)
+{
+    if(sessionContext)
+        UA_ByteString_delete((UA_ByteString*)sessionContext);
+}
+
+UA_UInt32
+AccessControl::getUserRightsMask(UA_Server *server, UA_AccessControl *ac,
+                          const UA_NodeId *sessionId, void *sessionContext,
+                          const UA_NodeId *nodeId, void *nodeContext)
+{
+    return 0xFFFFFFFF;
 }
 
 
@@ -206,7 +373,7 @@ UA_Boolean
 AccessControl::allowAddReference(UA_Server *server, UA_AccessControl *ac,
                   const UA_NodeId *sessionId, void *sessionContext,
                   const UA_AddReferencesItem *item) {
-    printf("Called allowAddReference\n");
+    //printf("Called allowAddReference\n");
     return UA_FALSE; //UA_TRUE;
 }
 
@@ -214,7 +381,7 @@ UA_Boolean
 AccessControl::allowDeleteNode(UA_Server *server, UA_AccessControl *ac,
                 const UA_NodeId *sessionId, void *sessionContext,
                 const UA_DeleteNodesItem *item) {
-    printf("Called allowDeleteNode\n");
+    //printf("Called allowDeleteNode\n");
     return UA_FALSE; // Do not allow deletion from client
 }
 
@@ -222,7 +389,7 @@ UA_Boolean
 AccessControl::allowDeleteReference(UA_Server *server, UA_AccessControl *ac,
                      const UA_NodeId *sessionId, void *sessionContext,
                      const UA_DeleteReferencesItem *item) {
-    printf("Called allowDeleteReference\n");
+    //printf("Called allowDeleteReference\n");
     return UA_FALSE; //UA_TRUE;
 }
 
@@ -391,12 +558,12 @@ void AccessControl::link_callbacks(UA_Server *s)
 
   // clear whatever exists in terms of access control
   config->accessControl.clear(&config->accessControl);
-  UA_StatusCode retval = UA_AccessControl_default(config, false,
+  UA_StatusCode retval = AccessControl::init_access_control(config, true,
                  &config->securityPolicies[config->securityPoliciesSize-1].policyUri, 2, logins);
       if (retval != UA_STATUSCODE_GOOD)
       {
         LOG(Log::ERR) <<
-        "UA_AccessControl_default returned: " << UaStatus(retval).toString().toUtf8();
+        "AccessControl::init_access_control returned: " << UaStatus(retval).toString().toUtf8();
       }
 //      else
 //      {

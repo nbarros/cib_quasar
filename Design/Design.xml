@@ -48,7 +48,7 @@
     </d:method>
   </d:class>
   <d:class name="IoLPowerMeter">
-    <d:devicelogic/>
+    <d:devicelogic></d:devicelogic>
     <d:configentry dataType="UaString" name="serial_number" storedInDeviceObject="true">
   	</d:configentry>
     <d:configentry dataType="UaString" name="port" storedInDeviceObject="true">
@@ -134,6 +134,10 @@
     <d:configentry dataType="OpcUa_UInt16" name="baud_rate"
     	storedInDeviceObject="true" defaultValue="9600">
     </d:configentry>
+	<!-- Cache variables. Some of these are writeable, others not -->
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="device_port" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="N/A">
+  	</d:cachevariable>
+    
     <!--  units in microseconds -->
     <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="qswitch_us" nullPolicy="nullForbidden" addressSpaceWrite="delegated">
     	<d:configRestriction>
@@ -170,13 +174,18 @@
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
     	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="999">
     </d:cachevariable>
+    <!-- Operation methods -->
+    <d:method name="set_port" executionSynchronicity="synchronous">
+		<d:argument dataType="UaString" name="device_port"></d:argument>
+		<d:returnvalue dataType="UaString" name="response"></d:returnvalue>
+    </d:method>
+    <!--local method to stop operation-->
     <d:method name="stop" executionSynchronicity="synchronous">
-      <!--local method to stop operation-->
+		<d:returnvalue dataType="UaString" name="response"></d:returnvalue>
     </d:method>
     <d:method name="check_status" executionSynchronicity="synchronous">
-      <d:returnvalue dataType="OpcUa_UInt16" name="status" /><d:returnvalue
-      	dataType="UaString" name="description">
-</d:returnvalue>
+      <d:returnvalue dataType="OpcUa_UInt16" name="status" />
+      <d:returnvalue dataType="UaString" name="description"></d:returnvalue>
     </d:method>
     <d:method name="configure_laser" executionSynchronicity="synchronous">
     	<d:argument dataType="UaString" name="config"></d:argument>

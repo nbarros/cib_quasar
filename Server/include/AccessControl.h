@@ -24,6 +24,12 @@ public:
       UA_UsernamePasswordLogin *usernamePasswordLogin;
   } AccessControlContext;
 
+
+  static UA_StatusCode init_access_control(UA_ServerConfig *config, UA_Boolean allowAnonymous,
+                                                  const UA_ByteString *userTokenPolicyUri,
+                                                  size_t usernamePasswordLoginSize,
+                                                  const UA_UsernamePasswordLogin *usernamePasswordLogin);
+
   // the structure of the methods below is defined by the
   static UA_StatusCode
   activateSession(UA_Server *server, UA_AccessControl *ac,
@@ -76,6 +82,28 @@ public:
                             const UA_NodeId *methodId, void *methodContext);
   // constants that we need to define
 
+  static void
+  closeSession(UA_Server *server, UA_AccessControl *ac,
+                       const UA_NodeId *sessionId, void *sessionContext);
+
+  static UA_UInt32
+  getUserRightsMask(UA_Server *server, UA_AccessControl *ac,
+                            const UA_NodeId *sessionId, void *sessionContext,
+                            const UA_NodeId *nodeId, void *nodeContext);
+
+//  static UA_Byte
+//  getUserAccessLevel(UA_Server *server, UA_AccessControl *ac,
+//                             const UA_NodeId *sessionId, void *sessionContext,
+//                             const UA_NodeId *nodeId, void *nodeContext);
+
+#ifdef UA_ENABLE_SUBSCRIPTIONS
+static UA_Boolean
+allowTransferSubscription(UA_Server *server, UA_AccessControl *ac,
+                                  const UA_NodeId *oldSessionId, void *oldSessionContext,
+                                  const UA_NodeId *newSessionId, void *newSessionContext);
+#endif
+
+  static void clear(UA_AccessControl *ac) ;
 
   void link_callbacks(UA_Server *s);
 
