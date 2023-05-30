@@ -45,6 +45,46 @@ public:
 
 
     /* delegators for methods */
+    UaStatus callConfigure_attenuator (
+        const UaString&  json_config,
+        UaString& response
+    ) ;
+    UaStatus callSet_transmission (
+        OpcUa_Double transmission,
+        UaString& response
+    ) ;
+    UaStatus callSet_conn_details (
+        const UaString&  port,
+        OpcUa_UInt16 baud_rate,
+        UaString& response
+    ) ;
+    UaStatus callStop (
+        UaString& response
+    ) ;
+    UaStatus callSet_resolution (
+        OpcUa_UInt16 resolution_setting,
+        UaString& response
+    ) ;
+    UaStatus callSet_current (
+        OpcUa_UInt16 idle_setting,
+        OpcUa_UInt16 moving_setting,
+        UaString& response
+    ) ;
+    UaStatus callSet_acceleration (
+        OpcUa_UInt16 acceleration,
+        UaString& response
+    ) ;
+    UaStatus callSet_deceleration (
+        OpcUa_UInt16 deceleration,
+        UaString& response
+    ) ;
+    UaStatus callSet_max_speed (
+        OpcUa_UInt16 max_speed,
+        UaString& response
+    ) ;
+    UaStatus callGet_status (
+        UaString& response
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */

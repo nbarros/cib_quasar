@@ -52,6 +52,7 @@ DIoLAttenuator::DIoLAttenuator (
     Parent_DIoLAttenuator* parent
 ):
     Base_DIoLAttenuator( config, parent)
+
     /* fill up constructor initialization list here */
 	, m_is_ready(false)
 {
@@ -68,6 +69,76 @@ DIoLAttenuator::~DIoLAttenuator ()
 
 
 /* delegators for methods */
+UaStatus DIoLAttenuator::callConfigure_attenuator (
+    const UaString&  json_config,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLAttenuator::callSet_transmission (
+    OpcUa_Double transmission,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLAttenuator::callSet_conn_details (
+    const UaString&  port,
+    OpcUa_UInt16 baud_rate,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLAttenuator::callStop (
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLAttenuator::callSet_resolution (
+    OpcUa_UInt16 resolution_setting,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLAttenuator::callSet_current (
+    OpcUa_UInt16 idle_setting,
+    OpcUa_UInt16 moving_setting,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLAttenuator::callSet_acceleration (
+    OpcUa_UInt16 acceleration,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLAttenuator::callSet_deceleration (
+    OpcUa_UInt16 deceleration,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLAttenuator::callSet_max_speed (
+    OpcUa_UInt16 max_speed,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLAttenuator::callGet_status (
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
 // 3     FULLY CUSTOM CODE STARTS HERE                                     3
