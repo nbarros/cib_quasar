@@ -197,78 +197,79 @@
   </d:class>
   <d:class name="IoLAttenuator">
     <d:devicelogic/>
-    <d:configentry dataType="UaString" name="serial_number"/>
-    <!-- Variables (none of these are writeable) -->    
+    <d:configentry dataType="UaString" name="serial_number"
+    	storedInDeviceObject="true" />
+    <!-- Variables (none of these are writeable) --><!--intial value of maxval (0xFFFFx)  means to fetch it from the device stored settings-->
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_UInt16" name="resolution_setting"
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="65535">
     </d:cachevariable>
-        <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="UaString" name="device_port"
-    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
-    </d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_UInt16" name="baud_rate"
-    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
+    	name="device_port" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue='auto'>
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_Int32" name="position"
-    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    	dataType="OpcUa_UInt16" name="baud_rate" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="38400">
+    </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus"
+    	dataType="OpcUa_Int32" name="position" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="2147483647">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_UInt16" name="acceleration"
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="65535">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_UInt16" name="deceleration"
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="65535">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_UInt16" name="max_speed"
-    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    	dataType="OpcUa_UInt16" name="max_speed" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="65535">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_UInt16" name="offset"
-    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    	dataType="OpcUa_UInt16" name="offset" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="65535">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_UInt16" name="idle_current_setting"
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="65535">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_UInt16" name="moving_current_setting"
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="65535">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_Double" name="transmission"
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="-1.0">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_UInt16" name="motor_state"
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
-    </d:cachevariable>    
-	<!-- Cache variables enumerating options -->
-    <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="UaString" name="resolution_options"
-    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="65535">
     </d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="UaString" name="motor_state_options"
-    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    <!-- Cache variables enumerating options -->
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
+    	name="resolution_options" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="N/A">
+    </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
+    	name="motor_state_options" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="N/A">
     </d:cachevariable>
 
     <!-- Methods (these are the proper ways to set  parameters) -->

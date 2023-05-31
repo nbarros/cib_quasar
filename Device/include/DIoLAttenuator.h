@@ -22,7 +22,12 @@
 #define __DIoLAttenuator__H__
 
 #include <Base_DIoLAttenuator.h>
-
+#include <json.hpp>
+using json = nlohmann::json;
+namespace device
+{
+  class Attenuator;
+}
 namespace Device
 {
 
@@ -97,14 +102,56 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
-    void update() {}
-    bool is_ready() {return m_is_ready;}
+    // as the device stores configuration internally,
+    // there is no minimal setting necessary
+    // as far as the connection is set, one is ready to operate
+    enum Status{sOffline=0x0,sReady=1};
+    void update();
+    bool is_ready() {return (m_status == sReady);}
 private:
+    // -- private methods
+    void automatic_port_search();
+    void refresh_status(json &resp);
+    void refresh_position();
+    UaStatus init_device(json &resp);
+    // private workers for all the exposed methods
+    UaStatus config_device(json config, json &resp);
+    UaStatus set_transmission(double t, json &resp);
+    UaStatus set_connection(const std::string port, const uint32_t baud_rate, json &resp);
+    UaStatus stop(json &resp);
+    UaStatus set_resolution(const uint16_t v, json &resp);
+    UaStatus set_current_idle(const uint16_t v, json &resp);
+    UaStatus set_current_moving(const uint16_t v, json &resp);
+    UaStatus set_acceleration(const uint16_t v, json &resp);
+    UaStatus set_deceleration(const uint16_t v, json &resp);
+    UaStatus set_max_speed(const uint32_t v, json &resp);
+    //
+    //
     bool m_is_ready; // declares where it is ready for operation
     // this essentially means that all settings are in a reasonable state
-
-
-
+    device::Attenuator *m_att;
+    //
+    std::string m_comport;
+    uint32_t m_baud_rate;
+    // -- variables to identify the device
+    std::string m_sn;
+    std::string m_name;
+    //
+    int32_t m_offset;
+    uint32_t m_max_speed;
+    uint16_t m_motor_state;
+    uint16_t m_acceleration;
+    uint16_t m_deceleration;
+    uint16_t m_resolution_setting;
+    int32_t m_position;
+    uint16_t m_current_idle;
+    uint16_t m_current_moving;
+    double m_transmission;
+    // maps
+    std::map<uint16_t,std::string> m_motor_states;
+    std::map<uint16_t,std::string> m_resolution_states;
+    //
+    Status m_status;
 };
 
 }
