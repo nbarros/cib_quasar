@@ -1,0 +1,12 @@
+{
+"name":"A1",
+"serial_number":"NJAS44DN",
+"port":"auto",
+"baud_rate":38400,
+"acceleration":100,
+"deceleration":100,
+"current_idle":10,
+"current_move":100,
+"max_speed":17000,
+"resolution":2
+}
