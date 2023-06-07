@@ -558,7 +558,7 @@ UaStatus DIoLLaserUnit::callSingle_shot (
      // drive a single shot from the CIB (so that the external shutter is also timely opened)
      m_status = sLasing;
      // FIXME: If the operational status is propagated to the address space, we need to update it here
-     m_laser->single_shot(true); // ensure that the prescale is rescaled
+     m_laser->single_shot(); // ensure that the prescale is rescaled
      m_status = sReady;
      // FIXME: The operation status should perhaps be reported back to SC
      //getAddressSpaceLink()->setStatus_code(status,OpcUa_Good);
