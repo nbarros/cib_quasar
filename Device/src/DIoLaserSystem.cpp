@@ -28,6 +28,7 @@
 #include <DIoLPiezoController.h>
 #include <DIoLAttenuator.h>
 #include <DIoLPowerMeter.h>
+#include <DIoLShutter.h>
 
 #include <string>
 
@@ -286,6 +287,10 @@ void DIoLaserSystem::update()
     for (Device::DIoLAttenuator* latt : iolattenuators ())
     {
     	latt->update();
+    }
+    for (Device::DIoLShutter *lshutter : iolshutters())
+    {
+      lshutter->update();
     }
     for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
     {

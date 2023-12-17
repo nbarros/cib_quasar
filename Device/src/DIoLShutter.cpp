@@ -87,4 +87,16 @@ UaStatus DIoLShutter::callOpen_shutter (
 // 3     You can do whatever you want, but please be decent.               3
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
 
+void DIoLShutter::update()
+{
+  // TODO: Refresh shutter status bit from FPGA
+}
+
+bool DIoLShutter::is_ready()
+{
+  // TODO: Implement the proper readiness check for the shutter
+  // likely it is a case of checking connectivity
+  return true;
+}
+
 }

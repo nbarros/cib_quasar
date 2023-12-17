@@ -1268,5 +1268,10 @@ UaStatus DIoLPowerMeter::init_device(json &resp)
   return OpcUa_Good;
 
 }
+bool DIoLPowerMeter::is_ready()
+{
+  return (m_status == sReady);
+}
+
 
 } // namespace Device

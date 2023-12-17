@@ -413,6 +413,9 @@
     </d:method>
     <d:hasobjects instantiateUsing="configuration" class="IoLPowerMeter" minOccurs="1" maxOccurs="1">
     </d:hasobjects>
+    <d:hasobjects instantiateUsing="configuration" class="IoLShutter"
+    	minOccurs="1" maxOccurs="1">
+    </d:hasobjects>
   </d:class>
   <d:root>
     <d:hasobjects class="IoLaserSystem" instantiateUsing="configuration"/>
