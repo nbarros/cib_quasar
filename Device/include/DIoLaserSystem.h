@@ -81,9 +81,10 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
-
+    // makes a roll call for each system to update itself
     void update();
-
+    // makes a status call over all subsystems
+    bool is_ready();
 private:
 
 

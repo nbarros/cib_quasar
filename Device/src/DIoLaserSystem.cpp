@@ -31,6 +31,14 @@
 
 #include <string>
 
+#define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
+
+#define log_e(m,s) log_msg("ERROR",m,s)
+#define log_w(m,s) log_msg("WARN",m,s)
+#define log_i(m,s) log_msg("INFO",m,s)
+
+using std::ostringstream;
+
 namespace Device
 {
 // 1111111111111111111111111111111111111111111111111111111111111111111111111
@@ -125,7 +133,67 @@ UaStatus DIoLaserSystem::callFire_at_position (
     UaString& answer
 )
 {
-    return OpcUa_BadNotImplemented;
+  //
+  json resp;
+  // first check that the whole system is ready
+  if (!is_ready())
+  {
+    resp["status"] = "ERROR";
+    std::ostringstream msg("");
+    msg << log_e("fire_at_position","System is not ready to operate");
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_BadInvalidState;
+
+    LOG(Log::ERR) << msg.str();
+    answer = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+
+  // once it is ready, pass on the information to the respective subsystems
+
+  // in this case the laser is not going to just start firing, but simply fire a discrete number of pulses
+  // there is a specific callfor that under the IOLaser device
+
+  // -- the motors are identified, so each entry refers to a motor
+  // do a check on the order of position and number of motors
+  if (target_pos.size()!= iolmotors().size())
+  {
+    // different number of position coordinates and motors
+    resp["status"] = "ERROR";
+    std::ostringstream msg("");
+    msg << log_e("fire_at_position","Different number of coordinates (")
+        << target_pos.size() << ") and available motors ("
+        << iolmotors().size() << "). Refusing to operate.";
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_BadInvalidArgument;
+
+    return OpcUa_Good;
+  }
+
+  if (num_pulses < 1)
+  {
+    // different number of position coordinates and motors
+    resp["status"] = "ERROR";
+    std::ostringstream msg("");
+    msg << log_e("fire_at_position","Invalid number of pulses (")
+        << num_pulses << "). Value must be at least 1.";
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_BadInvalidArgument;
+
+    return OpcUa_Good;
+  }
+
+  // ready to operate
+  // -- be sure to set the shutter closed until destination is reached
+  //TODO: Add shutter device
+
+  // the logic is the following
+  // 1. Call each of the the motors to move to the desired position
+  // 2. open the shutter
+  // 3. fire a discrete number of shots
+  // 4. close the shutter
+
+  return OpcUa_Good;
 }
 UaStatus DIoLaserSystem::callFire_segment (
     const std::vector<OpcUa_Int32>&  start_pos,
@@ -133,13 +201,65 @@ UaStatus DIoLaserSystem::callFire_segment (
     UaString& answer
 )
 {
-    return OpcUa_BadNotImplemented;
+  json resp;
+  // first check that the whole system is ready
+  if (!is_ready())
+  {
+    resp["status"] = "ERROR";
+    std::ostringstream msg("");
+    msg << log_e("start_move","System is not ready to operate");
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_BadInvalidState;
+
+    LOG(Log::ERR) << msg.str();
+    answer = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  //
+  // Operation sequence
+  //
+  // 1. fill FIFOs of red zones
+  // 2. set target destination for all motors
+  // 3. move motors into start point
+  // 4. set inital fire position
+  // 5. initiate movement
+  // 6. open iris
+  // 7. When reaching destination, close iris
+    return OpcUa_Good;
 }
 UaStatus DIoLaserSystem::callExecute_scan (
     const UaString&  plan,
     UaString& answer
 )
 {
+  json resp;
+  // first check that the whole system is ready
+  if (!is_ready())
+  {
+    resp["status"] = "ERROR";
+    std::ostringstream msg("");
+    msg << log_e("start_move","System is not ready to operate");
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_BadInvalidState;
+
+    LOG(Log::ERR) << msg.str();
+    answer = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+
+  // -- Parse the configuration JSON
+  // -- it should be composed of sub-sequences
+
+
+  //
+  // Operation sequence
+  //
+  // 1. start a firing sequence
+  // 2. close iris
+  // 3. start another firing sequence
+  // 4. repeat at will
+  //
+
     return OpcUa_BadNotImplemented;
 }
 
@@ -171,6 +291,44 @@ void DIoLaserSystem::update()
     {
       lmeter->update();
     }
-
+}
+bool DIoLaserSystem::is_ready()
+{
+  for (Device::DIoLLaserUnit* lunit : iollaserunits())
+  {
+    if (!lunit->is_ready())
+    {
+      return false;
+    }
+  }
+  for (Device::DIoLMotor* lmotor : iolmotors ())
+  {
+    if (!lmotor->is_ready())
+    {
+      return false;
+    }
+  }
+  for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
+  {
+    if (!lctl->is_ready())
+    {
+      return false;
+    }
+  }
+  for (Device::DIoLAttenuator* latt : iolattenuators ())
+  {
+    if (!latt->is_ready())
+    {
+      return false;
+    }
+  }
+  for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+  {
+    if (!lmeter->is_ready())
+    {
+      return false;
+    }
+  }
+  return true;
 }
 }

@@ -102,6 +102,7 @@ public:
 
     enum Status{sOffline=0x0,sUnconfigured=1,sReady=2};
     void update();
+    bool is_ready();
     UaStatus init_device(json &resp);
 private:
     void automatic_port_search();

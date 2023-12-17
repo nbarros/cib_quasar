@@ -156,6 +156,9 @@ private:
     std::map<Status,std::string> m_status_map;
     std::string m_name;
     conf_word m_config;
+    //
+    std::uint32_t m_idle_counter;
+    std::uint32_t m_idle_timeout; // timeout after which the laser
 };
 
 }
