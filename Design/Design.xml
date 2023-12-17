@@ -341,7 +341,7 @@
   	<d:cachevariable initializeWith="valueAndStatus"
   		dataType="OpcUa_Boolean" name="is_closed" nullPolicy="nullForbidden"
   		addressSpaceWrite="forbidden"
-  		initialStatus="OpcUa_BadWaitingForInitialData" initialValue="false">
+  		initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_True">
   	</d:cachevariable>
   	<d:configentry dataType="OpcUa_UInt16" name="id"></d:configentry>
   	<d:method name="close_shutter" executionSynchronicity="synchronous">
