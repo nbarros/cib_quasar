@@ -22,6 +22,7 @@ Makefile
 build/
 # Prerequisites
 *.d
+Documentation/DoxygenGenerated/
 
 # Compiled Object files
 *.slo
