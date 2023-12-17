@@ -336,7 +336,20 @@
     </d:cachevariable>
     <d:configentry dataType="OpcUa_UInt16" name="id"/>
   </d:class>
-  
+  <d:class name="IoLShutter">
+  	<d:devicelogic></d:devicelogic>
+  	<d:cachevariable initializeWith="valueAndStatus"
+  		dataType="OpcUa_Boolean" name="is_closed" nullPolicy="nullForbidden"
+  		addressSpaceWrite="forbidden"
+  		initialStatus="OpcUa_BadWaitingForInitialData" initialValue="false">
+  	</d:cachevariable>
+  	<d:configentry dataType="OpcUa_UInt16" name="id"></d:configentry>
+  	<d:method name="close_shutter" executionSynchronicity="synchronous">
+  		<d:returnvalue dataType="UaString" name="answer"></d:returnvalue></d:method>
+  	<d:method name="open_shutter" executionSynchronicity="synchronous">
+  		<d:returnvalue dataType="UaString" name="answer"></d:returnvalue></d:method>
+  </d:class>
+
   <d:class name="IoLCIB">
     <d:devicelogic/>
     <d:configentry dataType="OpcUa_UInt16" name="id"/>
