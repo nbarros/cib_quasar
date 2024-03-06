@@ -130,7 +130,7 @@ DIoLMotor::~DIoLMotor ()
 UaStatus DIoLMotor::writePositionSetPoint ( const OpcUa_Int32& v)
 {
 
-	// check ranges
+	// check ranges -- these ranges actually depend on the specific motor
 	if ((v < -50000) || (v > 50000))
 	{
 		LOG(Log::ERR) << "Value out of range for positionSetPoint. Offending value = " << v;

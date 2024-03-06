@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration xmlns="http://cern.ch/quasar/Configuration" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cern.ch/quasar/Configuration ../Configuration/Configuration.xsd ">
 <IoLaserSystem location="0x1" name="LS1" enabled="true" id="11">
-	<IoLMotor name="m1" id="1" server_address="192.168.2.173" port="5000" refresh_period_ms="0"
+	<IoLMotor name="RNN800" id="1" server_address="192.168.2.173" port="5000" refresh_period_ms="0"
 		acceleration="200" deceleration="200" speed_setpoint="1000">
 	</IoLMotor>
 	<IoLMotor name="m2" id="2" server_address="localhost" port="4501" refresh_period_ms="0" acceleration="200" deceleration="200" speed_setpoint="1000">

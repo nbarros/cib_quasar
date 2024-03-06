@@ -743,15 +743,17 @@ UaStatus DIoLLaserUnit::callFire_standalone (
 {
 
   json resp;
-  (void)fire_standalone(fire,resp);
+  (void)fire_standalone(num_pulses,resp);
   response = UaString(resp.dump().c_str());
 
   return OpcUa_Good;
 }
-
+// FIXME: is this method really necessary? The laser is meant to not be turned on and off at will
+// like that, since it also needs to warm up to stabilize.
 UaStatus DIoLLaserUnit::fire_standalone(uint32_t num_pulses, json & answer)
 {
-  // FIXME: Note that this method does not do anything about the external shutter
+  // NOTE: This method should not really called and is to be removed
+  // Note that this method does not do anything about the external shutter
   // it assumes that the external shutter is either not in place or has been in some other way operated to open
   // for these shots
   // ultimately, this is just meant to be used in commissioning. For normal operation
@@ -787,13 +789,7 @@ UaStatus DIoLLaserUnit::fire_standalone(uint32_t num_pulses, json & answer)
   // if the laser is not in the sReady state, also do nothing
   // likely some parameter is not set yet
   // also fail if the laser is firing
-  // if the laser is firing, calling it again should fail
-  // this logic is a bit more complicated
-  // since it depends on the tuple (status,fire)
-  // sReady && true : OK
-  // sLasing && false : OK
-  // others : Fail
-  if (!(((m_status == sReady) && fire) || (m_status == sLasing && !fire)))
+  if (!m_status == sReady)
   {
     msg.clear(); msg.str("");
     msg << log_e("fire","The laser is in the wrong state") << " (expected " << static_cast<uint16_t>(sReady) << " have " << static_cast<uint16_t>(m_status) << ")";
@@ -809,31 +805,25 @@ UaStatus DIoLLaserUnit::fire_standalone(uint32_t num_pulses, json & answer)
   // we want the CIB to close the external shutter after N shotspencv
    try
    {
-
-     if (fire)
-     {
-       // we are starting the laser
-       m_laser->fire_start();
-       m_status = sLasing;
-       timer_start(this);
-       // FIXME: We should start another thread to periodically query the shot count
-     }
-     else
-     {
-       m_laser->fire_stop();
-       m_status = sReady;
-       // stop the counter
-       set_counting_flashes(false);
-     }
-     // FIXME: This logic is not doing anything about the external shutter
-     // once the external shutter is in place, one should actually stop using this command and instead
-     // drive a single shot from the CIB (so that the external shutter is also timely opened)
+     // -- check the number of laser shots
+     uint32_t num_shots = m_shot_count;
+     // we are starting the laser
+     m_laser->fire_start();
      m_status = sLasing;
-     // FIXME: If the operational status is propagated to the address space, we need to update it here
-     m_laser->fire(static_cast<device::Laser::Fire>(fire)); // ensure that the prescale is rescaled
+     timer_start(this);
+
+     while (m_shot_count != (num_shots+num_pulses))
+     {
+       std::this_thread::sleep_for(std::chrono::milliseconds(50));
+     }
+
+     // -- done with the number of shots
+     m_laser->fire_stop();
      m_status = sReady;
-     // FIXME: The operation status should perhaps be reported back to SC
-     //getAddressSpaceLink()->setStatus_code(status,OpcUa_Good);
+     // stop the counter
+     set_counting_flashes(false);
+
+
    }
    catch(serial::PortNotOpenedException &e)
    {
@@ -979,7 +969,7 @@ void DIoLLaserUnit::timer_start(DIoLLaserUnit *obj)
     while (obj->get_counting_flashes())
     {
       // We know that the laser will be firing at 10 Hz, that means 100 ms
-      auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+      auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
       if (obj->refresh_shot_count() != OpcUa_Good)
       {
         LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";

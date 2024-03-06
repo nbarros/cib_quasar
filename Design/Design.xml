@@ -2,20 +2,18 @@
 <d:design xmlns:d="http://cern.ch/quasar/Design" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" projectShortName="IoLSlowControlServer" xsi:schemaLocation="http://cern.ch/quasar/Design Design.xsd ">
   <d:class name="IoLMotor">
     <d:devicelogic/><!--The coordinate_id is an entry that permits one to map a motor to the coordinate in the movement instruction. This cannot be changed in runtime-->
-    <d:configentry dataType="OpcUa_UInt16"
-    	name="coordinateId" storedInDeviceObject="true">
-</d:configentry>
-  	<d:configentry dataType="OpcUa_UInt16" name="id" storedInDeviceObject="true">
-  </d:configentry>
-    <d:configentry dataType="UaString" name="server_address" storedInDeviceObject="true">
-  </d:configentry>
-    <d:configentry dataType="OpcUa_UInt16" name="port" defaultValue="5000" storedInDeviceObject="true">
-    </d:configentry>
-    <d:cachevariable name="position" addressSpaceWrite="forbidden" dataType="OpcUa_Int32" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
+  	<d:configentry dataType="OpcUa_UInt16" name="config_id" storedInDeviceObject="true">
+  </d:configentry><d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="server_addr" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialValue="localhost" initialStatus="OpcUa_Bad">
+    </d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="server_port" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_Bad" initialValue="5000">
+    </d:cachevariable><d:cachevariable initializeWith="configuration" dataType="UaString" name="id" nullPolicy="nullForbidden" addressSpaceWrite="forbidden">
     </d:cachevariable>
-    <d:cachevariable name="positionSetPoint" addressSpaceWrite="delegated" dataType="OpcUa_Int32" initializeWith="valueAndStatus" nullPolicy="nullForbidden" initialValue="-99999" initialStatus="OpcUa_BadWaitingForInitialData">
-    </d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="refresh_period_ms" nullPolicy="nullAllowed" addressSpaceWrite="delegated">
+    
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Int32" name="range_min" nullPolicy="nullForbidden" addressSpaceWrite="delegated">
+    </d:cachevariable><d:cachevariable initializeWith="configuration" dataType="OpcUa_Int32" name="range_max" nullPolicy="nullForbidden" addressSpaceWrite="delegated">
+    </d:cachevariable><d:cachevariable name="target_position" addressSpaceWrite="delegated" dataType="OpcUa_Int32" initializeWith="valueAndStatus" nullPolicy="nullForbidden" initialValue="-99999" initialStatus="OpcUa_BadWaitingForInitialData">
+    <d:cachevariable name="current_position" addressSpaceWrite="forbidden" dataType="OpcUa_Int32" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
+    </d:cachevariable></d:cachevariable>
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt16" name="refresh_period_ms" nullPolicy="nullAllowed" addressSpaceWrite="delegated">
   </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="is_moving" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
   </d:cachevariable>
@@ -23,8 +21,7 @@
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Double" name="temperature_C" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
   </d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="speed_readout" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
-    </d:cachevariable>
+    
     <!--operation_status corresponds to a bitmask. The codes are documented in the manual-->
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="operation_status" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 	</d:cachevariable>
@@ -32,11 +29,12 @@
 	</d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="rpi_mem" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 	</d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="acceleration" nullPolicy="nullForbidden" addressSpaceWrite="regular">
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="acceleration" nullPolicy="nullForbidden" addressSpaceWrite="delegated">
     </d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="deceleration" nullPolicy="nullForbidden" addressSpaceWrite="regular">
+    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="deceleration" nullPolicy="nullForbidden" addressSpaceWrite="delegated">
     </d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="speed_setpoint" nullPolicy="nullForbidden" addressSpaceWrite="regular">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="speed_readout" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+    </d:cachevariable><d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="speed_setpoint" nullPolicy="nullForbidden" addressSpaceWrite="delegated">
     </d:cachevariable>
 	<!-- methods that allow for standalone motor operation -->
     <d:method name="start_move" executionSynchronicity="synchronous">
@@ -49,15 +47,15 @@
       <d:argument dataType="UaString" name="config_json"/>
       <d:returnvalue dataType="UaString" name="response"/>
     </d:method>
+    
+    
   </d:class>
   <d:class name="IoLPowerMeter">
     <d:devicelogic></d:devicelogic>
     <d:configentry dataType="UaString" name="serial_number" storedInDeviceObject="true">
-  	</d:configentry>
-    <d:configentry dataType="UaString" name="port" storedInDeviceObject="true">
-  	</d:configentry>
-    <d:configentry dataType="OpcUa_UInt16" name="baud_rate" storedInDeviceObject="true">
-  	</d:configentry>
+  	</d:configentry><d:cachevariable initializeWith="configuration" dataType="UaString" name="port" nullPolicy="nullForbidden" addressSpaceWrite="forbidden">
+  	</d:cachevariable><d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt16" name="baud_rate" nullPolicy="nullForbidden" addressSpaceWrite="forbidden">
+  	</d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="device_port" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="N/A">
   	</d:cachevariable>
     <d:cachevariable initializeWith="configuration" dataType="OpcUa_Int16" name="range_selected" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" defaultConfigInitializerValue="2">
@@ -126,18 +124,20 @@
     	name="stop" executionSynchronicity="synchronous">
 	<d:returnvalue dataType="UaString" name="response"></d:returnvalue>
 </d:method>
+  	
   </d:class>  
   <d:class name="IoLLaserUnit">
     <d:devicelogic />
     <d:configentry dataType="UaString" name="serial_number" storedInDeviceObject="true">
   	</d:configentry>
-    <d:configentry dataType="UaString" name="port"
-    	storedInDeviceObject="true" defaultValue="auto">
-    </d:configentry>
-    <d:configentry dataType="OpcUa_UInt16" name="baud_rate"
-    	storedInDeviceObject="true" defaultValue="9600">
-    </d:configentry>
-	<!-- Cache variables. Some of these are writeable, others not -->
+    <d:cachevariable initializeWith="configuration" dataType="UaString"
+    	name="port" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden" initialValue="auto">
+    </d:cachevariable>
+    <d:cachevariable initializeWith="configuration"
+    	dataType="OpcUa_UInt16" name="baud_rate" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden" initialValue="9600">
+    </d:cachevariable><!-- Cache variables. Some of these are writeable, others not -->
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="device_port" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="N/A">
   	</d:cachevariable>   
     <!--  units in microseconds -->
@@ -197,6 +197,7 @@
     	<d:argument dataType="OpcUa_Boolean" name="fire"></d:argument>
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue>
     </d:method>
+    
   </d:class>
   <d:class name="IoLAttenuator">
     <d:devicelogic/>
@@ -339,19 +340,6 @@
     </d:cachevariable>
     <d:configentry dataType="OpcUa_UInt16" name="id"/>
   </d:class>
-  <d:class name="IoLShutter">
-  	<d:devicelogic></d:devicelogic>
-  	<d:cachevariable initializeWith="valueAndStatus"
-  		dataType="OpcUa_Boolean" name="is_closed" nullPolicy="nullForbidden"
-  		addressSpaceWrite="forbidden"
-  		initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_True">
-  	</d:cachevariable>
-  	<d:configentry dataType="OpcUa_UInt16" name="id"></d:configentry>
-  	<d:method name="close_shutter" executionSynchronicity="synchronous">
-  		<d:returnvalue dataType="UaString" name="answer"></d:returnvalue></d:method>
-  	<d:method name="open_shutter" executionSynchronicity="synchronous">
-  		<d:returnvalue dataType="UaString" name="answer"></d:returnvalue></d:method>
-  </d:class>
 
   <d:class name="IoLCIB">
     <d:devicelogic/>
@@ -384,7 +372,8 @@
 		</d:hasobjects>
     <d:hasobjects instantiateUsing="configuration" class="IoLCIB" minOccurs="1" maxOccurs="1">
 		</d:hasobjects>
-    <d:method name="load_config" executionSynchronicity="synchronous">
+    <d:hasobjects instantiateUsing="configuration" class="IoLPowerMeter" minOccurs="1" maxOccurs="1">
+    </d:hasobjects><d:method name="load_config" executionSynchronicity="synchronous">
       <d:argument dataType="UaString" name="config"/>
       <d:returnvalue dataType="UaString" name="response"/>
     </d:method>
@@ -414,11 +403,10 @@
       <d:argument dataType="UaString" name="plan"/>
       <d:returnvalue dataType="UaString" name="answer"/>
     </d:method>
-    <d:hasobjects instantiateUsing="configuration" class="IoLPowerMeter" minOccurs="1" maxOccurs="1">
-    </d:hasobjects>
-    <d:hasobjects instantiateUsing="configuration" class="IoLShutter"
-    	minOccurs="1" maxOccurs="1">
-    </d:hasobjects>
+    <d:method name="close_shutter" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="answer"></d:returnvalue></d:method>
+    <d:method name="release_shutter" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="answer"></d:returnvalue></d:method>
   </d:class>
   <d:root>
     <d:hasobjects class="IoLaserSystem" instantiateUsing="configuration"/>
