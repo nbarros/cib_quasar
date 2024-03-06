@@ -22,6 +22,8 @@
 #define __DIoLaserSystem__H__
 
 #include <Base_DIoLaserSystem.h>
+#include <json.hpp>
+using json = nlohmann::json;
 
 namespace Device
 {

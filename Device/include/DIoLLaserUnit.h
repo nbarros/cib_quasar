@@ -123,6 +123,11 @@ public:
     void set_counting_flashes(bool s) {m_count_flashes = s;}
     UaStatus refresh_shot_count();
     bool is_ready() {return (m_status == sReady);}
+
+    UaStatus fire_standalone(uint32_t num_pulses, json & answer);
+    UaStatus single_shot(json & answer);
+    UaStatus config_laser(json & config, json &resp);
+
 private:
     // -- private methods
     void automatic_port_search();

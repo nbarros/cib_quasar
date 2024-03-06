@@ -186,13 +186,80 @@ UaStatus DIoLaserSystem::callFire_at_position (
 
   // ready to operate
   // -- be sure to set the shutter closed until destination is reached
-  //TODO: Add shutter device
+
+  UaStatus status = iolshutter()->close_shutter(resp);
+  if (status != OpcUa_Good)
+  {
+    resp["status"] = "ERROR";
+    std::ostringstream msg("");
+    msg << log_e("fire_at_position","Failed to close shutter before operation.");
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = status;
+    return OpcUa_Good;
+  }
+
 
   // the logic is the following
   // 1. Call each of the the motors to move to the desired position
   // 2. open the shutter
   // 3. fire a discrete number of shots
   // 4. close the shutter
+
+  // step 1
+  for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < target_pos.size(); idx++)
+  {
+    for (Device::DIoLMotor* lmotor : iolmotors ())
+    {
+      if (lmotor->id() == idx)
+      {
+        status = lmotor->writePositionSetPoint(target_pos[idx]);
+        if (status != OpcUa_Good)
+        {
+          resp["status"] = "ERROR";
+          std::ostringstream msg("");
+          msg << log_e("fire_at_position","Failed to set target position for motor (id : ")
+              << lmotor->id() << ").";
+          resp["messages"].push_back(msg.str());
+          resp["status_code"] = status;
+          return OpcUa_Good;
+        }
+
+        // now move the motor
+        lmotor->move_motor(resp);
+        if (resp["status_code"] != OpcUa_Good)
+        {
+          return OpcUa_Good;
+        }
+      }
+    }
+  }
+  // step 1.2: wait until motors are in place
+  // this actually means checking if all subsystems are ready
+  // as a moving motor fails that check
+  // FIXME: This could actually lead to a deadlock, if something else caused
+  // is_ready() to fail
+  while (!is_ready())
+  {
+    update();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+
+  // step 2: open the shutter
+  iolshutter()->open_shutter(resp);
+  if (resp["status_code"] != OpcUa_Good)
+  {
+    return OpcUa_Good;
+  }
+
+  // step 3: fire for N pulses
+  // this should use the IoLaserUnit hardware interface
+  // what we do is initate fire and tell shutter to close after N sucessful shots
+
+  iollaserunit()->fire_standalone(num_pulses,resp);
+  if (resp["status_code"] != OpcUa_Good)
+  {
+    return OpcUa_Good;
+  }
 
   return OpcUa_Good;
 }

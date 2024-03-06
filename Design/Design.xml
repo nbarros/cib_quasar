@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <d:design xmlns:d="http://cern.ch/quasar/Design" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" projectShortName="IoLSlowControlServer" xsi:schemaLocation="http://cern.ch/quasar/Design Design.xsd ">
   <d:class name="IoLMotor">
-    <d:devicelogic/>
-    <d:configentry dataType="OpcUa_UInt16" name="id" storedInDeviceObject="true">
+    <d:devicelogic/><!--The coordinate_id is an entry that permits one to map a motor to the coordinate in the movement instruction. This cannot be changed in runtime-->
+    <d:configentry dataType="OpcUa_UInt16"
+    	name="coordinateId" storedInDeviceObject="true">
+</d:configentry>
+  	<d:configentry dataType="OpcUa_UInt16" name="id" storedInDeviceObject="true">
   </d:configentry>
     <d:configentry dataType="UaString" name="server_address" storedInDeviceObject="true">
   </d:configentry>

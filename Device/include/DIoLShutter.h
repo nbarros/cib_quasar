@@ -22,6 +22,8 @@
 #define __DIoLShutter__H__
 
 #include <Base_DIoLShutter.h>
+#include <json.hpp>
+using json = nlohmann::json;
 
 namespace Device
 {
@@ -65,6 +67,9 @@ private:
 public:
     void update();
     bool is_ready();
+
+    UaStatus close_shutter(json &resp);
+    UaStatus open_shutter(json &resp);
 
 private:
 

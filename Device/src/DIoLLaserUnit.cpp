@@ -380,15 +380,57 @@ UaStatus DIoLLaserUnit::callConfigure_laser (
     UaString& response
 )
 {
+
+  std::ostringstream msg("");
+  bool got_exception = false;
+  json resp;
+  json conf;
+  try
+  {
+    conf = json::parse(config.toUtf8());
+  }
+  catch(json::exception &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("config","Caught JSON exception : ") << e.what();
+    got_exception = true;
+  }
+  catch(std::exception &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("config","Caught JSON exception : ") << e.what();
+    got_exception = true;
+  }
+  catch(...)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("config","Caught an unknown exception");
+    got_exception = true;
+  }
+  if (got_exception)
+  {
+    resp["status"] = "ERROR";
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_Bad;
+    response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+
+  (void)config_laser(conf,resp);
+  response = UaString(resp.dump().c_str());
+  return OpcUa_Good;
+}
+
+UaStatus DIoLLaserUnit::config_laser(json & config, json &resp)
+  {
   // FIXME: Implement the json interpretation
   // the input string is meant to be a json structure with all the settings
     // confirm that the configuration fragment is indeed for this object
   std::ostringstream msg("");
   bool got_exception = false;
-  json resp;
   try
   {
-    json conf = json::parse(config.toUtf8());
+    json conf = config;
     if (conf.at("name").get<std::string>() != m_name)
     {
       msg.clear(); msg.str("");
@@ -397,8 +439,7 @@ UaStatus DIoLLaserUnit::callConfigure_laser (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["status_code"] = OpcUa_BadInvalidArgument;
-      response = UaString(resp.dump().c_str());
-      return OpcUa_Good;
+      return OpcUa_BadInvalidArgument;
     }
     // if it is valid, iterate over all keys
     // if the ids match, lets set the parameters
@@ -491,7 +532,7 @@ UaStatus DIoLLaserUnit::callConfigure_laser (
     resp["status"] = "ERROR";
     resp["messages"].push_back(msg.str());
     resp["status_code"] = OpcUa_Bad;
-    response = UaString(resp.dump().c_str());
+    return OpcUa_Bad;
   }
   else
   {
@@ -500,13 +541,22 @@ UaStatus DIoLLaserUnit::callConfigure_laser (
     resp["status"] = "OK";
     resp["messages"].push_back(msg.str());
     resp["status_code"] = OpcUa_Good;
-    response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
   }
   return OpcUa_Good;
 }
 UaStatus DIoLLaserUnit::callSingle_shot (
     UaString& response
 )
+{
+  json resp;
+  (void) single_shot(resp);
+  response = UaString(resp.dump().c_str());
+
+  return OpcUa_Good;
+}
+
+UaStatus DIoLLaserUnit::single_shot(json & answer)
 {
   std::ostringstream msg("");
   json resp;
@@ -519,7 +569,6 @@ UaStatus DIoLLaserUnit::callSingle_shot (
      resp["status"] = "ERROR";
      resp["messages"].push_back(msg.str());
      resp["status_code"] = OpcUa_BadInvalidState;
-     response = UaString(resp.dump().c_str());
      return OpcUa_Good;
    }
   // if the laser is not in the sReady state, also do nothing
@@ -533,7 +582,6 @@ UaStatus DIoLLaserUnit::callSingle_shot (
     resp["status"] = "ERROR";
     resp["messages"].push_back(msg.str());
     resp["status_code"] = OpcUa_BadInvalidState;
-    response = UaString(resp.dump().c_str());
     return OpcUa_Good;
   }
 
@@ -547,7 +595,6 @@ UaStatus DIoLLaserUnit::callSingle_shot (
     resp["status"] = "ERROR";
     resp["messages"].push_back(msg.str());
     resp["status_code"] = OpcUa_BadInvalidState;
-    response = UaString(resp.dump().c_str());
     return OpcUa_Good;
   }
   // everything seems ready. Fire away
@@ -593,7 +640,6 @@ UaStatus DIoLLaserUnit::callSingle_shot (
      resp["status"] = "ERROR";
      resp["messages"].push_back(msg.str());
      resp["status_code"] = OpcUa_Bad;
-     response = UaString(resp.dump().c_str());
    }
    else {
      // all was good
@@ -695,11 +741,23 @@ UaStatus DIoLLaserUnit::callFire_standalone (
     UaString& response
 )
 {
+
+  json resp;
+  (void)fire_standalone(fire,resp);
+  response = UaString(resp.dump().c_str());
+
+  return OpcUa_Good;
+}
+
+UaStatus DIoLLaserUnit::fire_standalone(uint32_t num_pulses, json & answer)
+{
   // FIXME: Note that this method does not do anything about the external shutter
   // it assumes that the external shutter is either not in place or has been in some other way operated to open
   // for these shots
   // ultimately, this is just meant to be used in commissioning. For normal operation
   // one will use the CIB directly to control the laser firing
+
+  // FIXME: Redo this logic
   std::ostringstream msg("");
   json resp;
   bool caught_exception = false;
@@ -711,7 +769,6 @@ UaStatus DIoLLaserUnit::callFire_standalone (
      resp["status"] = "ERROR";
      resp["messages"].push_back(msg.str());
      resp["status_code"] = OpcUa_BadInvalidState;
-     response = UaString(resp.dump().c_str());
      return OpcUa_Good;
    }
   // if the shutter is not open, there is no point in firing
@@ -724,7 +781,6 @@ UaStatus DIoLLaserUnit::callFire_standalone (
     resp["status"] = "ERROR";
     resp["messages"].push_back(msg.str());
     resp["status_code"] = OpcUa_BadInvalidState;
-    response = UaString(resp.dump().c_str());
     return OpcUa_Good;
   }
 
@@ -745,11 +801,12 @@ UaStatus DIoLLaserUnit::callFire_standalone (
     resp["status"] = "ERROR";
     resp["messages"].push_back(msg.str());
     resp["status_code"] = OpcUa_BadInvalidState;
-    response = UaString(resp.dump().c_str());
     return OpcUa_Good;
   }
 
   // everything seems ready. Fire away
+  // this actually requires communication with the CIB
+  // we want the CIB to close the external shutter after N shotspencv
    try
    {
 
@@ -808,7 +865,6 @@ UaStatus DIoLLaserUnit::callFire_standalone (
      resp["status"] = "ERROR";
      resp["messages"].push_back(msg.str());
      resp["status_code"] = OpcUa_Bad;
-     response = UaString(resp.dump().c_str());
    }
    else {
      // all was good
