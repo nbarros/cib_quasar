@@ -9,7 +9,7 @@ set(EXECUTABLE OpcUaServer)
 set(SERVER_INCLUDE_DIRECTORIES  )
 set(SERVER_LINK_LIBRARIES  "-lcurl")
 set(SERVER_LINK_DIRECTORIES  )
-add_compile_definitions(SIMULATION)
+#add_compile_definitions(SIMULATION)
 
 
 ##set(CMAKE_VERBOSE_MAKEFILE ON)
