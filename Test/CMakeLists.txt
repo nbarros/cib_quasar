@@ -16,6 +16,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 #include_directories(include)
 #set(LIB_SRC_FILES src/Attenuator.cpp ${PROJECT_SOURCE_DIR}/src/Device.cpp ${PROJECT_SOURCE_DIR}/src/Laser.cpp ${PROJECT_SOURCE_DIR}/src/PowerMeter.cpp ${PROJECT_SOURCE_DIR}/src/serial.cc ${PROJECT_SOURCE_DIR}/src/utilities.cpp)
 
+include_directories(${PROJECT_SOURCE_DIR})
+
 add_executable(test_system_load EXCLUDE_FROM_ALL ${PROJECT_SOURCE_DIR}/test_system_load.cpp)
 #target_link_libraries(test_all_devices PUBLIC LaserControl)W
 add_executable(test_sizes EXCLUDE_FROM_ALL ${PROJECT_SOURCE_DIR}/test_sizes.cpp)
+
+add_executable(test_json_structure EXCLUDE_FROM_ALL ${PROJECT_SOURCE_DIR}/test_json_structure.cpp)

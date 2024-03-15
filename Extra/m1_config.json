@@ -7,5 +7,12 @@
 "range":[-3100,28786],
 "acceleration":200,
 "decceleration":200,
-"refresh_period_ms":5
+"refresh_period_ms":50,
+"refresh_movememt_ms":10,
+"mmap": 
+	{"moving": [0,0,0],
+	 "direction" : [0,3,3],
+	 "init_pos" : [1,20,0],
+	 "cur_pos" : [4,20,0]
+	}
 }
