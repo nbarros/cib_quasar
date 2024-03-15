@@ -641,6 +641,35 @@ namespace Device
     //FIXME: Implement the communication with the CIB
     return OpcUa_BadNotImplemented;
   }
+  UaStatus DIoLLaserUnit::terminate(json &resp)
+  {
+    UaStatus st = OpcUa_Good;
+    std::ostringstream msg("");
+    // this is meant to do a smooth temrination of the device
+    if (m_status == sOffline)
+    {
+      // there should not be a valid pointer
+      if (m_laser)
+      {
+        msg.clear(); msg.str("");
+        msg << log_w("terminate","There is live pointer but state is offline. This should not happen. Attempting to clear object.");
+        resp["messages"].push_back(msg.str());
+        delete m_laser;
+        m_laser = nullptr;
+        return OpcUa_Uncertain;
+      }
+    }
+    if (m_status == sLasing)
+    {
+      st = stop(resp);
+    }
+    // -- now just delete the
+    delete m_laser;
+    m_laser = nullptr;
+    update_status(sOffline);
+    return OpcUa_Good;
+  }
+
   UaStatus DIoLLaserUnit::stop(json &resp)
   {
     // force a stop on the laser firing
@@ -1281,6 +1310,11 @@ namespace Device
       refresh_status(resp);
     }
   }
+  UaStatus DIoLLaserUnit::fire_standalone(uint32_t num_pulses,json &resp)
+  {
+    return OpcUa_BadNotImplemented;
+  }
+
   UaStatus DIoLLaserUnit::single_shot(json & answer)
   {
     std::ostringstream msg("");
@@ -1544,4 +1578,6 @@ namespace Device
     m_status = s;
     //getAddressSpaceLink()->set>setStatus_code(m_status,OpcUa_Good);
   }
+
+
 }

@@ -764,27 +764,33 @@ namespace Device
       //
       // -- Select the measurement range
       //
+      bool something_failed = false;
 
       ret = set_range(m_sel_range, rep);
+      something_failed = (ret!=OpcUa_Good);
       //
       // -- Select the pulse widths/lengths
       //
-      ret |= set_pwidth(m_pulse_width,rep);
+      ret = set_pwidth(m_pulse_width,rep);
+      something_failed |= (ret!=OpcUa_Good);
       //
       //-- Select the average setting
       //
-      ret |= set_average(m_ave_setting,rep);
+      ret = set_average(m_ave_setting,rep);
+      something_failed |= (ret!=OpcUa_Good);
       //
       // -- Select the wavelength
       //
-      ret |= set_lambda(m_wavelength,rep);
+      ret = set_lambda(m_wavelength,rep);
+      something_failed |= (ret!=OpcUa_Good);
       //
       // -- Select the threshold
       //
-      ret |= set_thresh(m_e_threshold,rep);
+      ret = set_thresh(m_e_threshold,rep);
+      something_failed |= (ret!=OpcUa_Good);
       // -- if it reached this point, the whole thing is initialized
       // check if there were errors being throuwn
-      if (ret != OpcUa_Good)
+      if (something_failed)
       {
         if (rep.contains("status"))
         {
