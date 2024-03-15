@@ -59,10 +59,22 @@ private:
 public:
 
     bool is_ready() {return m_is_ready;}
-
+    void update();
 private:
-    bool m_is_ready;
+    void poll_cpu();
+    void poll_mem();
 
+    bool m_is_ready;
+    float m_cpu_load;
+    float m_used_mem;
+    //
+    //
+    //
+    long long unsigned int m_prev_tot_usr;
+    long long unsigned int m_prev_tot_usr_low;
+    long long unsigned int m_prev_tot_sys;
+    long long unsigned int m_prev_tot_idle;
+    long long unsigned int m_total;
 
 };
 

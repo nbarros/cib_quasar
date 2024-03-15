@@ -52,18 +52,22 @@ public:
     /* Note: never directly call this function. */
     UaStatus writeDischarge_voltage_kV ( const OpcUa_Float& v);
     /* Note: never directly call this function. */
-    UaStatus writeRep_rate_hz ( const OpcUa_Double& v);
+    UaStatus writeRep_rate_hz ( const OpcUa_Float& v);
     /* Note: never directly call this function. */
     UaStatus writeRep_rate_divider ( const OpcUa_UInt16& v);
-    /* Note: never directly call this function. */
-    UaStatus writeExt_shutter_time_pre_shot ( const OpcUa_UInt32& v);
-    /* Note: never directly call this function. */
-    UaStatus writeExt_shutter_open_time_us ( const OpcUa_UInt32& v);
 
 
     /* delegators for methods */
-    UaStatus callSet_port (
+    UaStatus callSet_connection (
         const UaString&  device_port,
+        OpcUa_UInt16 baud_rate,
+        UaString& response
+    ) ;
+    UaStatus callConfig (
+        const UaString&  config,
+        UaString& response
+    ) ;
+    UaStatus callInit (
         UaString& response
     ) ;
     UaStatus callStop (
@@ -73,19 +77,23 @@ public:
         OpcUa_UInt16& status,
         UaString& description
     ) ;
-    UaStatus callConfigure_laser (
-        const UaString&  config,
-        UaString& response
-    ) ;
     UaStatus callSingle_shot (
-        UaString& response
-    ) ;
-    UaStatus callSwitch_shutter (
-        OpcUa_Boolean open,
         UaString& response
     ) ;
     UaStatus callFire_standalone (
         OpcUa_Boolean fire,
+        OpcUa_UInt32 num_shots,
+        UaString& response
+    ) ;
+    UaStatus callSwitch_laser_shutter (
+        OpcUa_Boolean close,
+        UaString& response
+    ) ;
+    UaStatus callForce_ext_shutter (
+        OpcUa_Boolean close,
+        UaString& response
+    ) ;
+    UaStatus callTerminate (
         UaString& response
     ) ;
 
@@ -100,7 +108,7 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
-    enum Status{sOffline=0x0,sInit=1,sReady=2,sLasing=3};
+    enum Status{sOffline=0x0,sReady=2,sLasing=3};
     // bitfield with the settings that are already configured
     typedef struct {
       uint8_t hv :1;
@@ -109,30 +117,41 @@ public:
       uint8_t qsw : 1;
       void init(uint8_t v) {hv = v & 0x1; r_div = v & 0x2; rate = v & 0x4; qsw = v & 0x8;};
     } laser_word;
-
+    //
     typedef union conf_word
     {
       laser_word word;
       bool is_ready() {return (*reinterpret_cast<uint8_t*>(&word) == 0xF);};
     } conf_word;
-
-    UaStatus init_device(json &resp);
+    //
+    // the real worker methods
+    //
+    UaStatus set_conn(const std::string port, uint16_t baud, json &resp);
+    UaStatus init(json &resp);
+    UaStatus config(json &conf, json &resp);
+    UaStatus stop(json &resp);
+    UaStatus single_shot(json &resp);
+    UaStatus fire_standalone(uint32_t num_pulses,json &resp);
+    UaStatus switch_laser_shutter(const bool close, json &resp);
+    UaStatus force_ext_shutter(const bool close, json &resp);
+    UaStatus terminate(json &resp);
+    //
+    // auxiliary methods that are called by other services
+    //
     void update();
     //
     bool get_counting_flashes() {return m_count_flashes;}
     void set_counting_flashes(bool s) {m_count_flashes = s;}
     UaStatus refresh_shot_count();
     bool is_ready() {return (m_status == sReady);}
-
-    UaStatus fire_standalone(uint32_t num_pulses, json & answer);
-    UaStatus single_shot(json & answer);
-    UaStatus config_laser(json & config, json &resp);
-
+    //
 private:
     // -- private methods
+    void update_status(Status nst);
     void automatic_port_search();
     void refresh_status(json &resp);
     void refresh_status(void);
+    bool validate_config_fragment(json &conf, json &resp);
     // methods that internally deal with the device writing logic
     UaStatus write_divider(const uint16_t v,json &resp);
     UaStatus write_rate(const float v,json &resp);
@@ -150,7 +169,7 @@ private:
     float m_pump_hv;
     float m_rate_hz;
     uint32_t m_qswitch;
-    bool m_shutter_open;
+    bool m_laser_shutter_close;
     uint32_t m_shot_count;
     //
     std::string m_comport;

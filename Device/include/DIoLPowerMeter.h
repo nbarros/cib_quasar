@@ -54,8 +54,10 @@ public:
     UaStatus callInit (
         UaString& response
     ) ;
-    UaStatus callSet_port (
-        const UaString&  device_port
+    UaStatus callSet_connection (
+        const UaString&  port,
+        OpcUa_UInt16 baud_rate,
+        UaString& response
     ) ;
     UaStatus callSet_average (
         OpcUa_UInt16 target_value,
@@ -84,7 +86,17 @@ public:
     UaStatus callReset (
 
     ) ;
-    UaStatus callStop (
+    UaStatus callConfig (
+        const UaString&  config,
+        UaString& response
+    ) ;
+    UaStatus callStop_measurements (
+        UaString& response
+    ) ;
+    UaStatus callStart_measurements (
+        UaString& response
+    ) ;
+    UaStatus callTerminate (
         UaString& response
     ) ;
 
@@ -97,13 +109,25 @@ private:
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
     // -     Don't change this comment, otherwise merge tool may be troubled.  *
     // ----------------------------------------------------------------------- *
-
+    UaStatus set_conn(const std::string port, const uint16_t baud, json &resp);
+    // variable proxy setters. These can be called internally (unlike the others)
+    UaStatus set_average(const uint16_t ave, json &resp);
+    UaStatus set_range(const uint16_t range, json &resp);
+    UaStatus set_pwidth(const uint16_t pwidth, json &resp);
+    UaStatus set_thresh(const uint16_t thresh, json &resp);
+    UaStatus set_lambda(const uint16_t lambda, json &resp);
+    UaStatus set_mmode(const uint16_t mmode, json &resp);
+    // methods that change the internal state machine
+    UaStatus init(json &resp, bool start = true);
+    UaStatus reset(json &resp);
+    UaStatus config(json &conf, json &resp);
+    UaStatus stop_readings(json &resp);
+    UaStatus start_readings(json &resp);
+    UaStatus terminate(json &resp);
 public:
-
-    enum Status{sOffline=0x0,sUnconfigured=1,sReady=2};
+    enum Status{sOffline=0x0,sReady=2,sReading=3};
     void update();
     bool is_ready();
-    UaStatus init_device(json &resp);
 private:
     void automatic_port_search();
     void refresh_all_ranges();
@@ -114,17 +138,17 @@ private:
     void refresh_threshold_limits();
     void refresh_energy_reading();
     void refresh_average_reading();
-
+    bool validate_config_fragment(json &c, json &r);
+    void update_status(Status new_state);
     // check if there is a new energy reading.
     // update the value if yes
     //void refresh_energy_reading();
-
     //UaStatus init_connection(json &resp);
-
     device::PowerMeter *m_pm;
     std::string m_comport;
+    uint16_t m_baud_rate;
     Status m_status;
-
+    //
     uint16_t m_measurement_mode;
     int16_t m_sel_range;
     uint16_t m_wavelength;
@@ -133,15 +157,16 @@ private:
     uint16_t m_pulse_width;
     double m_energy_reading;
     double m_average_reading;
-
+    //
     std::map<int16_t,std::string> m_ranges;
     std::map<uint16_t,std::string> m_pulse_widths;
     std::map<uint16_t,std::string> m_ave_windows;
     std::map<uint16_t,std::string> m_measurement_modes;
     std::map<Status,std::string> m_status_map;
     std::pair<uint16_t,uint16_t> m_threshold_limits;
-
-
+    bool m_pause_measurements;
+    std::string m_name;
+    std::string m_serial_number;
 };
 
 }

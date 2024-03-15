@@ -50,20 +50,33 @@ public:
     /* delegators for
     cachevariables and sourcevariables */
     /* Note: never directly call this function. */
-    UaStatus writePositionSetPoint ( const OpcUa_Int32& v);
+    UaStatus writeRange_min ( const OpcUa_Int32& v);
     /* Note: never directly call this function. */
-    UaStatus writeRefresh_period_ms ( const OpcUa_UInt32& v);
+    UaStatus writeRange_max ( const OpcUa_Int32& v);
+    /* Note: never directly call this function. */
+    UaStatus writeRefresh_period_ms ( const OpcUa_UInt16& v);
+    /* Note: never directly call this function. */
+    UaStatus writeAcceleration ( const OpcUa_UInt32& v);
+    /* Note: never directly call this function. */
+    UaStatus writeDeceleration ( const OpcUa_UInt32& v);
+    /* Note: never directly call this function. */
+    UaStatus writeSpeed ( const OpcUa_UInt32& v);
 
 
     /* delegators for methods */
-    UaStatus callStart_move (
+    UaStatus callConfig (
+        const UaString&  config_json,
+        UaString& response
+    ) ;
+    UaStatus callMove_absolute (
+        OpcUa_Int32 destination,
+        UaString& response
+    ) ;
+    UaStatus callMove_relative (
+        OpcUa_Int32 num_steps,
         UaString& response
     ) ;
     UaStatus callStop (
-        UaString& response
-    ) ;
-    UaStatus callConfigure_motor (
-        const UaString&  config_json,
         UaString& response
     ) ;
 
@@ -72,33 +85,49 @@ private:
     DIoLMotor( const DIoLMotor& other );
     DIoLMotor& operator=(const DIoLMotor& other);
 
-    static size_t curl_write_function(void* ptr, size_t size, size_t nmemb, std::string* data);
-    //void timer_start(std::function<void(void)> func, unsigned int interval);
-    void timer_start(DIoLMotor *obj);
-
-    void refresh_server_info();
     // ----------------------------------------------------------------------- *
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
     // -     Don't change this comment, otherwise merge tool may be troubled.  *
     // ----------------------------------------------------------------------- *
 
+    static size_t curl_write_function(void* ptr, size_t size, size_t nmemb, std::string* data);
+    //void timer_start(std::function<void(void)> func, unsigned int interval);
+    void timer_start(DIoLMotor *obj);
+    void refresh_server_info();
+
 public:
     void update();
-
     bool is_ready();
-
-
+    //
     UaStatus sim_get_motor_info();
     UaStatus sim_move_motor(json &resp);
     UaStatus sim_stop_motor(json &resp);
-
-
+    //
+    UaStatus move_wrapper(int32_t dest, json &resp);
     UaStatus get_motor_info();
     UaStatus move_motor(json &resp);
     UaStatus stop_motor(json &resp);
-
+    //    UaStatus config_motor(json &resp);
+    UaStatus parse_json_config(json &conf, json &resp);
+    bool validate_config_fragment(json &conf, json &resp);
+    //
     const bool get_monitor() {return m_monitor;}
     void set_monitor(bool m) {m_monitor = m;}
+    //
+    UaStatus set_range_min(const int32_t &v);
+    UaStatus set_range_max(const int32_t &v);
+    UaStatus set_refresh_period(const uint16_t &v);
+    UaStatus set_acceleration(const uint32_t &v);
+    UaStatus set_deceleration(const uint32_t &v);
+    UaStatus set_speed(const uint32_t &v);
+    const uint16_t get_coordinate_index() {return m_coordinate_index;}
+    UaStatus set_position_setpoint(const int32_t target);
+    // Ua
+    UaStatus set_id(const std::string &id);
+    const std::string get_id() {return m_id;}
+    //
+    void set_server_addr(const std::string &s);
+    const std::string get_server_addr() {return m_server_host;}
 
 private:
     const uint16_t get_refresh_ms() {return m_refresh_ms;}
@@ -108,15 +137,15 @@ private:
     int32_t m_sim_speed;
     int32_t m_sim_tpos;
     bool m_sim_moving;
-
-
+    //
+    //
     int32_t m_position;
     int32_t m_position_setpoint;
-    OpcUa_StatusCode m_position_setpoint_status;
-
+//    OpcUa_StatusCode m_position_setpoint_status;
+    //
     bool m_is_ready; // declares where it is ready for operation
-        // this essentially means that all settings are in a reasonable state
-    bool is_moving_; // -- this variable will be set by a GPIO bit. That code is not ready yet
+    // this essentially means that all settings are in a reasonable state
+    bool m_is_moving; // -- this variable will be set by a GPIO bit. That code is not ready yet
     uint32_t m_acceleration;
     uint32_t m_deceleration;
     uint32_t m_speed_setpoint;
@@ -128,7 +157,10 @@ private:
     OpcUa_StatusCode m_monitor_status;
     std::string m_server_host;
     uint16_t m_server_port;
-
+    int32_t m_range_min;
+    int32_t m_range_max;
+    std::string m_id;
+    uint16_t m_coordinate_index;
 };
 
 }

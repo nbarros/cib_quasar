@@ -90,7 +90,7 @@ DIoLAttenuator::DIoLAttenuator (
     ,m_transmission(0.0)
     ,m_status(sOffline)
 {
-  /* fill up constructor body here */
+    /* fill up constructor body here */
   m_name = config.name();
   m_sn = serial_number();
   // check the port

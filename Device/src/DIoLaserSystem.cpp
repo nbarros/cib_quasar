@@ -28,9 +28,9 @@
 #include <DIoLPiezoController.h>
 #include <DIoLAttenuator.h>
 #include <DIoLPowerMeter.h>
-#include <DIoLShutter.h>
-
+#include <thread>
 #include <string>
+#include <chrono>
 
 #define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
 
@@ -186,17 +186,17 @@ UaStatus DIoLaserSystem::callFire_at_position (
 
   // ready to operate
   // -- be sure to set the shutter closed until destination is reached
-
-  UaStatus status = iolshutter()->close_shutter(resp);
-  if (status != OpcUa_Good)
-  {
-    resp["status"] = "ERROR";
-    std::ostringstream msg("");
-    msg << log_e("fire_at_position","Failed to close shutter before operation.");
-    resp["messages"].push_back(msg.str());
-    resp["status_code"] = status;
-    return OpcUa_Good;
-  }
+//FIXME: Shutter
+//  UaStatus status = iolshutter()->close_shutter(resp);
+//  if (status != OpcUa_Good)
+//  {
+//    resp["status"] = "ERROR";
+//    std::ostringstream msg("");
+//    msg << log_e("fire_at_position","Failed to close shutter before operation.");
+//    resp["messages"].push_back(msg.str());
+//    resp["status_code"] = status;
+//    return OpcUa_Good;
+//  }
 
 
   // the logic is the following
@@ -204,23 +204,23 @@ UaStatus DIoLaserSystem::callFire_at_position (
   // 2. open the shutter
   // 3. fire a discrete number of shots
   // 4. close the shutter
-
+  UaStatus status;
   // step 1
   for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < target_pos.size(); idx++)
   {
     for (Device::DIoLMotor* lmotor : iolmotors ())
     {
-      if (lmotor->id() == idx)
+      if (lmotor->get_coordinate_index() == idx)
       {
-        status = lmotor->writePositionSetPoint(target_pos[idx]);
+        status = lmotor->set_position_setpoint(target_pos[idx]);
         if (status != OpcUa_Good)
         {
           resp["status"] = "ERROR";
           std::ostringstream msg("");
           msg << log_e("fire_at_position","Failed to set target position for motor (id : ")
-              << lmotor->id() << ").";
+              << lmotor->get_id() << ").";
           resp["messages"].push_back(msg.str());
-          resp["status_code"] = status;
+          resp["status_code"] = static_cast<uint32_t>(status);
           return OpcUa_Good;
         }
 
@@ -245,7 +245,8 @@ UaStatus DIoLaserSystem::callFire_at_position (
   }
 
   // step 2: open the shutter
-  iolshutter()->open_shutter(resp);
+  //FIXME: shutter
+  //  iolshutter()->open_shutter(resp);
   if (resp["status_code"] != OpcUa_Good)
   {
     return OpcUa_Good;
@@ -314,6 +315,18 @@ UaStatus DIoLaserSystem::callExecute_scan (
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
   }
+  return OpcUa_Good;
+}
+UaStatus DIoLaserSystem::callClose_shutter (
+    UaString& answer
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLaserSystem::callRelease_shutter (
+    UaString& answer
+)
+{
 
   // -- Parse the configuration JSON
   // -- it should be composed of sub-sequences
@@ -354,10 +367,6 @@ void DIoLaserSystem::update()
     for (Device::DIoLAttenuator* latt : iolattenuators ())
     {
     	latt->update();
-    }
-    for (Device::DIoLShutter *lshutter : iolshutters())
-    {
-      lshutter->update();
     }
     for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
     {

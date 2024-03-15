@@ -71,6 +71,12 @@ public:
         const UaString&  plan,
         UaString& answer
     ) ;
+    UaStatus callClose_shutter (
+        UaString& answer
+    ) ;
+    UaStatus callRelease_shutter (
+        UaString& answer
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */

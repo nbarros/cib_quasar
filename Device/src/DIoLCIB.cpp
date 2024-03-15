@@ -22,6 +22,14 @@
 
 #include <DIoLCIB.h>
 #include <ASIoLCIB.h>
+extern "C"
+{
+#include <sys/types.h>
+#include <sys/sysinfo.h>
+};
+#include <cstdint>
+#include <cinttypes>
+#include <cstdio>
 
 namespace Device
 {
@@ -55,9 +63,19 @@ DIoLCIB::DIoLCIB (
 
     /* fill up constructor initialization list here */
 	, m_is_ready(false)
-
+	, m_cpu_load(0.0)
+	, m_used_mem(0.0)
+	, m_prev_tot_usr(0)
+	, m_prev_tot_usr_low(0)
+	, m_prev_tot_sys(0)
+	, m_prev_tot_idle(0)
+	, m_total(0)
 {
     /* fill up constructor body here */
+  // start by initializing the initial counters
+  FILE* file = fopen("/proc/stat", "r");
+  (void)fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
+  (void)fclose(file);
 }
 
 /* sample dtr */
@@ -76,5 +94,54 @@ DIoLCIB::~DIoLCIB ()
 // 3     Below you put bodies for custom methods defined for this class.   3
 // 3     You can do whatever you want, but please be decent.               3
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
+
+void DIoLCIB::poll_mem()
+{
+  struct sysinfo memInfo;
+  sysinfo (&memInfo);
+  // unit size in bytes
+  uint64_t total = memInfo.totalram*memInfo.mem_unit/(1024*1024);
+  uint64_t free  = memInfo.freeram*memInfo.mem_unit/(1024*1024);
+  m_used_mem = static_cast<float>(total-free)/static_cast<float>(total);
+  getAddressSpaceLink()->setMem_load(m_used_mem,OpcUa_Good);
+}
+
+void DIoLCIB::poll_cpu()
+{
+  unsigned long long tot_usr, tot_usr_low, tot_sys, tot_idle;
+  FILE* file = fopen("/proc/stat", "r");
+  (void)fscanf(file, "cpu %llu %llu %llu %llu", &tot_usr, &tot_usr_low,&tot_sys, &tot_idle);
+  (void)fclose(file);
+
+  if ((tot_usr < m_prev_tot_usr) ||
+      (tot_usr_low < m_prev_tot_usr_low) ||
+      (tot_sys < m_prev_tot_sys) ||
+      (tot_idle < m_prev_tot_idle))
+  {
+      //Overflow detection. Just skip this value.
+    m_cpu_load = -1.0;
+    getAddressSpaceLink()->setCpu_load(m_cpu_load,OpcUa_Uncertain);
+  }
+  else
+  {
+    m_total = (tot_usr - m_prev_tot_usr) +
+              (tot_usr_low - m_prev_tot_usr_low) +
+              (tot_sys - m_prev_tot_sys);
+    m_cpu_load = m_total/(m_total + (tot_idle-m_prev_tot_idle));
+    getAddressSpaceLink()->setCpu_load(m_cpu_load,OpcUa_Good);
+  }
+  // update the previous to repoll
+  m_prev_tot_usr = tot_usr;
+  m_prev_tot_usr_low = tot_usr_low;
+  m_prev_tot_sys = tot_sys;
+  m_prev_tot_idle = tot_idle;
+}
+
+void DIoLCIB::update()
+{
+  // refresh the other two
+  poll_mem();
+  poll_cpu();
+}
 
 }
