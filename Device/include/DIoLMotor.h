@@ -33,6 +33,15 @@ using json = nlohmann::json;
 namespace Device
 {
 
+  typedef struct
+  {
+    uint16_t offset;
+    uint16_t bit_high;
+    uint16_t bit_low;
+    uintptr_t addr; // addr is the memory mapped address of this particular register
+    uint32_t mask;
+  } motor_regs_t;
+
 class
     DIoLMotor
     : public Base_DIoLMotor
@@ -92,8 +101,14 @@ private:
 
     static size_t curl_write_function(void* ptr, size_t size, size_t nmemb, std::string* data);
     //void timer_start(std::function<void(void)> func, unsigned int interval);
+    // -- this one monitors the motor itself
     void timer_start(DIoLMotor *obj);
+    // -- this one monitors the movement register
+    void move_monitor(DIoLMotor *obj);
+
     void refresh_server_info();
+    UaStatus map_registers();
+    UaStatus unmap_registers();
 
 public:
     void update();
@@ -140,6 +155,7 @@ private:
     //
     //
     int32_t m_position;
+    int32_t m_position_cib;
     int32_t m_position_setpoint;
 //    OpcUa_StatusCode m_position_setpoint_status;
     //
@@ -164,7 +180,18 @@ private:
     //
     // Variables necessary to map registers in the CIB
     //
+
     int m_mmap_fd;
+    uintptr_t m_mapped_mem;
+
+    // variables that are relevant for the memory mapped registers
+    // we could actually make this absolutely generic, dependent on the configuration
+    // of course the usage then would be different
+    std::map<std::string,motor_regs_t> m_regs;
+//    motor_regs_t m_reg_moving;
+//    motor_regs_t m_reg_dir;
+//    motor_regs_t m_reg_init_pos;
+//    motor_regs_t m_reg_cur_pos;
 
 };
 

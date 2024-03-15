@@ -33,6 +33,9 @@ extern "C" {
 #include <functional>
 #include <string>
 #include <random>
+#include <cib_registers.h>
+#include <mem_utils.h>
+
 
 #define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
 
@@ -70,34 +73,35 @@ namespace Device
       const Configuration::IoLMotor& config,
       Parent_DIoLMotor* parent
   ):
-        Base_DIoLMotor( config, parent)
+                Base_DIoLMotor( config, parent)
 
-        /* fill up constructor initialization list here */
-        ,m_sim_pos(0)
-        ,m_sim_speed(0)
-        ,m_sim_tpos(0)
-        ,m_sim_moving(false)
-        ,m_position(-999999)
-        ,m_position_setpoint(-999999)
-        ,m_is_ready(false)
-        ,m_is_moving(false)
-        ,m_acceleration(0.0)
-        ,m_deceleration(0.0)
-        ,m_speed_setpoint(0.0)
-        ,m_speed_readout(0.0)
-        ,m_torque(0.0)
-        ,m_temperature(0.0)
-        //,m_address("")
-        ,m_refresh_ms(0)
-        ,m_monitor(false)
-        ,m_monitor_status(OpcUa_BadResourceUnavailable)
-        ,m_server_host("")
-        ,m_server_port(0)
-        ,m_range_min(-999999)
-        ,m_range_max(-999999)
-        ,m_id("NONE")
-        ,m_coordinate_index(0)
-    {
+                /* fill up constructor initialization list here */
+                ,m_sim_pos(0)
+                ,m_sim_speed(0)
+                ,m_sim_tpos(0)
+                ,m_sim_moving(false)
+                ,m_position(-999999)
+                ,m_position_setpoint(-999999)
+                ,m_is_ready(false)
+                ,m_is_moving(false)
+                ,m_acceleration(0.0)
+                ,m_deceleration(0.0)
+                ,m_speed_setpoint(0.0)
+                ,m_speed_readout(0.0)
+                ,m_torque(0.0)
+                ,m_temperature(0.0)
+                //,m_address("")
+                ,m_refresh_ms(0)
+                ,m_monitor(false)
+                ,m_monitor_status(OpcUa_BadResourceUnavailable)
+                ,m_server_host("")
+                ,m_server_port(0)
+                ,m_range_min(-999999)
+                ,m_range_max(-999999)
+                ,m_id("NONE")
+                ,m_coordinate_index(0)
+                ,m_mmap_fd(0)
+                {
     /* fill up constructor body here */
     // initialize cURL
     curl_global_init(CURL_GLOBAL_ALL);
@@ -110,6 +114,10 @@ namespace Device
     LOG(Log::WRN)<< "***!!! RUNNING IN SIMULATION MODE !!!***";
 #endif
     //
+
+    // allocate the memory mapped registers
+    (void)map_registers();
+
     if (m_monitor)
     {
       if (m_refresh_ms != 0.0)
@@ -117,7 +125,7 @@ namespace Device
         timer_start(this);
       }
     }
-        }
+                }
 
   /* sample dtr */
   DIoLMotor::~DIoLMotor ()
@@ -317,17 +325,17 @@ namespace Device
     // set the target position
     m_position_setpoint = dest;
     getAddressSpaceLink()->setTarget_position(m_position_setpoint,OpcUa_Good);
-//    if (m_position_setpoint_status != OpcUa_Good)
-//    {
-//      resp["status"] = "ERROR";
-//      std::ostringstream msg("");
-//      msg << log_e("start_move","Target position in invalid state") << UA_StatusCode_name(m_position_setpoint_status);
-//      resp["messages"].push_back(msg.str());
-//      resp["status_code"] = OpcUa_BadInvalidState;
-//      LOG(Log::ERR) << msg.str();
-//      response = UaString(resp.dump().c_str());
-//      return OpcUa_Good;
-//    }
+    //    if (m_position_setpoint_status != OpcUa_Good)
+    //    {
+    //      resp["status"] = "ERROR";
+    //      std::ostringstream msg("");
+    //      msg << log_e("start_move","Target position in invalid state") << UA_StatusCode_name(m_position_setpoint_status);
+    //      resp["messages"].push_back(msg.str());
+    //      resp["status_code"] = OpcUa_BadInvalidState;
+    //      LOG(Log::ERR) << msg.str();
+    //      response = UaString(resp.dump().c_str());
+    //      return OpcUa_Good;
+    //    }
     // check that position and position_set_point are not the same
     if (m_position == m_position_setpoint)
     {
@@ -349,7 +357,8 @@ namespace Device
     //
     return st;
   }
-
+  // this is meant to just be called occasionally
+  // each method is responsible for updating its own status
   void DIoLMotor::update()
   {
     // method should be periodically poking the motors for their status
@@ -401,7 +410,7 @@ namespace Device
     // 2.2. speed
     // 2.3. acceleration
     LOG(Log::INF) << "Checking readiness for motor ID=" << m_id
-							    << " with positionSetPoint = (" << m_position_setpoint << ")";
+        << " with positionSetPoint = (" << m_position_setpoint << ")";
     if (m_is_moving)
     {
       return false;
@@ -446,6 +455,44 @@ namespace Device
       }
                 }).detach();
   }
+
+  void DIoLMotor::move_monitor(DIoLMotor *obj)
+  {
+    static int32_t prev_pos = 0;
+    static bool prev_moving = false;
+    std::thread([this]()
+                {
+      while (get_monitor())
+      {
+        auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(10);
+#ifdef SIMULATION
+        if (sim_get_motor_info() != OpcUa_Good)
+#else
+          prev_pos =m_position_cib;
+          m_position_cib = cib::util::reg_read(m_regs.at("cur_pos").addr);
+#endif
+
+        // if the position didn't change and the latest speed readout
+        // is 0, set m_is_moving = false
+        if ((m_position_cib == prev_pos) && (m_speed_readout == 0))
+        {
+          m_is_moving = false;
+        }
+        else
+        {
+          m_is_moving = true;
+        }
+        // -- if there was just a recent transition
+        if (m_is_moving != prev_moving)
+        {
+          getAddressSpaceLink()->setIs_moving(m_is_moving,OpcUa_Good);
+          prev_moving = m_is_moving;
+        }
+        std::this_thread::sleep_until(x);
+      }
+                }).detach();
+  }
+
 
 
   UaStatus DIoLMotor::get_motor_info()
@@ -497,6 +544,16 @@ namespace Device
       m_temperature = std::stod(answer["m_temp"].get<std::string>());
       m_torque = std::stod(answer["torque"].get<std::string>());
 
+      // if speed is zero, refresh the CIB position to the current one
+      if (m_speed_readout == 0)
+      {
+        // tell the CIB that we are no longer moving
+        std::string reg = "moving";
+        cib::util::reg_write_mask_offset(m_regs.at(reg).addr,0x0,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
+        // refresh the current position
+        reg = "init_pos";
+        cib::util::reg_write_mask_offset(m_regs.at(reg).addr,m_position,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
+      }
       curl_easy_cleanup(curl);
       curl = NULL;
     }
@@ -507,6 +564,26 @@ namespace Device
 
   UaStatus DIoLMotor::move_motor(json &resp)
   {
+    // set the moving and direction bits of the respective registers
+    // it is not an issue if they are set a bit earlier...the motor should not be moving at this stage
+    // make a mask for the relevant bits
+    std::string reg = "moving";
+    cib::util::reg_write_mask_offset(m_regs.at(reg).addr,0x1,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
+    reg = "direction";
+    uint32_t dir;
+    if (m_position_setpoint > m_position)
+    {
+      dir = 0x1;
+    }
+    else
+    {
+      dir = 0x0;
+    }
+    cib::util::reg_write_mask_offset(m_regs.at(reg).addr,dir,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
+    // -- why not, refresh also the current position, as stated by the motor
+    reg = "init_pos";
+    cib::util::reg_write_mask_offset(m_regs.at(reg).addr,m_position,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
+
     string addr = "http://";
     addr+= m_server_host;
     addr += "/api/move";
@@ -690,6 +767,14 @@ namespace Device
       LOG(Log::ERR) << msg.str();
       status =  OpcUa_BadNoCommunication;
     }
+    // toggle the relevant bits
+    // also refresh the cur_pos
+    // there may be a race condition between the command being sent to the motor and the action being executed
+    std::string reg = "moving";
+    cib::util::reg_write_mask_offset(m_regs.at(reg).addr,0x0,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
+    // -- why not, refresh also the current position, as stated by the motor
+    reg = "init_pos";
+    cib::util::reg_write_mask_offset(m_regs.at(reg).addr,m_position,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
     return status;
   }
 
@@ -832,8 +917,8 @@ namespace Device
     {
       m_id = id;
     }
-//    UaString as_val = UaString(m_id.c_str());
-//    ss = getAddressSpaceLink()->Set>setId(as_val,ss);
+    //    UaString as_val = UaString(m_id.c_str());
+    //    ss = getAddressSpaceLink()->Set>setId(as_val,ss);
     return ss;
   }
 
@@ -928,12 +1013,12 @@ namespace Device
       resp["status_code"] = OpcUa_BadInvalidArgument;
       return OpcUa_BadInvalidArgument;
     }
-//    else
-//    {
-//      // the ids match...we have the right motor, so configure it
-//      UaString as_v(conf.at("id").get<std::string>().c_str());
-//      st = getAddressSpaceLink()->setId(as_v,OpcUa_Good);
-//    }
+    //    else
+    //    {
+    //      // the ids match...we have the right motor, so configure it
+    //      UaString as_v(conf.at("id").get<std::string>().c_str());
+    //      st = getAddressSpaceLink()->setId(as_v,OpcUa_Good);
+    //    }
     // if the ids match, lets set the parameters
     // special iterator member functions for objects
     for (json::iterator it = conf.begin(); it != conf.end(); ++it)
@@ -999,44 +1084,133 @@ namespace Device
       {
         m_coordinate_index = it.value();
       }
+      if (it.key() == "mmap")
+      {
+        // if there are any registers there, clean them out
+        if (m_regs.size())
+        {
+          m_regs.clear();
+        }
+        json frag = it.value();
+        // now grab the entries
+        try
+        {
+          for (auto jt = frag.begin(); jt != frag .end(); ++jt)
+          {
+            motor_regs_t tmp;
+            // for these, nothing is optional
+            tmp.offset = jt.value().at(0);
+            tmp.bit_high = jt.value().at(1);
+            tmp.bit_low = jt.value().at(2);
+            tmp.addr = 0x0;
+            m_regs.insert(std::pair<std::string,motor_regs_t>(it.key(),tmp));
+          }
+        }
+        catch(json::exception &e)
+        {
+          msg.clear();msg.str("");
+          msg << log_e("config"," ") << "Incomplete config fragment [mmap] : " << e.what();
+          resp["messages"].push_back(msg.str());
+          throw;
+        }
+        catch(std::exception &e)
+        {
+          msg.clear();msg.str("");
+          msg << log_e("config"," ") << "Problem parsing config fragment [mmap] : " << e.what();
+          resp["messages"].push_back(msg.str());
+          throw;
+        }
+      }
+    }
+    // if we reached this point, things seem to be good
+    // now it is time to map the registers
+    if (st == OpcUa_Good)
+    {
+      map_registers();
     }
     return st;
   }
 
   bool DIoLMotor::validate_config_fragment(json &conf, json &resp)
   {
-    std::vector<std::string> keys = {"id","server_address","port","speed","range","acceleration","deceleration","refresh_period_ms"};
+    std::vector<std::string> keys = {"id","server_address","port","speed","range","acceleration","deceleration","refresh_period_ms","mmap"};
     std::vector<std::string> missing;
     for (auto entry: keys)
-     {
-       if (!conf.contains(entry))
-       {
-         missing.push_back(entry);
-       }
-     }
-     if (missing.size() > 0)
-     {
-       std::ostringstream msg("");
-       msg.clear(); msg.str("");
-       msg << log_e("config","Missing entries in Laser Unit config fragment [");
-       for (auto e : missing)
-       {
-         msg << "(" <<  e << "),";
-       }
-       msg << "]";
-       resp["status"] = "ERROR";
-       resp["messages"].push_back(msg.str());
-       resp["status_code"] = OpcUa_BadInvalidArgument;
-       return false;
-     }
-     // all good, return true
-     return true;
+    {
+      if (!conf.contains(entry))
+      {
+        missing.push_back(entry);
+      }
+    }
+    if (missing.size() > 0)
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      msg << log_e("config","Missing entries in Laser Unit config fragment [");
+      for (auto e : missing)
+      {
+        msg << "(" <<  e << "),";
+      }
+      msg << "]";
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidArgument;
+      return false;
+    }
+    // all good, return true
+    return true;
   }
   UaStatus DIoLMotor::set_position_setpoint(const int32_t target)
   {
     m_position_setpoint = target;
     return OpcUa_Good;
   }
+  UaStatus DIoLMotor::map_registers()
+  {
+    // this method is specific for each device
+    // -- first obtain a map to all the memory
+    if (m_mapped_mem)
+    {
+      std::ostringstream msg("");
+      msg << log_e("map_registers"," ") << "Memory pointer already populated. Doing nothing.";
+      LOG(Log::WRN) << msg.str();
+      return OpcUa_Bad;
+    }
+    m_mapped_mem = cib::util::map_phys_mem(m_mmap_fd,cib::mem::config_base_addr,cib::mem::config_high_addr);
+    if (m_mapped_mem != 0)
+    {
+      // fill up each register and set the respective register pointers
+      for (auto it : m_regs)
+      {
+        // note that there are 4 bytes in each register
+        it.second.addr = (m_mapped_mem+(it.second.offset*sizeof(uint32_t)));
+      }
+      // start the movement monitor
+      move_monitor(this);
+      return OpcUa_Good;
+    }
+    else
+    {
+      // do nothing and just complain back
+      return OpcUa_Bad;
+    }
+  }
+
+  UaStatus DIoLMotor::unmap_registers()
+  {
+    size_t size = cib::mem::config_high_addr - cib::mem::config_base_addr;
+    int ret = cib::util::unmap_mem(cib::util::cast_to_void(m_mapped_mem), size);
+    if (ret == 0)
+    {
+      return OpcUa_Good;
+    }
+    else
+    {
+      return OpcUa_Bad;
+    }
+    close(m_mmap_fd);
+  }
+
 
 } // -- namespace
 
