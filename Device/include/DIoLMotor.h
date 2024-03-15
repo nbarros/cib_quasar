@@ -161,6 +161,11 @@ private:
     int32_t m_range_max;
     std::string m_id;
     uint16_t m_coordinate_index;
+    //
+    // Variables necessary to map registers in the CIB
+    //
+    int m_mmap_fd;
+
 };
 
 }
