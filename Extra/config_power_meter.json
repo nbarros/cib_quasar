@@ -1,0 +1,13 @@
+{
+"type" : "PowerMeter",
+"name" : "PWM1",
+"serial_number":"NJAS44DN",
+"port":"/dev/ttyUSB0",
+"baud_rate":9800,
+"measurement_mode":1,
+"select_range":1,
+"wavelength":266,
+"energy_threshold":2,
+"average_setting":1,
+"pulse_width":2
+}
