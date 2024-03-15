@@ -4,7 +4,7 @@
 	<IoLMotor name="RNN800" id="1" server_address="192.168.2.173" port="5000" refresh_period_ms="0"
 		acceleration="200" deceleration="200" speed_setpoint="1000">
 	</IoLMotor>
-	<IoLMotor name="m2" id="2" server_address="localhost" port="4501" refresh_period_ms="0" acceleration="200" deceleration="200" speed_setpoint="1000">
+	<IoLMotor name="RNN600" id="2" server_address="localhost" port="4501" refresh_period_ms="0" acceleration="200" deceleration="200" speed_setpoint="1000">
 	</IoLMotor>
 	<IoLAttenuator name="A1" serial_number="HDIUSUD"></IoLAttenuator>
 	<IoLLaserUnit rep_rate_hz="10.0" name="L1" rep_rate_divider="0" serial_number="akjwhe32498" port="auto" baud_rate="9800" qswitch_us="170" discharge_voltage_kV="1.0" ext_shutter_time_pre_shot="300" ext_shutter_open_time_us="1000">
