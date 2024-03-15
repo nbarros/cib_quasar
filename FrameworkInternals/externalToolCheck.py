@@ -66,13 +66,13 @@ def checkKdiff3():
     if platform.system() == "Linux":
         return checkExecutableExists('diff', StandardMessage, '--version')
     #if the system is a windows machine then:
-    errorMessageWindows = "kdiff3 cannot be found. Maybe it is not installed, or maybe it is not set in the PATH. \nkdiff3 can be downloaded in http://kdiff3.sourceforge.net/ "
+    errorMessageWindows = "diff app cannot be found. Maybe it is not installed, or maybe it is not set in the PATH. \nkdiff3 can be downloaded in http://kdiff3.sourceforge.net/ "
     try:
         returnCode = subprocess.call(['where', getCommand('diff')],
             stdout=open(os.devnull, 'wb'),
             stderr=subprocess.STDOUT)
         if returnCode == 0:
-            print("kdiff3 does exist")
+            print("diff app does exist")
         else:
             raise Exception(errorMessageWindows)
     except:
