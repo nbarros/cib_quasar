@@ -50,9 +50,9 @@ public:
     /* Note: never directly call this function. */
     UaStatus writeQswitch_us ( const OpcUa_UInt32& v);
     /* Note: never directly call this function. */
-    UaStatus writeDischarge_voltage_kV ( const OpcUa_Float& v);
+    UaStatus writeDischarge_voltage_kV ( const OpcUa_Double& v);
     /* Note: never directly call this function. */
-    UaStatus writeRep_rate_hz ( const OpcUa_Float& v);
+    UaStatus writeRep_rate_hz ( const OpcUa_Double& v);
     /* Note: never directly call this function. */
     UaStatus writeRep_rate_divider ( const OpcUa_UInt16& v);
 
@@ -154,8 +154,8 @@ private:
     bool validate_config_fragment(json &conf, json &resp);
     // methods that internally deal with the device writing logic
     UaStatus write_divider(const uint16_t v,json &resp);
-    UaStatus write_rate(const float v,json &resp);
-    UaStatus write_hv(const float v,json &resp);
+    UaStatus write_rate(const double v,json &resp);
+    UaStatus write_hv(const double v,json &resp);
     UaStatus write_qswitch(const uint16_t v,json &resp);
     //
     void timer_start(DIoLLaserUnit *obj);
@@ -166,8 +166,8 @@ private:
     //
     device::Laser *m_laser;
     uint16_t m_divider;
-    float m_pump_hv;
-    float m_rate_hz;
+    double m_pump_hv;
+    double m_rate_hz;
     uint32_t m_qswitch;
     bool m_laser_shutter_close;
     uint32_t m_shot_count;

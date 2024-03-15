@@ -211,7 +211,7 @@
     	</d:configRestriction><!--units in microseconds-->
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_Float" name="discharge_voltage_kV"
+    	dataType="OpcUa_Double" name="discharge_voltage_kV"
     	nullPolicy="nullForbidden" addressSpaceWrite="delegated"
     	initialStatus="OpcUa_Good" initialValue="1.0">
     	<d:configRestriction>
@@ -220,7 +220,7 @@
     	</d:configRestriction><!--units in kV-->
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_Float" name="rep_rate_hz"
+    	dataType="OpcUa_Double" name="rep_rate_hz"
     	nullPolicy="nullForbidden" addressSpaceWrite="delegated"
     	initialValue="10.0"
     	initialStatus="OpcUa_Good">

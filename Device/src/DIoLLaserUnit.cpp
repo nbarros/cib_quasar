@@ -28,6 +28,9 @@
 #include <sstream>
 #include <thread>
 #include <chrono>
+#include <mem_utils.h>
+#include <cstdint>
+
 using json = nlohmann::json;
 //
 #define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
@@ -109,6 +112,8 @@ namespace Device
     //    json resp;
     //    init(resp);
 
+    // Should we apply already map the control bit of the external shutter?
+    //uintptr_t addr = cib::util::map_phys_mem(0x100000,0x100);
             }
 
   /* sample dtr */
@@ -139,7 +144,7 @@ namespace Device
   }
   /* Note: never directly call this function. */
 
-  UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Float& v)
+UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Double& v)
   {
     LOG(Log::INF) << "Setting discharge voltage to " << v;
     std::ostringstream msg;
@@ -159,7 +164,7 @@ namespace Device
   }
   /* Note: never directly call this function. */
 
-  UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Float& v)
+UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
   {
     LOG(Log::INF) << "Setting Repetition rate";
     std::ostringstream msg;
@@ -1100,7 +1105,7 @@ namespace Device
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
   }
-  UaStatus DIoLLaserUnit::write_rate(const float v,json &resp)
+  UaStatus DIoLLaserUnit::write_rate(const double v,json &resp)
   {
     // NOTE: This method does not check whether the system is ready to execute
     // that is the job of the original method
@@ -1166,7 +1171,7 @@ namespace Device
     }
     return OpcUa_Good;
   }
-  UaStatus DIoLLaserUnit::write_hv(const float v,json &resp)
+  UaStatus DIoLLaserUnit::write_hv(const double v,json &resp)
   {
     // NOTE: This method does not check whether the system is ready to execute
     // that is the job of the original method
