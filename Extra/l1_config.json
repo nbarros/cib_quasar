@@ -5,6 +5,5 @@
 "repetition_rate":10.0,
 "repetition_rate_divider":0,
 "qswitch":170,
-"discharge_voltage":1.1,
-"external_shutter": {"pre_shot_time":300, "open_window":1000}
+"discharge_voltage":1.1
 }

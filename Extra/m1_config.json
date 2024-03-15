@@ -1,9 +1,11 @@
 {
-"id":1,
+"id":"RNN800",
+"coordinate_index":0,
 "server_address":"192.168.2.173",
 "port":5000,
-"speed":2,
-"acceleration":3,
-"decceleration":2,
-"refresh_period_ms":5000
+"speed":200,
+"range":[-3100,28786],
+"acceleration":200,
+"decceleration":200,
+"refresh_period_ms":5
 }
