@@ -76,6 +76,7 @@ DIoLCIB::DIoLCIB (
   FILE* file = fopen("/proc/stat", "r");
   int ret = fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
   ret = fclose(file);
+  (void)ret; // this is just to suppress the compilation warning
 }
 
 /* sample dtr */
@@ -112,6 +113,7 @@ void DIoLCIB::poll_cpu()
   FILE* file = fopen("/proc/stat", "r");
   int ret = fscanf(file, "cpu %llu %llu %llu %llu", &tot_usr, &tot_usr_low,&tot_sys, &tot_idle);
   ret = fclose(file);
+  (void)ret; // this is just to suppress the compilation warning
 
   if ((tot_usr < m_prev_tot_usr) ||
       (tot_usr_low < m_prev_tot_usr_low) ||

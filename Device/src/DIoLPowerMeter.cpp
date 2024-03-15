@@ -73,22 +73,22 @@ namespace Device
       const Configuration::IoLPowerMeter& config,
       Parent_DIoLPowerMeter* parent
   ):
-            Base_DIoLPowerMeter( config, parent)
+                Base_DIoLPowerMeter( config, parent)
 
-            /* fill up constructor initialization list here */
-            ,m_pm(nullptr)
-            ,m_comport("auto")
-            ,m_status(sOffline)
-            ,m_measurement_mode(1)
-            ,m_sel_range(2)
-            ,m_wavelength(266)
-            ,m_e_threshold(1)
-            ,m_ave_setting(1)
-            ,m_pulse_width(1)
-            ,m_energy_reading(0.0)
-            ,m_pause_measurements(false)
-            ,m_serial_number("")
-            {
+                /* fill up constructor initialization list here */
+                ,m_pm(nullptr)
+                ,m_comport("auto")
+                ,m_status(sOffline)
+                ,m_measurement_mode(1)
+                ,m_sel_range(2)
+                ,m_wavelength(266)
+                ,m_e_threshold(1)
+                ,m_ave_setting(1)
+                ,m_pulse_width(1)
+                ,m_energy_reading(0.0)
+                ,m_pause_measurements(false)
+                ,m_serial_number("")
+                {
     m_name = config.name();
     m_serial_number = config.serial_number();
     /* fill up constructor body here */
@@ -126,7 +126,7 @@ namespace Device
     //    }
     //
 
-            }
+                }
 
   /* sample dtr */
   DIoLPowerMeter::~DIoLPowerMeter ()
@@ -503,10 +503,12 @@ namespace Device
       else
       {
         refresh_average_reading();
+        status = OpcUa_Good;
       }
     }
+    status = OpcUa_Good;
     UaString ua_str = UaString(m_status_map.at(m_status).c_str());
-    getAddressSpaceLink()->setStatus(ua_str,OpcUa_Good);
+    getAddressSpaceLink()->setStatus(ua_str,status);
   }
 
   void DIoLPowerMeter::refresh_energy_reading()
@@ -763,36 +765,39 @@ namespace Device
       // -- Select the measurement range
       //
 
-      set_range(m_sel_range, rep);
+      ret = set_range(m_sel_range, rep);
       //
       // -- Select the pulse widths/lengths
       //
-      set_pwidth(m_pulse_width,rep);
+      ret |= set_pwidth(m_pulse_width,rep);
       //
       //-- Select the average setting
       //
-      set_average(m_ave_setting,rep);
+      ret |= set_average(m_ave_setting,rep);
       //
       // -- Select the wavelength
       //
-      set_lambda(m_wavelength,rep);
+      ret |= set_lambda(m_wavelength,rep);
       //
       // -- Select the threshold
       //
-      set_thresh(m_e_threshold,rep);
+      ret |= set_thresh(m_e_threshold,rep);
       // -- if it reached this point, the whole thing is initialized
       // check if there were errors being throuwn
-      if (rep.contains("status"))
+      if (ret != OpcUa_Good)
       {
-        if (rep.at("status").get<std::string>() == std::string("ERROR"))
+        if (rep.contains("status"))
         {
-          resp["status"] = "ERROR";
-          resp["status_code"] = rep.at("status_code");
-          resp["messages"].insert(std::end(resp["messages"]),std::begin(rep["messages"]),std::end(rep["messages"]));
-          msg.clear(); msg.str("");
-          msg << log_e("init"," ") << "Failed to complete Power Meter configuration. See previous messages";
-          resp["messages"].push_back(msg.str());
-          return OpcUa_Uncertain;
+          if (rep.at("status").get<std::string>() == std::string("ERROR"))
+          {
+            resp["status"] = "ERROR";
+            resp["status_code"] = rep.at("status_code");
+            resp["messages"].insert(std::end(resp["messages"]),std::begin(rep["messages"]),std::end(rep["messages"]));
+            msg.clear(); msg.str("");
+            msg << log_e("init"," ") << "Failed to complete Power Meter configuration. See previous messages";
+            resp["messages"].push_back(msg.str());
+            return OpcUa_Uncertain;
+          }
         }
       }
       update_status(sReady);
@@ -951,7 +956,6 @@ namespace Device
     bool got_exception = false;
     UaStatus st = OpcUa_Good;
     ostringstream msg("");
-    UaStatus ret = OpcUa_Good;
     try
     {
       if (m_status != sOffline)
@@ -973,7 +977,7 @@ namespace Device
       {
         msg.clear(); msg.str("");
         msg << log_e("config","Mismatch between name in object and configuration fragment :")
-                  << " (" << conf.at("name").get<std::string>() <<" <> " << m_name << ")";
+                      << " (" << conf.at("name").get<std::string>() <<" <> " << m_name << ")";
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["status_code"] = OpcUa_BadInvalidArgument;
