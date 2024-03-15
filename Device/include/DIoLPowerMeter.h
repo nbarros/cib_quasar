@@ -87,7 +87,7 @@ public:
 
     ) ;
     UaStatus callConfig (
-        const UaString&  config,
+        const UaString&  conf,
         UaString& response
     ) ;
     UaStatus callStop_measurements (

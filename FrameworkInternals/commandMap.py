@@ -24,7 +24,7 @@ commandMap = {
 "saxon":"saxon9he.jar",
 "java":"java",
 "astyle":"astyle",
-"diff":"kdiff3",
+"diff":"meld",
 "cmake":"cmake",
 "make":"make",
 "gcc":"gcc",

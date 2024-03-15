@@ -235,19 +235,19 @@ namespace Device
     return OpcUa_Good;
   }
   UaStatus DIoLLaserUnit::callConfig (
-      const UaString&  config,
+    const UaString&  conf,
       UaString& response
   )
   {
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
-    json conf;
+    json cfrag;
     UaStatus st = OpcUa_Good;
     try
     {
-      conf = json::parse(config.toUtf8());
-      st = ::config(conf,resp);
+      cfrag = json::parse(conf.toUtf8());
+      st = config(cfrag,resp);
     }
     catch(json::exception &e)
     {

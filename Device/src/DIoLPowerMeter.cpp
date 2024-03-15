@@ -307,17 +307,18 @@ namespace Device
     }
   }
   UaStatus DIoLPowerMeter::callConfig (
-      const UaString&  config,
+      const UaString&  conf,
       UaString& response
   )
   {
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
-    json conf;
+    json cf;
     try
     {
-      conf = json::parse(config.toUtf8());
+      cf = json::parse(conf.toUtf8());
+      (void)config(cf,resp);
     }
     catch(json::exception &e)
     {
@@ -346,7 +347,6 @@ namespace Device
       return OpcUa_Good;
     }
 
-    (void)::config(conf,resp);
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
   }

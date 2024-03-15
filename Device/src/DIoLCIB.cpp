@@ -74,8 +74,8 @@ DIoLCIB::DIoLCIB (
     /* fill up constructor body here */
   // start by initializing the initial counters
   FILE* file = fopen("/proc/stat", "r");
-  (void)fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
-  (void)fclose(file);
+  int ret = fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
+  ret = fclose(file);
 }
 
 /* sample dtr */
@@ -110,8 +110,8 @@ void DIoLCIB::poll_cpu()
 {
   unsigned long long tot_usr, tot_usr_low, tot_sys, tot_idle;
   FILE* file = fopen("/proc/stat", "r");
-  (void)fscanf(file, "cpu %llu %llu %llu %llu", &tot_usr, &tot_usr_low,&tot_sys, &tot_idle);
-  (void)fclose(file);
+  int ret = fscanf(file, "cpu %llu %llu %llu %llu", &tot_usr, &tot_usr_low,&tot_sys, &tot_idle);
+  ret = fclose(file);
 
   if ((tot_usr < m_prev_tot_usr) ||
       (tot_usr_low < m_prev_tot_usr_low) ||

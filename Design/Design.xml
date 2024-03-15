@@ -250,7 +250,7 @@
 		<d:argument dataType="OpcUa_UInt16" name="baud_rate"></d:argument>
 		<d:returnvalue dataType="UaString" name="response"></d:returnvalue>
     </d:method><d:method name="config" executionSynchronicity="synchronous">
-    	<d:argument dataType="UaString" name="config"></d:argument>
+    	<d:argument dataType="UaString" name="conf"></d:argument>
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
     <d:method name="init" executionSynchronicity="synchronous">
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method><d:method name="stop" executionSynchronicity="synchronous">
