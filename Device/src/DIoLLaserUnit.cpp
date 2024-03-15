@@ -753,7 +753,6 @@ namespace Device
       {
         LOG(Log::ERR) << "DIoLLaserUnit::automatic_port_search : Couldn't find device port";
       }
-
       m_status = sOffline;
     }
     catch(...)
