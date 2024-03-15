@@ -346,7 +346,7 @@ namespace Device
       return OpcUa_Good;
     }
 
-    (void)config(conf,resp);
+    (void)::config(conf,resp);
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
   }

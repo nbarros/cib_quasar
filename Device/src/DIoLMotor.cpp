@@ -832,8 +832,8 @@ namespace Device
     {
       m_id = id;
     }
-    UaString as_val = UaString(m_id.c_str());
-    ss = getAddressSpaceLink()->setId(as_val,ss);
+//    UaString as_val = UaString(m_id.c_str());
+//    ss = getAddressSpaceLink()->Set>setId(as_val,ss);
     return ss;
   }
 
@@ -900,7 +900,7 @@ namespace Device
       return OpcUa_Good;
     }
     m_speed_setpoint = v;
-    UaStatus st = getAddressSpaceLink()->setSpeed_setpoint(m_speed_setpoint,OpcUa_Good);
+    UaStatus st = getAddressSpaceLink()->setSpeed(m_speed_setpoint,OpcUa_Good);
     return st;
 
   }
@@ -928,12 +928,12 @@ namespace Device
       resp["status_code"] = OpcUa_BadInvalidArgument;
       return OpcUa_BadInvalidArgument;
     }
-    else
-    {
-      // the ids match...we have the right motor, so configure it
-      UaString as_v(conf.at("id").get<std::string>().c_str());
-      st = getAddressSpaceLink()->setId(as_v,OpcUa_Good);
-    }
+//    else
+//    {
+//      // the ids match...we have the right motor, so configure it
+//      UaString as_v(conf.at("id").get<std::string>().c_str());
+//      st = getAddressSpaceLink()->setId(as_v,OpcUa_Good);
+//    }
     // if the ids match, lets set the parameters
     // special iterator member functions for objects
     for (json::iterator it = conf.begin(); it != conf.end(); ++it)
@@ -967,7 +967,7 @@ namespace Device
       if (it.key() == "speed")
       {
         st = set_speed(it.value());
-        getAddressSpaceLink()->setSpeed_setpoint(m_speed_setpoint,st);
+        getAddressSpaceLink()->setSpeed(m_speed_setpoint,st);
       }
       if (it.key() == "acceleration")
       {

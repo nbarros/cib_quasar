@@ -247,7 +247,7 @@ namespace Device
     try
     {
       conf = json::parse(config.toUtf8());
-      st = config(conf,resp);
+      st = ::config(conf,resp);
     }
     catch(json::exception &e)
     {
@@ -915,11 +915,11 @@ namespace Device
         msg << log_w("init","System already initialized. Just reconfiguring.");
         resp["messages"].push_back(msg.str());
         bool clean_and_rebuild = false;
-        if (m_laser->m_comport != m_comport)
+        if (m_laser->get_port() != m_comport)
         {
           clean_and_rebuild = true;
         }
-        if (m_laser->m_baud != m_baud_rate)
+        if (m_laser->get_baud() != m_baud_rate)
         {
           clean_and_rebuild = true;
         }
