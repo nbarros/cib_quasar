@@ -180,18 +180,12 @@ private:
     //
     // Variables necessary to map registers in the CIB
     //
-
     int m_mmap_fd;
     uintptr_t m_mapped_mem;
-
     // variables that are relevant for the memory mapped registers
     // we could actually make this absolutely generic, dependent on the configuration
     // of course the usage then would be different
     std::map<std::string,motor_regs_t> m_regs;
-//    motor_regs_t m_reg_moving;
-//    motor_regs_t m_reg_dir;
-//    motor_regs_t m_reg_init_pos;
-//    motor_regs_t m_reg_cur_pos;
 
 };
 

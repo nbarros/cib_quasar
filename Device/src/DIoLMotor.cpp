@@ -1103,6 +1103,7 @@ namespace Device
             tmp.bit_high = jt.value().at(1);
             tmp.bit_low = jt.value().at(2);
             tmp.addr = 0x0;
+            tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
             m_regs.insert(std::pair<std::string,motor_regs_t>(it.key(),tmp));
           }
         }
