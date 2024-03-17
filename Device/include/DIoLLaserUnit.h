@@ -31,6 +31,15 @@ namespace device {
 namespace Device
 {
 
+  typedef struct
+  {
+    uint16_t offset;
+    uint16_t bit_high;
+    uint16_t bit_low;
+    uintptr_t addr; // addr is the memory mapped address of this particular register
+    uint32_t mask;
+  } laser_regs_t;
+
 class
     DIoLLaserUnit
     : public Base_DIoLLaserUnit
@@ -108,7 +117,18 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
-    enum Status{sOffline=0x0,sReady=2,sLasing=3};
+    enum Status{sOffline=0x0,sReady=1,sWarmup=2,sLasing=3,sPause = 4,sStandby=5};
+    /**
+      The transition diagram can be tricky here: ,--> sStandby
+      sOffline -> sReady -> sWarmup ---> sLasing ---> sPause
+                                    `
+                                     `--> sStandby --> sLasing
+                                      `
+                                       `--> sPause  --> sLasing
+                                                    `-> sStandby
+
+     */
+
     // bitfield with the settings that are already configured
     typedef struct {
       uint8_t hv :1;
@@ -130,6 +150,10 @@ public:
     UaStatus init(json &resp);
     UaStatus config(json &conf, json &resp);
     UaStatus stop(json &resp);
+    UaStatus start_cib(json &resp);
+    // these two have timeouts associated with them
+    UaStatus pause(json &resp);
+    UaStatus standby(json &resp);
     UaStatus single_shot(json &resp);
     UaStatus fire_standalone(uint32_t num_pulses,json &resp);
     UaStatus switch_laser_shutter(const bool close, json &resp);
@@ -157,8 +181,23 @@ private:
     UaStatus write_rate(const double v,json &resp);
     UaStatus write_hv(const double v,json &resp);
     UaStatus write_qswitch(const uint16_t v,json &resp);
+    // to be implemented
+    UaStatus set_pause_timeout(const uint32_t v,json &resp);
+    UaStatus set_standby_timeout(const uint32_t v,json &resp);
+    UaStatus set_qswitch_delay(const uint32_t v,json &resp);
+    UaStatus set_qswitch_width(const uint32_t v,json &resp);
+    UaStatus set_fire_width(const uint32_t v,json &resp);
+
+
     //
     void timer_start(DIoLLaserUnit *obj);
+    void start_warmup_timer();
+    void start_pause_timer();
+    void start_standby_timer();
+
+    UaStatus map_registers();
+    UaStatus unmap_registers();
+
     //
     //
     bool m_is_ready;
@@ -169,7 +208,9 @@ private:
     double m_pump_hv;
     double m_rate_hz;
     uint32_t m_qswitch;
-    bool m_laser_shutter_close;
+    bool m_laser_shutter_closed;
+    bool m_ext_shutter_closed;
+
     uint32_t m_shot_count;
     //
     std::string m_comport;
@@ -181,8 +222,29 @@ private:
     std::string m_name;
     conf_word m_config;
     //
+    // these timers are not yet set up
+    // they should be set up at the IoLaserSystem level
     std::uint32_t m_idle_counter;
     std::uint32_t m_idle_timeout; // timeout after which the laser
+    //
+    // Variables necessary to map registers in the CIB
+    //
+    int m_mmap_fd;
+    uintptr_t m_mapped_mem;
+    // variables that are relevant for the memory mapped registers
+    // we could actually make this absolutely generic, dependent on the configuration
+    // of course the usage then would be different
+    std::map<std::string,laser_regs_t> m_regs;
+    //
+    //
+    uint32_t m_pause_timeout;
+    uint32_t m_standby_timeout;
+    uint32_t m_qswitch_delay;
+    uint32_t m_qswitch_width;
+    uint32_t m_fire_width;
+    std::string m_serial_number;
+    uint32_t m_warmup_timer;
+
 };
 
 }
