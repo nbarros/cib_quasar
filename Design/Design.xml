@@ -294,6 +294,7 @@
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
   	<d:method name="standby" executionSynchronicity="synchronous">
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	
 
   </d:class>
   <d:class name="IoLAttenuator">

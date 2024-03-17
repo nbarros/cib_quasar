@@ -59,8 +59,6 @@ public:
     /* Note: never directly call this function. */
     UaStatus writeDischarge_voltage_kV ( const OpcUa_Double& v);
     /* Note: never directly call this function. */
-    UaStatus writeQswitch_us ( const OpcUa_UInt32& v);
-    /* Note: never directly call this function. */
     UaStatus writeRep_rate_hz ( const OpcUa_Double& v);
     /* Note: never directly call this function. */
     UaStatus writeRep_rate_divider ( const OpcUa_UInt32& v);
@@ -129,7 +127,12 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
-    enum Status{sOffline=0x0,sReady=1,sWarmup=2,sLasing=3,sPause = 4,sStandby=5};
+    // sError is a special case of error
+    // when we reach this state the whole thing shuts down. We cannot really do anything
+    // basically, sError means that manual intervention (and quite likely restart of the slow control server)
+    // is necessary
+    // this basically means that an irrecoverable error state was reached and manual intervention is necessary.
+    enum Status{sOffline=0x0,sReady=1,sWarmup=2,sLasing=3,sPause = 4,sStandby=5, sError=6};
     /**
       The transition diagram can be tricky here: ,--> sStandby
       sOffline -> sReady -> sWarmup ---> sLasing ---> sPause
@@ -192,10 +195,10 @@ private:
     UaStatus write_divider(const uint16_t v,json &resp);
     UaStatus write_rate(const double v,json &resp);
     UaStatus write_hv(const double v,json &resp);
-    UaStatus write_qswitch(const uint16_t v,json &resp);
+    //UaStatus write_qswitch(const uint16_t v,json &resp);
     // to be implemented
-    UaStatus set_pause_timeout(const uint32_t v,json &resp);
-    UaStatus set_standby_timeout(const uint32_t v,json &resp);
+    void set_pause_timeout(const uint32_t v,json &resp) {m_pause_timeout = v;}
+    void set_standby_timeout(const uint32_t v,json &resp){m_standby_timeout = v;}
     UaStatus set_qswitch_delay(const uint32_t v,json &resp);
     UaStatus set_qswitch_width(const uint32_t v,json &resp);
     UaStatus set_fire_width(const uint32_t v,json &resp);
@@ -207,7 +210,7 @@ private:
     void start_pause_timer();
     void start_standby_timer();
 
-    UaStatus map_registers();
+    UaStatus map_registers(json &reginfo, json &resp);
     UaStatus unmap_registers();
 
     //
@@ -232,7 +235,7 @@ private:
     //
     std::map<Status,std::string> m_status_map;
     std::string m_name;
-    conf_word m_config;
+    //conf_word m_config;
     //
     // these timers are not yet set up
     // they should be set up at the IoLaserSystem level

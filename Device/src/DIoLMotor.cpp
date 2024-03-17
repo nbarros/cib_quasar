@@ -1177,7 +1177,7 @@ namespace Device
       LOG(Log::WRN) << msg.str();
       return OpcUa_Bad;
     }
-    m_mapped_mem = cib::util::map_phys_mem(m_mmap_fd,cib::mem::config_base_addr,cib::mem::config_high_addr);
+    m_mapped_mem = cib::util::map_phys_mem(m_mmap_fd,CIB_CONFIG_ADDR_BASE,CIB_CONFIG_ADDR_HIGH);
     if (m_mapped_mem != 0)
     {
       // fill up each register and set the respective register pointers
@@ -1199,7 +1199,7 @@ namespace Device
 
   UaStatus DIoLMotor::unmap_registers()
   {
-    size_t size = cib::mem::config_high_addr - cib::mem::config_base_addr;
+    size_t size = CIB_CONFIG_ADDR_HIGH - CIB_CONFIG_ADDR_BASE;
     int ret = cib::util::unmap_mem(cib::util::cast_to_void(m_mapped_mem), size);
     if (ret == 0)
     {
