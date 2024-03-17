@@ -57,13 +57,13 @@ public:
     /* delegators for
     cachevariables and sourcevariables */
     /* Note: never directly call this function. */
-    UaStatus writeQswitch_us ( const OpcUa_UInt32& v);
-    /* Note: never directly call this function. */
     UaStatus writeDischarge_voltage_kV ( const OpcUa_Double& v);
+    /* Note: never directly call this function. */
+    UaStatus writeQswitch_us ( const OpcUa_UInt32& v);
     /* Note: never directly call this function. */
     UaStatus writeRep_rate_hz ( const OpcUa_Double& v);
     /* Note: never directly call this function. */
-    UaStatus writeRep_rate_divider ( const OpcUa_UInt16& v);
+    UaStatus writeRep_rate_divider ( const OpcUa_UInt32& v);
 
 
     /* delegators for methods */
@@ -82,16 +82,19 @@ public:
     UaStatus callStop (
         UaString& response
     ) ;
-    UaStatus callCheck_status (
+    UaStatus callCheck_laser_status (
         OpcUa_UInt16& status,
         UaString& description
     ) ;
     UaStatus callSingle_shot (
         UaString& response
     ) ;
-    UaStatus callFire_standalone (
+    UaStatus callStart_standalone (
         OpcUa_Boolean fire,
         OpcUa_UInt32 num_shots,
+        UaString& response
+    ) ;
+    UaStatus callStart_cib (
         UaString& response
     ) ;
     UaStatus callSwitch_laser_shutter (
@@ -103,6 +106,15 @@ public:
         UaString& response
     ) ;
     UaStatus callTerminate (
+        UaString& response
+    ) ;
+    UaStatus callStop_cib (
+        UaString& response
+    ) ;
+    UaStatus callPause (
+        UaString& response
+    ) ;
+    UaStatus callStandby (
         UaString& response
     ) ;
 
@@ -207,7 +219,7 @@ private:
     uint16_t m_divider;
     double m_pump_hv;
     double m_rate_hz;
-    uint32_t m_qswitch;
+    //uint32_t m_qswitch;
     bool m_laser_shutter_closed;
     bool m_ext_shutter_closed;
 

@@ -46,35 +46,35 @@ using std::string;
 //
 namespace Device
 {
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
-  // 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
-  // 1     Users don't modify this code!!!!                                  1
-  // 1     If you modify this code you may start a fire or a flood somewhere,1
-  // 1     and some human being may possible cease to exist. You don't want  1
-  // 1     to be charged with that!                                          1
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
+// 1     Users don't modify this code!!!!                                  1
+// 1     If you modify this code you may start a fire or a flood somewhere,1
+// 1     and some human being may possible cease to exist. You don't want  1
+// 1     to be charged with that!                                          1
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
 
 
 
 
 
 
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
-  // 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
-  // 2     (code for which only stubs were generated automatically)          2
-  // 2     You should add the implementation but dont alter the headers      2
-  // 2     (apart from constructor, in which you should complete initializati2
-  // 2     on list)                                                          2
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
+// 2     (code for which only stubs were generated automatically)          2
+// 2     You should add the implementation but dont alter the headers      2
+// 2     (apart from constructor, in which you should complete initializati2
+// 2     on list)                                                          2
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
 
-  /* sample ctr */
-  DIoLLaserUnit::DIoLLaserUnit (
-      const Configuration::IoLLaserUnit& config,
-      Parent_DIoLLaserUnit* parent
-  ):
-            Base_DIoLLaserUnit( config, parent)
+/* sample ctr */
+DIoLLaserUnit::DIoLLaserUnit (
+    const Configuration::IoLLaserUnit& config,
+    Parent_DIoLLaserUnit* parent
+):
+    Base_DIoLLaserUnit( config, parent)
 
-            /* fill up constructor initialization list here */
+    /* fill up constructor initialization list here */
             ,m_is_ready(false)
             ,m_status(sOffline)
             ,m_laser(nullptr)
@@ -82,8 +82,8 @@ namespace Device
             //FIXME: What is the pump HV default?
             ,m_pump_hv(0.0)
             ,m_rate_hz(10.0)
-            ,m_qswitch(200)
-            ,m_laser_shutter_close(true)
+            ,m_laser_shutter_closed(true)
+            ,m_ext_shutter_closed(false)
             ,m_shot_count(0)
             ,m_comport("auto")
             ,m_baud_rate(9600)
@@ -100,7 +100,7 @@ namespace Device
             ,m_fire_width(10)
             ,m_serial_number("")
             ,m_warmup_timer(30) // 30 min
-            {
+{
     /* fill up constructor body here */
     m_name = config.name();
     LOG(Log::INF) << "DIoLLaserUnit::DIoLLaserUnit : Building instance of  [" << m_name << "]";
@@ -129,38 +129,19 @@ namespace Device
 
     // Should we apply already map the control bit of the external shutter?
     //uintptr_t addr = cib::util::map_phys_mem(0x100000,0x100);
-            }
+}
 
-  /* sample dtr */
-  DIoLLaserUnit::~DIoLLaserUnit ()
-  {
-  }
+/* sample dtr */
+DIoLLaserUnit::~DIoLLaserUnit ()
+{
+}
 
-  /* delegates for cachevariables */
+/* delegates for cachevariables */
 
-  /* Note: never directly call this function. */
-
-  UaStatus DIoLLaserUnit::writeQswitch_us ( const OpcUa_UInt32& v)
-  {
-    LOG(Log::INF) << "Setting QSwitch";
-    std::ostringstream msg;
-    // we need the system to be at least in unconfigured state
-    // as we need the device connection to be established
-    if (m_status == sOffline)
-    {
-      return OpcUa_BadInvalidState;
-    }
-    if (!m_laser)
-    {
-      return OpcUa_BadInvalidState;
-    }
-    json resp;
-    return write_qswitch(static_cast<uint16_t>(v & 0xFFFF), resp);
-  }
-  /* Note: never directly call this function. */
+/* Note: never directly call this function. */
 
 UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Double& v)
-  {
+{
     LOG(Log::INF) << "Setting discharge voltage to " << v;
     std::ostringstream msg;
     // we need the system to be at least in unconfigured state
@@ -176,11 +157,31 @@ UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Double& v)
     json resp;
     return write_hv(v,resp);
 
-  }
-  /* Note: never directly call this function. */
+}
+/* Note: never directly call this function. */
+
+UaStatus DIoLLaserUnit::writeQswitch_us ( const OpcUa_UInt32& v)
+{
+    LOG(Log::INF) << "Setting QSwitch";
+    std::ostringstream msg;
+    // we need the system to be at least in unconfigured state
+    // as we need the device connection to be established
+    if (m_status == sOffline)
+    {
+      return OpcUa_BadInvalidState;
+    }
+    if (!m_laser)
+    {
+      return OpcUa_BadInvalidState;
+    }
+    json resp;
+    return write_qswitch(static_cast<uint16_t>(v & 0xFFFF), resp);
+
+}
+/* Note: never directly call this function. */
 
 UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
-  {
+{
     LOG(Log::INF) << "Setting Repetition rate";
     std::ostringstream msg;
     // we need the system to be at least in unconfigured state
@@ -195,18 +196,18 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
     }
     json resp;
     return write_rate(v,resp);
-  }
-  /* Note: never directly call this function. */
+}
+/* Note: never directly call this function. */
 
-  UaStatus DIoLLaserUnit::writeRep_rate_divider ( const OpcUa_UInt16& v)
-  {
+UaStatus DIoLLaserUnit::writeRep_rate_divider ( const OpcUa_UInt32& v)
+{
     LOG(Log::INF) << "Setting Rate Divider / Prescale to " << v;
     // we need the system to be at least in unconfigured state
     // as we need the device connection to be established
     if (m_status == sOffline)
     {
       return OpcUa_BadInvalidState;
-    }
+}
     if (!m_laser)
     {
       return OpcUa_BadInvalidState;
@@ -217,13 +218,13 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
     // just whether it went well or not
   }
 
-  /* delegators for methods */
-  UaStatus DIoLLaserUnit::callSet_connection (
-      const UaString&  device_port,
-      OpcUa_UInt16 baud_rate,
-      UaString& response
-  )
-  {
+/* delegators for methods */
+UaStatus DIoLLaserUnit::callSet_connection (
+    const UaString&  device_port,
+    OpcUa_UInt16 baud_rate,
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     std::string port = device_port.toUtf8();
@@ -253,12 +254,12 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callConfig (
+}
+UaStatus DIoLLaserUnit::callConfig (
     const UaString&  conf,
-      UaString& response
-  )
-  {
+    UaString& response
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -316,17 +317,17 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callInit (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callInit (
+    UaString& response
+)
+{
     return OpcUa_BadNotImplemented;
-  }
-  UaStatus DIoLLaserUnit::callStop (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callStop (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     UaStatus st = stop(resp);
@@ -350,12 +351,12 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callCheck_status (
-      OpcUa_UInt16& status,
-      UaString& description
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callCheck_laser_status (
+    OpcUa_UInt16& status,
+    UaString& description
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     // force a stop on the laser firing
@@ -367,7 +368,7 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
       status = 99;
       msg << log_e("status","There is no connection to the laser.");
       description = UaString(msg.str().c_str());
-      getAddressSpaceLink()->setStatus_code(status,OpcUa_BadInvalidState);
+      getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadInvalidState);
 
       return OpcUa_Good;
     }
@@ -378,7 +379,7 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
 
       m_laser->security(status, desc);
       description = UaString(desc.c_str());
-      getAddressSpaceLink()->setStatus_code(status,OpcUa_Good);
+      getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -409,39 +410,45 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
       status = 98;
       LOG(Log::ERR) << msg.str();
       description = UaString(msg.str().c_str());
-      getAddressSpaceLink()->setStatus_code(status,OpcUa_BadCommunicationError);
+      getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadCommunicationError);
       return OpcUa_Good;
     }
     //
     return OpcUa_Good;
     //
-  }
-  UaStatus DIoLLaserUnit::callSingle_shot (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callSingle_shot (
+    UaString& response
+)
+{
     json resp;
     (void) single_shot(resp);
     response = UaString(resp.dump().c_str());
 
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callFire_standalone (
-      OpcUa_Boolean fire,
-      OpcUa_UInt32 num_shots,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callStart_standalone (
+    OpcUa_Boolean fire,
+    OpcUa_UInt32 num_shots,
+    UaString& response
+)
+{
     // this calls the fire command without input from the CIB
     // it is meant to be used without CIB access
     // for now do not implement it
     return OpcUa_BadNotImplemented;
-  }
-  UaStatus DIoLLaserUnit::callSwitch_laser_shutter (
-      OpcUa_Boolean close,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callStart_cib (
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLLaserUnit::callSwitch_laser_shutter (
+    OpcUa_Boolean close,
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     UaStatus st = switch_laser_shutter(close,resp);
@@ -465,12 +472,12 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callForce_ext_shutter (
-      OpcUa_Boolean close,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callForce_ext_shutter (
+    OpcUa_Boolean close,
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     UaStatus st = force_ext_shutter(close,resp);
@@ -494,19 +501,37 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callTerminate (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callTerminate (
+    UaString& response
+)
+{
     return OpcUa_BadNotImplemented;
-  }
+}
+UaStatus DIoLLaserUnit::callStop_cib (
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLLaserUnit::callPause (
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLLaserUnit::callStandby (
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
 
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
-  // 3     FULLY CUSTOM CODE STARTS HERE                                     3
-  // 3     Below you put bodies for custom methods defined for this class.   3
-  // 3     You can do whatever you want, but please be decent.               3
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3     FULLY CUSTOM CODE STARTS HERE                                     3
+// 3     Below you put bodies for custom methods defined for this class.   3
+// 3     You can do whatever you want, but please be decent.               3
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
 
   UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &resp)
   {
@@ -1233,7 +1258,7 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
     try
     {
       m_laser->security(status, desc);
-      getAddressSpaceLink()->setStatus_code(status,OpcUa_Good);
+      getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -1263,7 +1288,7 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
     }
     if (got_exception)
     {
-      getAddressSpaceLink()->setStatus_code(status,OpcUa_BadDataUnavailable);
+      getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadDataUnavailable);
     }
   }
   void DIoLLaserUnit::timer_start(DIoLLaserUnit *obj)
@@ -1422,7 +1447,7 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
       ret = ret | write_divider(m_divider,resp);
       // for external driving these two don't really matter
       ret = ret | write_rate(m_rate_hz,resp);
-      ret = ret | write_qswitch(m_qswitch,resp);
+      ret = ret | write_qswitch(m_qswitch_delay,resp);
       if (ret != OpcUa_Good)
       {
         // something failed. Whatever it was, should already be in the
@@ -1706,9 +1731,9 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
     try
     {
       m_laser->set_qswitch(nv);
-      m_qswitch = nv;
+      m_qswitch_delay = nv;
       // update the address space as well
-      getAddressSpaceLink()->setQswitch_us(m_qswitch, OpcUa_Good);
+      getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Good);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -1792,7 +1817,7 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
 
     // if the shutter is not open, there is no point in firing
     //
-    if (!m_laser_shutter_close)
+    if (!m_laser_shutter_closed)
     {
       msg.clear(); msg.str("");
       msg << log_e("single_shot","The laser shutter is not open");
@@ -1808,12 +1833,9 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
       // FIXME: This logic is not doing anything about the external shutter
       // once the external shutter is in place, one should actually stop using this command and instead
       // drive a single shot from the CIB (so that the external shutter is also timely opened)
-      m_status = sLasing;
-      // FIXME: If the operational status is propagated to the address space, we need to update it here
+      update_status(sLasing);
       m_laser->single_shot(); // ensure that the prescale is rescaled
-      m_status = sReady;
-      // FIXME: The operation status should perhaps be reported back to SC
-      //getAddressSpaceLink()->setStatus_code(status,OpcUa_Good);
+      update_status(sReady);
     }
     catch(serial::PortNotOpenedException &e)
     {

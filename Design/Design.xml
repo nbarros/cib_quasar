@@ -201,24 +201,31 @@
     	dataType="OpcUa_UInt16" name="baud_rate" nullPolicy="nullForbidden"
     	addressSpaceWrite="forbidden" initialValue="9600"
     	initialStatus="OpcUa_Good">
-    </d:cachevariable><!-- Cache variables. Some of these are writeable, others not -->
-    <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_UInt32" name="qswitch_us"
-    	nullPolicy="nullForbidden" addressSpaceWrite="delegated"
-    	initialStatus="OpcUa_Good" initialValue="170">
-    	<d:configRestriction>
-    		<d:restrictionByBounds minInclusive="1" maxInclusive="999" />
-    	</d:configRestriction><!--units in microseconds-->
-    </d:cachevariable>
+    </d:cachevariable><!-- Cache variables. Some of these are writeable, others not --><d:cachevariable
+    	initializeWith="valueAndStatus" dataType="OpcUa_UInt32"
+    	name="qswitch_delay_us" nullPolicy="nullAllowed"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="170"><!--units in microseconds-->
+</d:cachevariable><d:cachevariable initializeWith="valueAndStatus"
+  		dataType="OpcUa_UInt32" name="qswitch_width_us"
+  		nullPolicy="nullAllowed" addressSpaceWrite="forbidden"
+  		initialStatus="OpcUa_BadWaitingForInitialData" initialValue="10">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus"
+  		dataType="OpcUa_UInt32" name="fire_width_us"
+  		nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
+  		initialStatus="OpcUa_BadWaitingForInitialData" initialValue="10">
+  	</d:cachevariable>
+  	
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_Double" name="discharge_voltage_kV"
     	nullPolicy="nullForbidden" addressSpaceWrite="delegated"
-    	initialStatus="OpcUa_Good" initialValue="1.0">
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="1.1">
     	<d:configRestriction>
     		<d:restrictionByBounds minExclusive="0.0"
     			maxInclusive="1.3" />
     	</d:configRestriction><!--units in kV-->
-    </d:cachevariable>
+    	  	</d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_Double" name="rep_rate_hz"
     	nullPolicy="nullForbidden" addressSpaceWrite="delegated"
@@ -226,7 +233,7 @@
     	initialStatus="OpcUa_Good">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_UInt16" name="rep_rate_divider"
+    	dataType="OpcUa_UInt32" name="rep_rate_divider"
     	nullPolicy="nullForbidden" addressSpaceWrite="delegated"
     	initialValue="0" initialStatus="OpcUa_Good"><!--this is a prescale. 0 means tht one would get as many laser shots as flash discharges-->
     </d:cachevariable>
@@ -234,17 +241,21 @@
 		</d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_Boolean" name="ext_shutter_open"
-    	nullPolicy="nullAllowed" addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
+    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_True">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="laser_shutter_open" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
 		</d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_UInt16" name="status_code"
+    	dataType="OpcUa_UInt16" name="laser_status_code"
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
     	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="999">
     </d:cachevariable>
-    <!-- Operation methods -->
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
+    	name="state" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData"
+    	initialValue="UNKNOWN">
+    </d:cachevariable><!-- Operation methods -->
     <d:method name="set_connection" executionSynchronicity="synchronous">
 		<d:argument dataType="UaString" name="device_port"></d:argument>
 		<d:argument dataType="OpcUa_UInt16" name="baud_rate"></d:argument>
@@ -256,25 +267,32 @@
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method><d:method name="stop" executionSynchronicity="synchronous">
 		<d:returnvalue dataType="UaString" name="response"></d:returnvalue>
     </d:method>
-    <d:method name="check_status" executionSynchronicity="synchronous">
+    <d:method name="check_laser_status" executionSynchronicity="synchronous">
       <d:returnvalue dataType="OpcUa_UInt16" name="status" />
       <d:returnvalue dataType="UaString" name="description"></d:returnvalue>
     </d:method>
     
     <d:method name="single_shot" executionSynchronicity="synchronous">
-    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-    
-    <d:method name="fire_standalone" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method><d:method name="start_standalone" executionSynchronicity="synchronous">
     	<d:argument dataType="OpcUa_Boolean" name="fire"></d:argument>
     	<d:argument dataType="OpcUa_UInt32" name="num_shots"></d:argument>
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue><!--for now this method is not implemented. To be implemented in the future, if needed-->
     </d:method>
+    
+    <d:method name="start_cib" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
     <d:method name="switch_laser_shutter" executionSynchronicity="synchronous">
     	<d:argument dataType="OpcUa_Boolean" name="close"></d:argument>
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method><d:method name="force_ext_shutter" executionSynchronicity="synchronous">
 	<d:argument dataType="OpcUa_Boolean" name="close"></d:argument>
 	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
   	<d:method name="terminate" executionSynchronicity="synchronous">
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="stop_cib" executionSynchronicity="synchronous">
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="pause" executionSynchronicity="synchronous">
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="standby" executionSynchronicity="synchronous">
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
 
   </d:class>
