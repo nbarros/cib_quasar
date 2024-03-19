@@ -81,8 +81,12 @@ namespace Device
             ,m_divider(0)
             ,m_pump_hv(1.1)
             ,m_rate_hz(10.0)
-            ,m_laser_shutter_closed(true)
-            ,m_ext_shutter_closed(false)
+            ,m_part_state(0x2)
+
+//            ,m_laser_shutter_closed(true)
+//            ,m_ext_shutter_closed(false)
+//            ,m_laser_started(false)
+//            ,m_qswitch_en(false)
             ,m_shot_count(0)
             ,m_comport("auto")
             ,m_baud_rate(9600)
@@ -106,6 +110,7 @@ namespace Device
     m_serial_number = serial_number();
     LOG(Log::INF) << "DIoLLaserUnit::DIoLLaserUnit : Port set to [" << m_comport << "]";
 
+    //m_part_state = laser_state_u(0x2);
     // -- initialize the status map
     m_status_map.insert({sOffline,"offline"});
     m_status_map.insert({sReady,"ready"});
@@ -588,8 +593,8 @@ namespace Device
       response = UaString(resp.dump().c_str());
       return OpcUa_Good;
     }
-    //
-    UaStatus st = switch_laser_shutter(close,resp);
+    ShutterState shst = (close)?ShutterState::sClose:ShutterState::sOpen;
+    UaStatus st = switch_laser_shutter(shst,resp);
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
@@ -640,8 +645,8 @@ namespace Device
       response = UaString(resp.dump().c_str());
       return OpcUa_Good;
     }
-    //
-    UaStatus st = force_ext_shutter(close,resp);
+    ShutterState shst = (close)?ShutterState::sClose:ShutterState::sOpen;
+    UaStatus st = force_ext_shutter(shst,resp);
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
@@ -784,6 +789,34 @@ namespace Device
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
   }
+  UaStatus DIoLLaserUnit::callResume (
+      UaString& response
+  )
+  {
+    std::ostringstream msg("");
+    json resp;
+    UaStatus st = resume(resp);
+    if (st != OpcUa_Good)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("resume","Failed to resume laser operation. See previous messages");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    else
+    {
+      msg.clear(); msg.str("");
+      msg << log_i("resume","Laser operation resumed.");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "OK";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Good;
+    }
+    response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
 
   // 3333333333333333333333333333333333333333333333333333333333333333333333333
   // 3     FULLY CUSTOM CODE STARTS HERE                                     3
@@ -872,7 +905,7 @@ namespace Device
     update_status(sOffline);
     return OpcUa_Good;
   }
-  UaStatus DIoLLaserUnit::switch_laser_shutter(const bool close, json &resp)
+  UaStatus DIoLLaserUnit::switch_laser_shutter(const ShutterState nstate, json &resp)
   {
     std::ostringstream msg("");
     bool got_exception = false;
@@ -881,9 +914,16 @@ namespace Device
     {
       msg.clear(); msg.str("");
       msg << log_e("set_conn","Laser Unit in sError state. System on lockdown. Check for error messages.");
+      //TODO: Should we force the internal shutter to close?
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["status_code"] = OpcUa_BadInvalidState;
+      if (m_laser)
+      {
+        m_laser->shutter_close();
+//        m_laser_shutter_closed = true;
+        m_part_state.state.laser_shutter_closed = true;
+      }
       return OpcUa_BadInvalidState;
     }
     //
@@ -909,18 +949,34 @@ namespace Device
     }
     try
     {
-      if (close)
+      if (nstate == ShutterState::sClose)
       {
+        // this basically forces a standby
+        // we never refuse to close this shutter
+        // but we do force qswitch to disable along with it
         // -- if we close the shutter, we should disable qswitch
+        // disable qs_en
         cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr,
                                          0x0,
                                          m_regs.at("qs_enable").mask,
                                          m_regs.at("qs_enable").bit_low);
+        m_part_state.state.qswitch_en = false;
         m_laser->shutter_close();
-        m_laser_shutter_closed = true;
+        m_part_state.state.laser_shutter_closed = true;
         getAddressSpaceLink()->setLaser_shutter_open(false,OpcUa_Good);
-        update_status(sStandby);
-        start_standby_timer();
+
+        if (m_status != sStandby)
+        {
+          // if we are on standby, don't update, as we don't want to mess the timer
+          update_status(sStandby);
+          start_standby_timer();
+        }
+        // if the external shutter is closed, open it
+        // there is redundancy and there is no point
+        if (m_part_state.state.ext_shutter_closed)
+        {
+          force_ext_shutter(ShutterState::sOpen,resp);
+        }
         msg.clear(); msg.str("");
         msg << log_i("shutter","Laser shutter closed.");
       }
@@ -928,18 +984,65 @@ namespace Device
       {
         // -- if we open the shutter, we should activate qswitch
         // but it could make sense to switch to pause state
+        //
         // shouldn't we first switch to pause?
-        pause(resp);
+        // No, this interferes with the pause/resume logic
+        // if we want to switch to pause, we close the shutter before releasing the standby
+        // the logic here is a bit more convolved, based on which parts are active
+
+        // we have several combinations of states to consider
+        // again, what actually matters is whether the laser has already started or not
+
+        Status newstate;
+        if (m_part_state.state.laser_started)
+        {
+          // the laser is operating.
+          // This means that we should be getting out of
+          // either sWarmup or sStandby
+          // either way, we are switching to either
+          // sPause (if ext shutter is closed)
+          // or sLasing (if ext shutter is open)
+
+          if (m_part_state.state.ext_shutter_closed)
+          {
+            // ext shutter is closed, we are in sPaused state
+            newstate = sPause;
+          }
+          else
+          {
+            // coming into sLasing
+            newstate = sLasing;
+          }
+        }
+        else
+        {
+          // the laser is not operating
+          // we switch to sReady state
+          newstate = sReady;
+        }
+        // in both cases we first open the shutter and then activate qswitch
         m_laser->shutter_open();
         cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr,
                                          0x1,
                                          m_regs.at("qs_enable").mask,
                                          m_regs.at("qs_enable").bit_low);
         getAddressSpaceLink()->setLaser_shutter_open(true,OpcUa_Good);
-        msg.clear(); msg.str("");
-        msg << log_i("stop","Laser shutter open.");
+        m_part_state.state.laser_shutter_closed = false;
+        m_part_state.state.qswitch_en = true;
+        update_status(newstate);
+
       }
-      // requery the laser system for its present status, in case there are issues to report
+      m_laser->shutter_open();
+      cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr,
+                                       0x1,
+                                       m_regs.at("qs_enable").mask,
+                                       m_regs.at("qs_enable").bit_low);
+      getAddressSpaceLink()->setLaser_shutter_open(true,OpcUa_Good);
+      msg.clear(); msg.str("");
+      msg << log_i("shutter","Laser shutter open.");
+      // check if the start bit is set.
+      // if yes, status changes to sLasing
+      // otherwise status changes to sReady
       refresh_status();
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
@@ -979,66 +1082,132 @@ namespace Device
     }
     return OpcUa_Good;
   }
-  UaStatus DIoLLaserUnit::force_ext_shutter(const bool close, json &resp)
+  UaStatus DIoLLaserUnit::force_ext_shutter(const ShutterState nstate, json &resp)
   {
-    //uint32_t state = (close)?(0x1<<m_regs.at("force_shutter").bit_low):0x0;
-    //uint32_t c_state = (cib::util::reg_read(m_regs.at("force_shutter").addr) & m_regs.at("force_shutter").mask);
-    // the code below looks cool but if makes some things difficult. It does work, though
-    //
-    if ((m_status == sError) and (!close))
+
+    // if we are in some sort of error state and trying to open
+    // refuse to do it, unless the internal shutter is already closed
+    if ((m_status == sError) and (nstate == ShutterState::sOpen))
     {
-      std::ostringstream msg("");
-      msg.clear(); msg.str("");
-      msg << log_e("force_ext_shutter","Laser Unit in sError state and trying to open the shutter. System on lockdown. Check for error messages.");
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidState;
-      return OpcUa_BadInvalidState;
+      if (m_part_state.state.laser_shutter_closed)
+      {
+        // we want to close and it wasn't yet
+        cib::util::reg_write_mask_offset(m_regs.at("force_shutter").addr,
+                                         0x0,
+                                         m_regs.at("force_shutter").mask,
+                                         m_regs.at("force_shutter").bit_low);
+        m_part_state.state.ext_shutter_closed = false;
+        getAddressSpaceLink()->setExt_shutter_open(true,OpcUa_Good);
+        // the internal shutter is closed, so we can authorize opening this one
+        std::ostringstream msg("");
+        msg.clear(); msg.str("");
+        msg << log_w("force_ext_shutter","Laser Unit in sError state and trying to open the shutter. allowing because internal shutter is closed.");
+        resp["status"] = "OK";
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_Uncertain;
+        return OpcUa_Uncertain;
+      }
+      else
+      {
+        // internal shutter is also open, so refuse to open this one
+        std::ostringstream msg("");
+        msg.clear(); msg.str("");
+        msg << log_e("force_ext_shutter","Laser Unit in sError state and trying to open the shutter. System on lockdown. Check for error messages.");
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_BadInvalidState;
+        return OpcUa_BadInvalidState;
+      }
     }
-    //
-    if (close && (!m_ext_shutter_closed))
+
+    Status newstate;
+    if ((nstate == ShutterState::sClose) && (!m_part_state.state.ext_shutter_closed))
     {
-      // we want to close and it wasn't yet
-      // states are not the same
+      // we want to close and right now is open : valid transition
+      // there is nothing wrong with closing it, although it does trigger
+      // a timeout
       cib::util::reg_write_mask_offset(m_regs.at("force_shutter").addr,
                                        0x1,
                                        m_regs.at("force_shutter").mask,
                                        m_regs.at("force_shutter").bit_low);
-      m_ext_shutter_closed = true;
-      getAddressSpaceLink()->setExt_shutter_open(!m_ext_shutter_closed,OpcUa_Good);
-      // start the timer
-      update_status(sPause);
+      //m_ext_shutter_closed = true;
+      m_part_state.state.ext_shutter_closed = true;
+      getAddressSpaceLink()->setExt_shutter_open(false,OpcUa_Good);
+
+      // if we are lasing, this puts the state in pause
+      if (m_part_state.state.laser_started)
+      {
+        // I am assuing that sPause trumps sStandby
+        // as sPause has a shorter timeout
+        newstate = sPause;
+      }
+      else
+      {
+        // we are not lasing, so state is sReady
+        newstate = sReady;
+      }
+      update_status(newstate);
+      // what to do if it is in sStandby or sReady?
+      // for the others don't change the status...but keep track of the state
+      // regardless of sate, the timer should be started
+      // there is a triky part to this.
+      // once we close the shutter, this timer turns on,
+      // but then this could cause a change to sStandby.
+      // would this be an issue?
       start_pause_timer();
     }
     else
     {
       // was closed and want to open
-      if (!close && m_ext_shutter_closed)
+      if ((nstate == ShutterState::sOpen) && m_part_state.state.ext_shutter_closed)
       {
-        // we want to close and it wasn't yet
-        // states are not the same
+        // now we have a couple of states to consider
+        // 8, to be exact
+        // keep in mind that we are attempting to open the shutter
+        // so that fixes already one state
+
+        // the qswitch_en signal is always in opposite sign of the laser_shutter
+        // if the laser is off, the state will always either revert
+        // to sReady or sStandby
+        if (m_part_state.state.laser_started)
+        {
+          // laser is on.
+          if (m_part_state.state.laser_shutter_closed)
+          {
+            // the internal shutter is closed
+            // state goes to sStandby
+            // in this case we do not trigger a timer, since it
+            // should already be triggered
+            newstate = sStandby;
+          }
+          else
+          {
+            // internal shutter is open
+            // state goes to sLasing
+            newstate = sLasing;
+          }
+        }
+        else
+        {
+          // laser has not started
+          // if we open the shutter, we are basically going to
+          // sReady
+          newstate = sReady;
+        }
+        // in all of these cases, we accept to open the shutter
         cib::util::reg_write_mask_offset(m_regs.at("force_shutter").addr,
                                          0x0,
                                          m_regs.at("force_shutter").mask,
                                          m_regs.at("force_shutter").bit_low);
-        m_ext_shutter_closed = false;
-        getAddressSpaceLink()->setExt_shutter_open(!m_ext_shutter_closed,OpcUa_Good);
-        // -- stop the timer, if it is going
-        // actually, the timer should cancel itself once it realises the shutter is open
+        m_part_state.state.ext_shutter_closed = false;
+        update_status(newstate);
+      }
+      else
+      {
+        // we're repeating a request tthat does not change state
+        // do nothing
       }
     }
-    //
-    //    // if both are the same, do nothing
-    //    // otherwise change state
-    //    if (state ^ c_state)
-    //    {
-    //      // states are not the same
-    //      cib::util::reg_write_mask_offset(m_regs.at("force_shutter").addr,
-    //                                       state,
-    //                                       m_regs.at("force_shutter").mask,
-    //                                       m_regs.at("force_shutter").bit_low);
-    //      getAddressSpaceLink()->setExt_shutter_open(!state,OpcUa_Good);
-    //    }
     return OpcUa_Good;
   }
   void DIoLLaserUnit::start_standby_timer()
@@ -1051,7 +1220,7 @@ namespace Device
       uint32_t nsecs = 0;
       while (nsecs < (m_standby_timeout*60))
       {
-        if (!m_laser_shutter_closed)
+        if (!m_part_state.state.laser_shutter_closed)
         {
           // stop the timer
           return;
@@ -1079,7 +1248,7 @@ namespace Device
       uint32_t nsecs = 0;
       while (nsecs < (m_pause_timeout*60))
       {
-        if (!m_ext_shutter_closed)
+        if (!m_part_state.state.ext_shutter_closed)
         {
           // stop the timer
           return;
@@ -1092,17 +1261,14 @@ namespace Device
       LOG(Log::WRN) << "Reached the end of the timer. Switching to standby.";
       json r;
       standby(r);
-
                 }
     ).detach();
   }
-
-
   UaStatus DIoLLaserUnit::terminate(json &resp)
   {
     // this call does not care for sError state.
     // it attempts to do a peaceful shutdown, regardless of the overall state
-    UaStatus st = OpcUa_Good;
+//    UaStatus st = OpcUa_Good;
     std::ostringstream msg("");
     // this is meant to do a smooth temrination of the device
     if (m_status == sOffline)
@@ -1114,30 +1280,65 @@ namespace Device
         // being already offline but with a live pointer
         // this should *NEVER* happen, but if it does, we're in trouble.
         msg.clear(); msg.str("");
-        msg << log_w("terminate","There is live pointer but state is offline. This should not happen. Attempting to clear object.");
+        msg << log_w("terminate","There is live pointer but state is offline. This should NEVER happen. Attempting to clear object.");
         resp["messages"].push_back(msg.str());
         delete m_laser;
         m_laser = nullptr;
         return OpcUa_Uncertain;
       }
+      // if it already is offline, all we need is to make sure
+      // that the pointer is nullptr;
+      m_laser = nullptr;
+      return OpcUa_Good;
     }
-    if (m_status == sLasing)
+    // don't call anything. This works like a reset
+    // manually set all the states
+    // disable the laser driver
+    // even though it likely is already off
+    // stop qs
+    if (m_mapped_mem)
     {
-      // stop should also take care of stopping the CIB driver
-      st = stop(resp);
+      // stop qs_enable
+      cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr,
+                                       0x0,
+                                       m_regs.at("qs_enable").mask,
+                                       m_regs.at("qs_enable").offset);
+      m_part_state.state.laser_started = false;
+      // cancel start
+      cib::util::reg_write_mask_offset(m_regs.at("start").addr,
+                                       0x0,
+                                       m_regs.at("start").mask,
+                                       m_regs.at("start").offset);
+      m_part_state.state.qswitch_en = false;
+      // open the external shutter
+      cib::util::reg_write_mask_offset(m_regs.at("force_shutter").addr,
+                                       0x0,
+                                       m_regs.at("force_shutter").mask,
+                                       m_regs.at("force_shutter").offset);
     }
-    // -- now just delete the
+    else
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("terminate","CIB memory not mappedCan't control the laser driver.");
+      resp["messages"].push_back(msg.str());
+    }
+    // close the internal shutter
+    switch_laser_shutter(ShutterState::sClose,resp);
+    // at this stage, nothing else to be done.
+    // just delete the device and go into offline mode
+    // -- now just delete the device
     delete m_laser;
     m_laser = nullptr;
     update_status(sOffline);
     return OpcUa_Good;
   }
-
   UaStatus DIoLLaserUnit::stop(json &resp)
   {
+    //FIXME: Continue here
     // force a stop on the laser firing
     // start by closing the shutter, and
-    // since this is a usually kind of critical method, do not even care to check whether the
+    // since this is a usually kind of critical method,
+    // do not even care to check whether the
     // laser is firing or not, just stop and close the shutter
     std::ostringstream msg("");
     bool got_exception = false;
@@ -1146,7 +1347,7 @@ namespace Device
     {
       // we should already be in sError state
       // cannot operate the external shutter
-      // just call terminate
+      // make sure to close the internal shutter
       msg.clear(); msg.str("");
       msg << log_e("stop","CIB memory not mapped. Terminating since we are in sError state");
       LOG(Log::ERR) << msg.str();
@@ -1157,7 +1358,7 @@ namespace Device
       return terminate(resp);
     }
     // if we have an external shutter, close it...at least until we stop everything else
-    (void)force_ext_shutter(true,resp);
+    (void)force_ext_shutter(ShutterState::sClose,resp);
     if (!m_laser)
     {
       msg.clear(); msg.str("");
@@ -1174,20 +1375,28 @@ namespace Device
                                        0x0,
                                        m_regs.at("qs_enable").mask,
                                        m_regs.at("qs_enable").offset);
+      m_part_state.state.qswitch_en = false;
+
       // cancel start
       cib::util::reg_write_mask_offset(m_regs.at("start").addr,
                                        0x0,
                                        m_regs.at("start").mask,
                                        m_regs.at("start").offset);
-      // also tell the laser to not stop.
+      m_part_state.state.laser_started = false;
+      // this stops the monitoring refresh
+      // alternatively we could keep it always running and just set valid state when it is lasing
+      m_count_flashes = false;
+
+      // also tell the laser to stop.
       // it does not hurt
       if (m_laser)
       {
         m_laser->fire_stop();
         m_laser->shutter_close();
+        m_part_state.state.laser_shutter_closed = true;
       }
       //  now open the external one
-      force_ext_shutter(false,resp);
+      force_ext_shutter(ShutterState::sOpen,resp);
       // downgrade anything above ready to ready to operate
       // states below remain as they are
       // if we reach this stage, we are ready...does not really matter what state we were before
@@ -1285,19 +1494,29 @@ namespace Device
                                        0x0,
                                        m_regs.at("qs_enable").mask,
                                        m_regs.at("qs_enable").offset);
-      // close the shutter
+      m_part_state.state.qswitch_en = true;
+
+      // close the internal shutter
       m_laser->shutter_close();
+      // if the external shutter is closed, open it
+      force_ext_shutter(ShutterState::sOpen,resp);
+
+      m_part_state.state.laser_shutter_closed = true;
+
       // start the laser firing
       cib::util::reg_write_mask_offset(m_regs.at("start").addr,
                                        0x1,
                                        m_regs.at("start").mask,
                                        m_regs.at("start").offset);
+      m_part_state.state.laser_started = true;
+
       // downgrade anything above ready to ready to operate
       update_status(sWarmup);
       // initiate the warmup timer.
       // !!! Nothing is supposed to happen during warmup
       start_warmup_timer();
       // requery the laser system for its present status, in case there are issues to report
+      start_lasing_timer();
       refresh_status();
     }
     catch(serial::PortNotOpenedException &e)
@@ -1370,9 +1589,9 @@ namespace Device
       //
       // 1. close external shutter
       json r;
-      force_ext_shutter(true,r);
+      force_ext_shutter(ShutterState::sClose,r);
       // 2. open internal shutter
-      switch_laser_shutter(false,r);
+      switch_laser_shutter(ShutterState::sOpen,r);
       // 3. enable qswitch
       cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr, 0x1,m_regs.at("qs_enable").mask,m_regs.at("qs_enable").bit_low);
       // call pause to make sure that all this is done
@@ -1383,8 +1602,10 @@ namespace Device
   }
   UaStatus DIoLLaserUnit::pause(json &resp)
   {
-    // this is a state that closes the external shutter while keeping everything else working
-    // can only be called from sWarmup or sLasing
+    // this is a state that closes the external shutter while keeping
+    // everything else working
+    // in principle it can be called from almost any state
+    // but the resulting state is a little different
     std::ostringstream msg("");
     bool got_exception = false;
     if (m_mapped_mem == 0x0)
@@ -1411,33 +1632,52 @@ namespace Device
       resp["status_code"] = OpcUa_BadInvalidState;
       return OpcUa_BadInvalidState;
     }
-    // pause can be called from either sWarmup or sLasing
-    // one could potentially call it from sReady, but that would be kind of silly
-    // we can simply force the shutter closed in that case
-    if ((m_status != sWarmup) && (m_status != sLasing) && (m_status != sStandby))
-    {
-      msg.clear(); msg.str("");
-      msg << log_w("pause","System is not operating. Pause does not make sense.");
-      LOG(Log::WRN) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidState;
-      return OpcUa_BadInvalidState;
-    }
+//    // pause can be called from either sWarmup or sLasing
+//    // one could potentially call it from sReady, but that would be kind of silly
+//    // we can simply force the shutter closed in that case
+//    if ((m_status != sWarmup) && (m_status != sLasing) && (m_status != sStandby))
+//    {
+//      msg.clear(); msg.str("");
+//      msg << log_w("pause","System is not operating. Pause does not make sense.");
+//      LOG(Log::WRN) << msg.str();
+//      resp["status"] = "ERROR";
+//      resp["messages"].push_back(msg.str());
+//      resp["status_code"] = OpcUa_BadInvalidState;
+//      return OpcUa_BadInvalidState;
+//    }
     try
     {
       // if it is in one of the previous stages redo the whole procedure
       // make sure qswitch enable is asserted
-      // if it was already, it won't change anything and it only costs a handful of microseconds
-      (void)force_ext_shutter(true,resp);
+      // if it was already, it won't change anything and it only costs a
+      // handful of microseconds
+      (void)force_ext_shutter(ShutterState::sClose,resp);
+      if (!m_part_state.state.laser_started)
+      {
+      }
       // this in itself will also trigger a timer
       // that will be checked e very second for the state of the shutter
       cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr,
                                        0x1,
                                        m_regs.at("qs_enable").mask,
                                        m_regs.at("qs_enable").offset);
+      m_part_state.state.qswitch_en = true;
       // downgrade anything above ready to ready to operate
-      update_status(sPause);
+      // can wereally be considered to be in pause?
+      if (!m_part_state.state.laser_started)
+      {
+        msg.clear(); msg.str("");
+        msg << log_w("pause","Pased called before laser was started. The shutter will close, but the laser will remain off.");
+        LOG(Log::WRN) << msg.str();
+        resp["status"] = "OK";
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_Uncertain;
+        update_status(sReady);
+      }
+      else
+      {
+        update_status(sPause);
+      }
       // requery the laser system for its present status, in case there are issues to report
       refresh_status();
     }
@@ -1511,14 +1751,11 @@ namespace Device
       resp["status_code"] = OpcUa_BadInvalidState;
       return OpcUa_BadInvalidState;
     }
-    // standby could in principle be called from anywhere
-    // as far as it is above warmup state
-    // we can simply force the shutter closed in that case
-    // what if we're in sWarmup?
-    if ((m_status != sPause) && (m_status != sLasing))
+    // if it is either in warmup or standby do nothing
+    if ((m_status == sWarmup) or (m_status == sStandby))
     {
       msg.clear(); msg.str("");
-      msg << log_w("standby","System is not operating. Standby does not make sense.");
+      msg << log_w("standby","Laser in warmup or standby state. Nothing to be done.");
       LOG(Log::WRN) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -1527,19 +1764,26 @@ namespace Device
     }
     try
     {
-      // if it is in one of the previous stages redo the whole procedure
-      // make sure qswitch enable is deasserted
+
+      // disable qswitch
       cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr,
                                        0x0,
                                        m_regs.at("qs_enable").mask,
                                        m_regs.at("qs_enable").offset);
-      // close internal shutter
-      switch_laser_shutter(true,resp);
-      // this in itself will also trigger a timer
-      // that will be checked every second for the state of the shutter
-      force_ext_shutter(false,resp);
-      // downgrade anything above ready to ready to operate
-      update_status(sStandby);
+      m_part_state.state.qswitch_en = false;
+      // close the shutter
+      switch_laser_shutter(ShutterState::sClose,resp);
+      // if the external shutter is closed, open it
+      force_ext_shutter(ShutterState::sOpen,resp);
+      // if we are in sReady, sPause and sLasing, we can move to standby
+      if (m_part_state.state.laser_started)
+      {
+        update_status(sStandby);
+      }
+      else
+      {
+        update_status(sReady);
+      }
       // requery the laser system for its present status, in case there are issues to report
       refresh_status();
     }
@@ -1630,6 +1874,8 @@ namespace Device
     {
       m_laser->security(status, desc);
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
+      UaString ss(m_status_map.at(m_status).c_str());
+      getAddressSpaceLink()->setState(ss,OpcUa_Good);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -1662,7 +1908,7 @@ namespace Device
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadDataUnavailable);
     }
   }
-  void DIoLLaserUnit::timer_start(DIoLLaserUnit *obj)
+  void DIoLLaserUnit::start_lasing_timer()
   {
     if (m_count_flashes)
     {
@@ -1670,13 +1916,13 @@ namespace Device
       return;
     }
     m_count_flashes = true;
-    std::thread([obj]()
+    std::thread([this]()
                 {
-      while (obj->get_counting_flashes())
+      while (get_counting_flashes())
       {
         // We know that the laser will be firing at 10 Hz, that means 100 ms period
         auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
-        if (obj->refresh_shot_count() != OpcUa_Good)
+        if (refresh_shot_count() != OpcUa_Good)
         {
           LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
         }
@@ -2229,7 +2475,7 @@ namespace Device
 
     // if the shutter is not open, there is no point in firing
     //
-    if (!m_laser_shutter_closed)
+    if (m_part_state.state.laser_shutter_closed)
     {
       msg.clear(); msg.str("");
       msg << log_e("single_shot","The laser shutter is not open");
@@ -2239,6 +2485,19 @@ namespace Device
       resp["status_code"] = OpcUa_BadInvalidState;
       return OpcUa_Good;
     }
+    // if the external shutter is not open, there is no point in firing
+    //
+    if (m_part_state.state.ext_shutter_closed)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("single_shot","The external shutter is not open");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidState;
+      return OpcUa_Good;
+    }
+
     // everything seems ready. Fire away
     try
     {
@@ -2361,7 +2620,7 @@ namespace Device
       {
         msg.clear(); msg.str("");
         msg << log_e("config","Mismatch between name in object and configuration fragment :")
-                          << " (" << conf.at("name").get<std::string>() <<" <> " << m_name << ")";
+                                  << " (" << conf.at("name").get<std::string>() <<" <> " << m_name << ")";
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["status_code"] = OpcUa_BadInvalidArgument;
@@ -2392,6 +2651,19 @@ namespace Device
       update_status(sReady);
       // if the ids match, lets set the parameters
       // special iterator member functions for objects
+      // after the connection parameters, go over the memory mapped details,since this is
+      // relevant for the other settings
+      json frag = conf.at("mmap");
+      st =  map_registers(frag,resp);
+      if (st != OpcUa_Good)
+      {
+        msg.clear();msg.str("");
+        msg << log_e("config","Failed to map configuration registers");
+        resp["messages"].push_back(msg.str());
+        resp["status"] = "ERROR";
+        resp["status_code"] = OpcUa_Bad;
+        return st;
+      }
       for (json::iterator it = conf.begin(); it != conf.end(); ++it)
       {
         LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
@@ -2464,20 +2736,6 @@ namespace Device
           if (st != OpcUa_Good)
           {
             getAddressSpaceLink()->setFire_width_us(m_fire_width, st);
-            return st;
-          }
-        }
-        if (it.key() == "mmap")
-        {
-          json frag = it.value();
-          st =  map_registers(frag,resp);
-          if (st != OpcUa_Good)
-          {
-            msg.clear();msg.str("");
-            msg << log_e("config","Failed to map configuration registers");
-            resp["messages"].push_back(msg.str());
-            resp["status"] = "ERROR";
-            resp["status_code"] = OpcUa_Bad;
             return st;
           }
         }
@@ -2638,5 +2896,80 @@ namespace Device
     m_fire_width = v;
     return OpcUa_Good;
   }
+  UaStatus DIoLLaserUnit::resume(json &resp)
+  {
+    // resume should only be called if we are in either sPause or sStandby states
+    // anything else should use a different method
+    // also, check that the memory is mapped on the CIB
+    std::ostringstream msg("");
+    UaStatus st = OpcUa_Good;
+    if (m_mapped_mem == 0x0)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("resume","CIB memory not mapped. System on lockdown.");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidState;
+      update_status(sError);
+      return OpcUa_Good;
+    }
+    // check that we are in a valid state for this call
+    if ((m_status != sPause) && (m_status != sStandby))
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("resume","Laser Unit not in a valid state. Resume should only be called in sPause or sStandby state.");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidState;
+      return OpcUa_Good;
+    }
+    // -- do a couple moreconsistent checks
+    if (!m_part_state.state.laser_started)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("resume","Inconsistent state. Laser Unit is not firing.");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidState;
+      return OpcUa_Good;
+    }
+    // FIXME:We may want to specifically force the state of the parameters
+    // now start the proper work
+    // the logic is slightly different whether we are coming out of sPause
+    // or sStandby states
+    if (m_status == sPause)
+    {
+      // if we are in pause, all we should do is reopen the shutter
+      st = force_ext_shutter(ShutterState::sOpen,resp);
+    }
+    if (m_status == sStandby)
+    {
+      // if we are on standby, the order is a bit different.
+      st = switch_laser_shutter(ShutterState::sOpen,resp);
+    }
+    if (st != OpcUa_Good)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("resume","Failed to resume laser. See previous messages");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    else
+    {
+      msg.clear(); msg.str("");
+      msg << log_i("resume","Laser unit resumed operation.");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "OK";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Good;
+    }
+    update_status(sLasing);
+    return st;
+  }
 
-}
+} // namespace

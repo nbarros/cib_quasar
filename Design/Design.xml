@@ -294,7 +294,8 @@
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
   	<d:method name="standby" executionSynchronicity="synchronous">
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-  	
+  	<d:method name="resume" executionSynchronicity="synchronous">
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
 
   </d:class>
   <d:class name="IoLAttenuator">
@@ -456,10 +457,19 @@
   </d:class>
   <d:class name="IoLaserSystem">
     <d:devicelogic/>
-    <d:configentry dataType="OpcUa_UInt16" name="id" isKey="true"/>
-    <d:configentry dataType="UaString" name="location"/>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Boolean" name="enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden">
-		</d:cachevariable>
+    <d:configentry dataType="UaString" name="id" isKey="true"
+    	storedInDeviceObject="true" />
+    <d:configentry dataType="UaString" name="location"
+    	storedInDeviceObject="true" />
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
+    	name="state" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="UNKNOWN">
+    </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
+    	name="dummy" nullPolicy="nullAllowed" addressSpaceWrite="forbidden"
+    	initialValue="OpcUa_Null" initialStatus="OpcUa_BadWaitingForInitialData">
+    </d:cachevariable>
     <d:hasobjects instantiateUsing="configuration" class="IoLLaserUnit" minOccurs="1" maxOccurs="1">
 		</d:hasobjects>
     <d:hasobjects instantiateUsing="configuration" class="IoLMotor" minOccurs="2" maxOccurs="3">
@@ -501,10 +511,22 @@
       <d:argument dataType="UaString" name="plan"/>
       <d:returnvalue dataType="UaString" name="answer"/>
     </d:method>
-    <d:method name="close_shutter" executionSynchronicity="synchronous">
+    <d:method name="pause" executionSynchronicity="synchronous">
     	<d:returnvalue dataType="UaString" name="answer"></d:returnvalue></d:method>
-    <d:method name="release_shutter" executionSynchronicity="synchronous">
+    <d:method name="standby" executionSynchronicity="synchronous">
     	<d:returnvalue dataType="UaString" name="answer"></d:returnvalue></d:method>
+    <d:method name="resume" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+    <d:method name="warmup_laser" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+    <d:method name="shutdown" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+    <d:method name="move_to_pos" executionSynchronicity="synchronous">
+    	<d:argument dataType="OpcUa_Int32" name="position">
+    		<d:array minimumSize="3" maximumSize="3"></d:array></d:argument>
+    	<d:argument dataType="OpcUa_Byte" name="approach">
+    		<d:array minimumSize="3" maximumSize="3" /></d:argument></d:method>
+    
   </d:class>
   <d:root>
     <d:hasobjects class="IoLaserSystem" instantiateUsing="configuration"/>

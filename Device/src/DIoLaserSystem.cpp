@@ -317,13 +317,13 @@ UaStatus DIoLaserSystem::callExecute_scan (
   }
   return OpcUa_Good;
 }
-UaStatus DIoLaserSystem::callClose_shutter (
+UaStatus DIoLaserSystem::callPause (
     UaString& answer
 )
 {
     return OpcUa_BadNotImplemented;
 }
-UaStatus DIoLaserSystem::callRelease_shutter (
+UaStatus DIoLaserSystem::callStandby (
     UaString& answer
 )
 {
@@ -341,6 +341,31 @@ UaStatus DIoLaserSystem::callRelease_shutter (
   // 4. repeat at will
   //
 
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLaserSystem::callResume (
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLaserSystem::callWarmup_laser (
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLaserSystem::callShutdown (
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLaserSystem::callMove_to_pos (
+    const std::vector<OpcUa_Int32>&  position,
+    const std::vector<OpcUa_Byte>&  approach
+)
+{
     return OpcUa_BadNotImplemented;
 }
 

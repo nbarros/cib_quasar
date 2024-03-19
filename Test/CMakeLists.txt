@@ -23,3 +23,5 @@ add_executable(test_system_load EXCLUDE_FROM_ALL ${PROJECT_SOURCE_DIR}/test_syst
 add_executable(test_sizes EXCLUDE_FROM_ALL ${PROJECT_SOURCE_DIR}/test_sizes.cpp)
 
 add_executable(test_json_structure EXCLUDE_FROM_ALL ${PROJECT_SOURCE_DIR}/test_json_structure.cpp)
+
+add_executable(test_structures EXCLUDE_FROM_ALL ${PROJECT_SOURCE_DIR}/test_structures.cpp)

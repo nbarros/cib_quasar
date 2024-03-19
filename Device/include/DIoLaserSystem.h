@@ -71,11 +71,24 @@ public:
         const UaString&  plan,
         UaString& answer
     ) ;
-    UaStatus callClose_shutter (
+    UaStatus callPause (
         UaString& answer
     ) ;
-    UaStatus callRelease_shutter (
+    UaStatus callStandby (
         UaString& answer
+    ) ;
+    UaStatus callResume (
+        UaString& response
+    ) ;
+    UaStatus callWarmup_laser (
+        UaString& response
+    ) ;
+    UaStatus callShutdown (
+        UaString& response
+    ) ;
+    UaStatus callMove_to_pos (
+        const std::vector<OpcUa_Int32>&  position,
+        const std::vector<OpcUa_Byte>&  approach
     ) ;
 
 private:

@@ -40,6 +40,33 @@ namespace Device
     uint32_t mask;
   } laser_regs_t;
 
+  typedef struct laser_state_t
+  {
+    // lsb
+    bool ext_shutter_closed    : 1;
+    bool laser_shutter_closed  : 1;
+    bool qswitch_en            : 1;
+    bool laser_started         : 1;
+    uint8_t padding            : 4;
+    // msb
+    laser_state_t() :
+      ext_shutter_closed(0x0),
+      laser_shutter_closed(0x0),
+      qswitch_en(0x0),
+      laser_started(0x0),
+      padding(0x0) {}
+  } laser_state_t;
+
+  typedef struct laser_state_u
+  {
+    laser_state_t state;
+    laser_state_u(laser_state_t s) : state(s) {state.padding = 0x0;}
+    laser_state_u(uint8_t s) : state(*reinterpret_cast<laser_state_t*>(&s)) {state.padding = 0x0;}
+    uint8_t get_byte() {return *reinterpret_cast<uint8_t*>(&state);}
+    bool    is_set(uint16_t bit) {return (get_byte() & ((0x1U << bit) & 0xFF));}
+    bool    bits_set(uint8_t mask) {return (get_byte() & mask);}
+  } laser_state_u;
+
 class
     DIoLLaserUnit
     : public Base_DIoLLaserUnit
@@ -115,6 +142,9 @@ public:
     UaStatus callStandby (
         UaString& response
     ) ;
+    UaStatus callResume (
+        UaString& response
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */
@@ -133,6 +163,8 @@ public:
     // is necessary
     // this basically means that an irrecoverable error state was reached and manual intervention is necessary.
     enum Status{sOffline=0x0,sReady=1,sWarmup=2,sLasing=3,sPause = 4,sStandby=5, sError=6};
+    enum ShutterState{sOpen=0x0,sClose=0x1};
+
     /**
       The transition diagram can be tricky here: ,--> sStandby
       sOffline -> sReady -> sWarmup ---> sLasing ---> sPause
@@ -171,9 +203,12 @@ public:
     UaStatus standby(json &resp);
     UaStatus single_shot(json &resp);
     UaStatus fire_standalone(uint32_t num_pulses,json &resp);
-    UaStatus switch_laser_shutter(const bool close, json &resp);
-    UaStatus force_ext_shutter(const bool close, json &resp);
+    UaStatus switch_laser_shutter(const ShutterState nstate, json &resp);
+
+    UaStatus force_ext_shutter(const ShutterState nstate, json &resp);
     UaStatus terminate(json &resp);
+    UaStatus resume(json &resp);
+
     //
     // auxiliary methods that are called by other services
     //
@@ -205,7 +240,7 @@ private:
 
 
     //
-    void timer_start(DIoLLaserUnit *obj);
+    void start_lasing_timer();
     void start_warmup_timer();
     void start_pause_timer();
     void start_standby_timer();
@@ -222,9 +257,13 @@ private:
     uint16_t m_divider;
     double m_pump_hv;
     double m_rate_hz;
-    //uint32_t m_qswitch;
-    bool m_laser_shutter_closed;
-    bool m_ext_shutter_closed;
+    // cache variables for the present state of these parts
+    laser_state_u m_part_state;
+    // FIXME: Get rid of these
+//    bool m_laser_shutter_closed;
+//    bool m_ext_shutter_closed;
+//    bool m_qswitch_en;
+//    bool m_laser_started;
 
     uint32_t m_shot_count;
     //
