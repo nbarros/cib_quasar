@@ -121,7 +121,7 @@ UaStatus DIoLAttenuator::callConfigure_attenuator (
   try
   {
     json conf = json::parse(json_config.toUtf8());
-    ret = config_device(conf,resp);
+    ret = config(conf,resp);
   }
   catch(json::exception &e)
   {
@@ -591,7 +591,7 @@ UaStatus DIoLAttenuator::init_device(json &resp)
   return ret;
 }
 
-UaStatus DIoLAttenuator::config_device(json config, json &resp)
+UaStatus DIoLAttenuator::config(json config, json &resp)
 {
   // -- should this be wrapped in exception catch or not?
   // at this stage we can accept not having a connected device

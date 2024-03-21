@@ -123,7 +123,7 @@ public:
     UaStatus move_motor(json &resp);
     UaStatus stop_motor(json &resp);
     //    UaStatus config_motor(json &resp);
-    UaStatus parse_json_config(json &conf, json &resp);
+    UaStatus config(json &conf, json &resp);
     bool validate_config_fragment(json &conf, json &resp);
     //
     const bool get_monitor() {return m_monitor;}

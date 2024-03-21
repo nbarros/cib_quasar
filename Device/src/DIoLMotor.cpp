@@ -190,10 +190,8 @@ namespace Device
       // \n, \". etc. These seem to cause trouble
       //json config(config_json.toUtf8());
       //std::string tmp(reinterpret_cast<char*>(config_json.toOpcUaString()->data),config_json.toOpcUaString()->length);
-      json config = json::parse(config_json.toUtf8());
-      st = parse_json_config(config,resp);
-
-
+      json jconf = json::parse(config_json.toUtf8());
+      st = config(jconf,resp);
       resp["status"] = "OK";
       msg.clear(); msg.str("");
       msg << log_i("config","Motor configuration updated");
@@ -990,7 +988,7 @@ namespace Device
 
   }
 
-  UaStatus DIoLMotor::parse_json_config(json &conf, json &resp)
+  UaStatus DIoLMotor::config(json &conf, json &resp)
   {
     UaStatus st = OpcUa_Good;
     std::ostringstream msg("");

@@ -108,6 +108,7 @@ public:
     enum Status{sOffline=0x0,sReady=1};
     void update();
     bool is_ready() {return (m_status == sReady);}
+    UaStatus config(json config, json &resp);
 private:
     // -- private methods
     void automatic_port_search();
@@ -115,7 +116,6 @@ private:
     void refresh_position();
     UaStatus init_device(json &resp);
     // private workers for all the exposed methods
-    UaStatus config_device(json config, json &resp);
     UaStatus set_transmission(double t, json &resp);
     UaStatus set_connection(const std::string port, const uint32_t baud_rate, json &resp);
     UaStatus stop(json &resp);

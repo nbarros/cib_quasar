@@ -42,399 +42,1154 @@ using std::ostringstream;
 
 namespace Device
 {
-// 1111111111111111111111111111111111111111111111111111111111111111111111111
-// 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
-// 1     Users don't modify this code!!!!                                  1
-// 1     If you modify this code you may start a fire or a flood somewhere,1
-// 1     and some human being may possible cease to exist. You don't want  1
-// 1     to be charged with that!                                          1
-// 1111111111111111111111111111111111111111111111111111111111111111111111111
+  // 1111111111111111111111111111111111111111111111111111111111111111111111111
+  // 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
+  // 1     Users don't modify this code!!!!                                  1
+  // 1     If you modify this code you may start a fire or a flood somewhere,1
+  // 1     and some human being may possible cease to exist. You don't want  1
+  // 1     to be charged with that!                                          1
+  // 1111111111111111111111111111111111111111111111111111111111111111111111111
 
 
 
 
 
 
-// 2222222222222222222222222222222222222222222222222222222222222222222222222
-// 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
-// 2     (code for which only stubs were generated automatically)          2
-// 2     You should add the implementation but dont alter the headers      2
-// 2     (apart from constructor, in which you should complete initializati2
-// 2     on list)                                                          2
-// 2222222222222222222222222222222222222222222222222222222222222222222222222
+  // 2222222222222222222222222222222222222222222222222222222222222222222222222
+  // 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
+  // 2     (code for which only stubs were generated automatically)          2
+  // 2     You should add the implementation but dont alter the headers      2
+  // 2     (apart from constructor, in which you should complete initializati2
+  // 2     on list)                                                          2
+  // 2222222222222222222222222222222222222222222222222222222222222222222222222
 
-/* sample ctr */
-DIoLaserSystem::DIoLaserSystem (
-    const Configuration::IoLaserSystem& config,
-    Parent_DIoLaserSystem* parent
-):
-    Base_DIoLaserSystem( config, parent)
+  /* sample ctr */
+  DIoLaserSystem::DIoLaserSystem (
+      const Configuration::IoLaserSystem& config,
+      Parent_DIoLaserSystem* parent
+  ):
+                            Base_DIoLaserSystem( config, parent)
 
-    /* fill up constructor initialization list here */
-{
+                            /* fill up constructor initialization list here */
+                            ,m_state(sOffline)
+                            {
     /* fill up constructor body here */
-}
+                            }
 
-/* sample dtr */
-DIoLaserSystem::~DIoLaserSystem ()
-{
-}
-
-/* delegates for cachevariables */
-
-
-
-/* delegators for methods */
-UaStatus DIoLaserSystem::callLoad_config (
-    const UaString&  config,
-    UaString& response
-)
-{
-    // this is where the whole configuration json file is applied
-
-    std::string msg = "{\"status\":\"Failed\", \"messages\":[\"Method not completely implemented yet\"]}";
-    response = UaString(msg.c_str());
-//    return OpcUa_Bad;
-    return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLaserSystem::callCheck_ready (
-    OpcUa_Boolean& ready
-)
-{
-
-    // check all associated subsystems if they're ready
-  bool rdy = true;
-  for (Device::DIoLLaserUnit* lunit : iollaserunits())
+  /* sample dtr */
+  DIoLaserSystem::~DIoLaserSystem ()
   {
-      rdy |= lunit->is_ready();
+    m_state_map.insert({sOffline,"offline"});
+    m_state_map.insert({sReady,"ready"});
+    m_state_map.insert({sWarmup,"warmup"});
+    m_state_map.insert({sLasing,"lasing"});
+    m_state_map.insert({sPause,"pause"});
+    m_state_map.insert({sStandby,"standby"});
   }
-  for (Device::DIoLMotor* lmotor : iolmotors ())
-  {
-      rdy |= lmotor->is_ready();
-  }
-  for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
-  {
-      rdy |= lctl->is_ready();
-  }
-  for (Device::DIoLAttenuator* latt : iolattenuators ())
-  {
-      rdy |= latt->is_ready();
-  }
-  return OpcUa_Good;
-}
-UaStatus DIoLaserSystem::callStop (
 
-)
-{
-    return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLaserSystem::callFire_at_position (
-    const std::vector<OpcUa_Int32>&  target_pos,
-    OpcUa_UInt16 num_pulses,
-    UaString& answer
-)
-{
-  //
-  json resp;
-  // first check that the whole system is ready
-  if (!is_ready())
+  /* delegates for cachevariables */
+
+
+
+  /* delegators for methods */
+  UaStatus DIoLaserSystem::callLoad_config (
+      const UaString&  config,
+      UaString& response
+  )
   {
-    resp["status"] = "ERROR";
     std::ostringstream msg("");
-    msg << log_e("fire_at_position","System is not ready to operate");
-    resp["messages"].push_back(msg.str());
-    resp["status_code"] = OpcUa_BadInvalidState;
-
-    LOG(Log::ERR) << msg.str();
-    answer = UaString(resp.dump().c_str());
-    return OpcUa_Good;
-  }
-
-  // once it is ready, pass on the information to the respective subsystems
-
-  // in this case the laser is not going to just start firing, but simply fire a discrete number of pulses
-  // there is a specific callfor that under the IOLaser device
-
-  // -- the motors are identified, so each entry refers to a motor
-  // do a check on the order of position and number of motors
-  if (target_pos.size()!= iolmotors().size())
-  {
-    // different number of position coordinates and motors
-    resp["status"] = "ERROR";
-    std::ostringstream msg("");
-    msg << log_e("fire_at_position","Different number of coordinates (")
-        << target_pos.size() << ") and available motors ("
-        << iolmotors().size() << "). Refusing to operate.";
-    resp["messages"].push_back(msg.str());
-    resp["status_code"] = OpcUa_BadInvalidArgument;
-
-    return OpcUa_Good;
-  }
-
-  if (num_pulses < 1)
-  {
-    // different number of position coordinates and motors
-    resp["status"] = "ERROR";
-    std::ostringstream msg("");
-    msg << log_e("fire_at_position","Invalid number of pulses (")
-        << num_pulses << "). Value must be at least 1.";
-    resp["messages"].push_back(msg.str());
-    resp["status_code"] = OpcUa_BadInvalidArgument;
-
-    return OpcUa_Good;
-  }
-
-  // ready to operate
-  // -- be sure to set the shutter closed until destination is reached
-//FIXME: Shutter
-//  UaStatus status = iolshutter()->close_shutter(resp);
-//  if (status != OpcUa_Good)
-//  {
-//    resp["status"] = "ERROR";
-//    std::ostringstream msg("");
-//    msg << log_e("fire_at_position","Failed to close shutter before operation.");
-//    resp["messages"].push_back(msg.str());
-//    resp["status_code"] = status;
-//    return OpcUa_Good;
-//  }
-
-
-  // the logic is the following
-  // 1. Call each of the the motors to move to the desired position
-  // 2. open the shutter
-  // 3. fire a discrete number of shots
-  // 4. close the shutter
-  UaStatus status;
-  // step 1
-  for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < target_pos.size(); idx++)
-  {
-    for (Device::DIoLMotor* lmotor : iolmotors ())
+    bool got_exception = false;
+    json resp;
+    UaStatus st;
+    try
     {
-      if (lmotor->get_coordinate_index() == idx)
+      json conf = json::parse(config.toUtf8());
+      st = config(conf,resp);
+      if (st != OpcUa_Good)
       {
-        status = lmotor->set_position_setpoint(target_pos[idx]);
-        if (status != OpcUa_Good)
+        reset(msg);
+        msg << log_e("config","Configuration failed. See previous messages");
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        if (!resp.contains("status_code"))
         {
-          resp["status"] = "ERROR";
-          std::ostringstream msg("");
-          msg << log_e("fire_at_position","Failed to set target position for motor (id : ")
-              << lmotor->get_id() << ").";
-          resp["messages"].push_back(msg.str());
-          resp["status_code"] = static_cast<uint32_t>(status);
-          return OpcUa_Good;
-        }
-
-        // now move the motor
-        lmotor->move_motor(resp);
-        if (resp["status_code"] != OpcUa_Good)
-        {
-          return OpcUa_Good;
+          resp["status_code"] = OpcUa_BadInvalidArgument;
         }
       }
+      else
+      {
+        msg << log_i("config","System configured.");
+        resp["messages"].push_back(msg.str());
+        resp["status"] = "OK";
+        resp["status_code"] = OpcUa_Good;
+      }
     }
-  }
-  // step 1.2: wait until motors are in place
-  // this actually means checking if all subsystems are ready
-  // as a moving motor fails that check
-  // FIXME: This could actually lead to a deadlock, if something else caused
-  // is_ready() to fail
-  while (!is_ready())
-  {
-    update();
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  }
-
-  // step 2: open the shutter
-  //FIXME: shutter
-  //  iolshutter()->open_shutter(resp);
-  if (resp["status_code"] != OpcUa_Good)
-  {
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("config","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("config","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("config","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    response = UaString(resp.dump().c_str());
     return OpcUa_Good;
   }
-
-  // step 3: fire for N pulses
-  // this should use the IoLaserUnit hardware interface
-  // what we do is initate fire and tell shutter to close after N sucessful shots
-
-  iollaserunit()->fire_standalone(num_pulses,resp);
-  if (resp["status_code"] != OpcUa_Good)
+  UaStatus DIoLaserSystem::callCheck_ready (
+      OpcUa_Boolean& ready
+  )
   {
-    return OpcUa_Good;
-  }
-
-  return OpcUa_Good;
-}
-UaStatus DIoLaserSystem::callFire_segment (
-    const std::vector<OpcUa_Int32>&  start_pos,
-    const std::vector<OpcUa_Int32>&  last_pos,
-    UaString& answer
-)
-{
-  json resp;
-  // first check that the whole system is ready
-  if (!is_ready())
-  {
-    resp["status"] = "ERROR";
-    std::ostringstream msg("");
-    msg << log_e("start_move","System is not ready to operate");
-    resp["messages"].push_back(msg.str());
-    resp["status_code"] = OpcUa_BadInvalidState;
-
-    LOG(Log::ERR) << msg.str();
-    answer = UaString(resp.dump().c_str());
-    return OpcUa_Good;
-  }
-  //
-  // Operation sequence
-  //
-  // 1. fill FIFOs of red zones
-  // 2. set target destination for all motors
-  // 3. move motors into start point
-  // 4. set inital fire position
-  // 5. initiate movement
-  // 6. open iris
-  // 7. When reaching destination, close iris
-    return OpcUa_Good;
-}
-UaStatus DIoLaserSystem::callExecute_scan (
-    const UaString&  plan,
-    UaString& answer
-)
-{
-  json resp;
-  // first check that the whole system is ready
-  if (!is_ready())
-  {
-    resp["status"] = "ERROR";
-    std::ostringstream msg("");
-    msg << log_e("start_move","System is not ready to operate");
-    resp["messages"].push_back(msg.str());
-    resp["status_code"] = OpcUa_BadInvalidState;
-
-    LOG(Log::ERR) << msg.str();
-    answer = UaString(resp.dump().c_str());
-    return OpcUa_Good;
-  }
-  return OpcUa_Good;
-}
-UaStatus DIoLaserSystem::callPause (
-    UaString& answer
-)
-{
-    return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLaserSystem::callStandby (
-    UaString& answer
-)
-{
-
-  // -- Parse the configuration JSON
-  // -- it should be composed of sub-sequences
-
-
-  //
-  // Operation sequence
-  //
-  // 1. start a firing sequence
-  // 2. close iris
-  // 3. start another firing sequence
-  // 4. repeat at will
-  //
-
-    return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLaserSystem::callResume (
-    UaString& response
-)
-{
-    return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLaserSystem::callWarmup_laser (
-    UaString& response
-)
-{
-    return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLaserSystem::callShutdown (
-    UaString& response
-)
-{
-    return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLaserSystem::callMove_to_pos (
-    const std::vector<OpcUa_Int32>&  position,
-    const std::vector<OpcUa_Byte>&  approach
-)
-{
-    return OpcUa_BadNotImplemented;
-}
-
-// 3333333333333333333333333333333333333333333333333333333333333333333333333
-// 3     FULLY CUSTOM CODE STARTS HERE                                     3
-// 3     Below you put bodies for custom methods defined for this class.   3
-// 3     You can do whatever you want, but please be decent.               3
-// 3333333333333333333333333333333333333333333333333333333333333333333333333
-void DIoLaserSystem::update()
-{
-	// call update over all daughters
+    // check the states of all systems
+    // check all associated subsystems if they're ready
+    bool rdy = true;
     for (Device::DIoLLaserUnit* lunit : iollaserunits())
     {
-    	lunit->update();
+      rdy |= lunit->is_ready();
     }
     for (Device::DIoLMotor* lmotor : iolmotors ())
     {
-    	lmotor->update();
+      rdy |= lmotor->is_ready();
     }
     for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
     {
-    	lctl->update();
+      rdy |= lctl->is_ready();
     }
     for (Device::DIoLAttenuator* latt : iolattenuators ())
     {
-    	latt->update();
+      rdy |= latt->is_ready();
+    }
+    ready = rdy;
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::callStop (
+
+  )
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json resp;
+    UaStatus st;
+    try
+    {
+      st = stop(resp);
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("config","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("config","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("config","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    //response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::callFire_at_position (
+      const std::vector<OpcUa_Int32>&  target_pos,
+      OpcUa_UInt16 num_pulses,
+      UaString& answer
+  )
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json resp;
+    UaStatus st;
+    try
+    {
+      st = fire_at_position(target_pos,num_pulses,resp);
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("fire_at_position","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("fire_at_position","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("fire_at_position","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    answer = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::callFire_segment (
+      const std::vector<OpcUa_Int32>&  start_pos,
+      const std::vector<OpcUa_Int32>&  last_pos,
+      UaString& answer
+  )
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json resp;
+    UaStatus st;
+    try
+    {
+      st = fire_segment(start_pos,last_pos,resp);
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("fire_segment","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("fire_segment","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("fire_segment","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    answer = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::callExecute_scan (
+      const UaString&  plan,
+      UaString& answer
+  )
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json resp;
+
+    UaStatus st;
+    try
+    {
+      json scan = json::parse(plan.toUtf8());
+      st = execute_scan(scan,resp);
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("execute_scan","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("execute_scan","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("execute_scan","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    answer = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::callPause (
+      UaString& answer
+  )
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json resp;
+
+    UaStatus st;
+    try
+    {
+      st = pause(resp);
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("pause","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("pause","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("pause","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    answer = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::callStandby (
+      UaString& answer
+  )
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json resp;
+    UaStatus st;
+    try
+    {
+      st = standby(resp);
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("standby","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("standby","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("standby","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    answer = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::callResume (
+      UaString& response
+  )
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json resp;
+    UaStatus st;
+    try
+    {
+      st = resume(resp);
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("resume","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("resume","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("resume","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::callWarmup_laser (
+      UaString& response
+  )
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json resp;
+    UaStatus st;
+    try
+    {
+      st = warmup(resp);
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("warmup","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("warmup","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("warmup","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::callShutdown (
+      UaString& response
+  )
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json resp;
+    UaStatus st;
+    try
+    {
+      st = shutdown(resp);
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("shutdown","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("shutdown","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("shutdown","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::callMove_to_pos (
+      const std::vector<OpcUa_Int32>&  position,
+      const std::vector<OpcUa_Byte>&  approach
+  )
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json resp;
+    UaStatus st;
+    try
+    {
+      st = move_to_pos(position,approach,resp);
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("move_to_pos","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("move_to_pos","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("move_to_pos","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+    }
+    //response = UaString(resp.dump().c_str());
+    return OpcUa_Good;
+  }
+
+  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+  // 3     FULLY CUSTOM CODE STARTS HERE                                     3
+  // 3     Below you put bodies for custom methods defined for this class.   3
+  // 3     You can do whatever you want, but please be decent.               3
+  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+  UaStatus DIoLaserSystem::config(json &conf, json &resp)
+  {
+    UaStatus st;
+    std::ostringstream msg("");
+    bool got_exception = false;
+    try
+    {
+      // first thing is to check that we are either in sInit or sReady states
+      if ((m_state != sOffline) and (m_state != sReady))
+      {
+        reset(msg);
+        msg << log_e("config","System is operating. Can only configure when stopped.");
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_BadInvalidState;
+        return OpcUa_BadInvalidState;
+      }
+      // validate the config fragment
+      if (!validate_config_fragment(conf,resp))
+      {
+        reset(msg);
+        msg << log_e("stop","Failed to stop laser unit. See previous messages");
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        if (!resp.contains("status_code"))
+        {
+          resp["status_code"] = OpcUa_BadInvalidArgument;
+        }
+        return OpcUa_BadInvalidArgument;
+      }
+      // validation passed. Loop over the parts and pass the corresponding configuration
+      // fragment
+      // NOTE: Is the order relevant?
+      for (json::iterator it = conf.begin(); it != conf.end(); ++it)
+      {
+        LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
+        //
+        if (it.key() == "motors")
+        {
+          // there are up to three motors.
+          // start by checking that
+          json mconf = it.value();
+          if (mconf.size() != iolmotors().size())
+          {
+            reset(msg);
+            msg << log_e("config","Malformed configuration. Have ") << iolmotors().size()
+                            << " motors, but configuration shows " << it.value().size();
+            resp["status"] = "ERROR";
+            resp["messages"].push_back(msg.str());
+            resp["status_code"] = OpcUa_BadInvalidArgument;
+            return OpcUa_BadInvalidArgument;
+          }
+          // we have matching sizes, configure them in order
+          for (size_t i = 0; i < mconf.size(); ++i)
+          {
+            json mfrag = mconf.at(i);
+            for (size_t j = 0; j < iolmotors().size(); ++j)
+            {
+              if (iolmotors().at(j)->id() == mfrag.at("id").get<std::string>())
+              {
+                st = iolmotors().at(j)->config(mfrag,resp);
+                if (st != OpcUa_Good)
+                {
+                  reset(msg);
+                  resp["status"] = "ERROR";
+                  resp["messages"].push_back(msg.str());
+                  if (!resp.contains("status_code"))
+                  {
+                    resp["status_code"] = OpcUa_BadInvalidArgument;
+                  }
+                  return OpcUa_BadInvalidArgument;
+                }
+              }
+              // if not, continue the loop
+            }
+          }
+          // if we reached this point, all motors are configured
+        }
+        if (it.key() == "laser")
+        {
+          // there is only 1 laser
+          json lconf = it.value();
+          st = iollaserunit()->config(lconf,resp);
+          if (st != OpcUa_Good)
+          {
+            reset(msg);
+            msg << log_e("config","Failed to configure laser.");
+            resp["status"] = "ERROR";
+            resp["messages"].push_back(msg.str());
+            if (!resp.contains("status_code"))
+            {
+              resp["status_code"] = OpcUa_BadInvalidArgument;
+            }
+            return OpcUa_BadInvalidArgument;
+          }
+        }
+        if (it.key() == "attenuator")
+        {
+          // there is only 1 laser
+          json aconf = it.value();
+          st = iolattenuator()->config(aconf,resp);
+          if (st != OpcUa_Good)
+          {
+            reset(msg);
+            msg << log_e("config","Failed to configure attenuator.");
+            resp["status"] = "ERROR";
+            resp["messages"].push_back(msg.str());
+            if (!resp.contains("status_code"))
+            {
+              resp["status_code"] = OpcUa_BadInvalidArgument;
+            }
+            return OpcUa_BadInvalidArgument;
+          }
+        }
+        // For now there is no configuration necessary for the CIB
+        //        if (it.key() == "cib")
+        //        {
+        //          // there is only 1 laser
+        //          json aconf = it.value();
+        //          st = iolattenuator()->config(aconf,resp);
+        //          if (st != OpcUa_Good)
+        //          {
+        //            reset(msg);
+        //            msg << log_e("config","Failed to configure attenuator.");
+        //            resp["status"] = "ERROR";
+        //            resp["messages"].push_back(msg.str());
+        //            if (!resp.contains("status_code"))
+        //            {
+        //              resp["status_code"] = OpcUa_BadInvalidArgument;
+        //            }
+        //            return OpcUa_BadInvalidArgument;
+        //          }
+        //        }
+        // ------------------
+        // There's nothing on the piezocontrollers
+        //        if (it.key() == "piezo")
+        //        {
+        //          // there could be up to three piezos
+        //          // but I have absolutely no information about them
+        //          json aconf = it.value();
+        //          st = iolattenuator()->config(aconf,resp);
+        //          if (st != OpcUa_Good)
+        //          {
+        //            reset(msg);
+        //            msg << log_e("config","Failed to configure attenuator.");
+        //            resp["status"] = "ERROR";
+        //            resp["messages"].push_back(msg.str());
+        //            if (!resp.contains("status_code"))
+        //            {
+        //              resp["status_code"] = OpcUa_BadInvalidArgument;
+        //            }
+        //            return OpcUa_BadInvalidArgument;
+        //          }
+        //        }
+        //----------------------------------
+        // power meter : one unit
+        //----------------------------------
+        if (it.key() == "power_meter")
+        {
+          // there is only 1
+          json pconf = it.value();
+          st = iolpowermeter()->config(pconf,resp);
+          if (st != OpcUa_Good)
+          {
+            reset(msg);
+            msg << log_e("config","Failed to configure power meter.");
+            resp["status"] = "ERROR";
+            resp["messages"].push_back(msg.str());
+            if (!resp.contains("status_code"))
+            {
+              resp["status_code"] = OpcUa_BadInvalidArgument;
+            }
+            return OpcUa_BadInvalidArgument;
+          }
+        }
+      } // loop json
+      // if we reached this point, the configurations are all good
+      update_state(sReady);
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("stop","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::runtime_error &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("stop","Caught runtime error : ") << e.what();
+      got_exception = true;
+
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("stop","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("stop","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      reset(msg);
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+      return OpcUa_Bad;
+    }
+    else
+    {
+      reset(msg);
+      msg << log_i("config","IoLS configured.");
+      resp["status"] = "OK";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Good;
+    }
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::check_ready(bool &ready)
+  {
+    ready = is_ready();
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::stop(json &resp)
+  {
+    UaStatus st;
+    std::ostringstream msg("");
+    bool got_exception = false;
+    try
+    {
+      // first thing to be stopped is the laser
+      // this should only fail if something is not configured
+      st = iollaserunit()->stop(resp);
+      if (st != OpcUa_Good)
+      {
+        reset(msg);
+        msg << log_e("stop","Failed to stop laser unit. See previous messages");
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        if (!resp.contains("status_code"))
+        {
+          resp["status_code"] = OpcUa_Bad;
+        }
+      }
+      // next stop the motors
+      for (Device::DIoLMotor* lmotor : iolmotors ())
+      {
+        st = lmotor->stop_motor(resp);
+        if (st != OpcUa_Good)
+        {
+          reset(msg);
+          msg << log_e("stop","Failed to stop motor ") << lmotor->get_id() << ". See previous messages.";
+          resp["status"] = "ERROR";
+          resp["messages"].push_back(msg.str());
+          if (!resp.contains("status_code"))
+          {
+            resp["status_code"] = OpcUa_Bad;
+          }
+        }
+        // none of the other systems actually matter for this
+        // they are not moving parts
+      }
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("stop","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::runtime_error &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("stop","Caught runtime error : ") << e.what();
+      got_exception = true;
+
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("stop","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("stop","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+      return OpcUa_Bad;
+    }
+    return OpcUa_Good;
+  }
+
+  UaStatus DIoLaserSystem::fire_at_position(const std::vector<int32_t>&  target_pos, uint16_t num_pulses, json &resp)
+  {
+    {
+      //
+      json resp;
+      // first check that the whole system is in a state that could be considered as valid
+      if (!is_ready())
+      {
+        resp["status"] = "ERROR";
+        std::ostringstream msg("");
+        msg << log_e("fire_at_position","System is not ready to operate. Check the status of the various subsystems.");
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_BadInvalidState;
+        LOG(Log::ERR) << msg.str();
+        return OpcUa_BadInvalidState;
+      }
+      // once it is ready, pass on the information to the respective subsystems
+      //
+      // in this case the laser is not going to just start firing, but simply fire a discrete number of pulses
+      // there is a specific callfor that under the IOLaser device
+      // -- the motors are identified, so each entry refers to a motor
+      // do a check on the order of position and number of motors
+      if (target_pos.size()!= iolmotors().size())
+      {
+        // different number of position coordinates and motors
+        resp["status"] = "ERROR";
+        std::ostringstream msg("");
+        msg << log_e("fire_at_position","Different number of coordinates (")
+                                  << target_pos.size() << ") and available motors ("
+                                  << iolmotors().size() << "). Refusing to operate.";
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_BadInvalidArgument;
+
+        return OpcUa_Good;
+      }
+
+      if (num_pulses < 1)
+      {
+        // different number of position coordinates and motors
+        resp["status"] = "ERROR";
+        std::ostringstream msg("");
+        msg << log_e("fire_at_position","Invalid number of pulses (")
+                                  << num_pulses << "). Value must be at least 1.";
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_BadInvalidArgument;
+
+        return OpcUa_Good;
+      }
+
+      // ready to operate
+      // -- be sure to set the shutter closed until destination is reached
+      //FIXME: Shutter
+      //  UaStatus status = iolshutter()->close_shutter(resp);
+      //  if (status != OpcUa_Good)
+      //  {
+      //    resp["status"] = "ERROR";
+      //    std::ostringstream msg("");
+      //    msg << log_e("fire_at_position","Failed to close shutter before operation.");
+      //    resp["messages"].push_back(msg.str());
+      //    resp["status_code"] = status;
+      //    return OpcUa_Good;
+      //  }
+
+
+      // the logic is the following
+      // 1. Call each of the the motors to move to the desired position
+      // 2. open the shutter
+      // 3. fire a discrete number of shots
+      // 4. close the shutter
+      UaStatus status;
+      // step 1
+      for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < target_pos.size(); idx++)
+      {
+        for (Device::DIoLMotor* lmotor : iolmotors ())
+        {
+          if (lmotor->get_coordinate_index() == idx)
+          {
+            status = lmotor->set_position_setpoint(target_pos[idx]);
+            if (status != OpcUa_Good)
+            {
+              resp["status"] = "ERROR";
+              std::ostringstream msg("");
+              msg << log_e("fire_at_position","Failed to set target position for motor (id : ")
+                                        << lmotor->get_id() << ").";
+              resp["messages"].push_back(msg.str());
+              resp["status_code"] = static_cast<uint32_t>(status);
+              return OpcUa_Good;
+            }
+
+            // now move the motor
+            lmotor->move_motor(resp);
+            if (resp["status_code"] != OpcUa_Good)
+            {
+              return OpcUa_Good;
+            }
+          }
+        }
+      }
+      // step 1.2: wait until motors are in place
+      // this actually means checking if all subsystems are ready
+      // as a moving motor fails that check
+      // FIXME: This could actually lead to a deadlock, if something else caused
+      // is_ready() to fail
+      while (!is_ready())
+      {
+        update();
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      }
+
+      // step 2: open the shutter
+      //FIXME: shutter
+      //  iolshutter()->open_shutter(resp);
+      if (resp["status_code"] != OpcUa_Good)
+      {
+        return OpcUa_Good;
+      }
+
+      // step 3: fire for N pulses
+      // this should use the IoLaserUnit hardware interface
+      // what we do is initate fire and tell shutter to close after N sucessful shots
+
+      iollaserunit()->fire_standalone(num_pulses,resp);
+      if (resp["status_code"] != OpcUa_Good)
+      {
+        return OpcUa_Good;
+      }
+
+      return OpcUa_Good;
+    }
+  }
+  UaStatus DIoLaserSystem::fire_segment(
+      const std::vector<OpcUa_Int32>&  spos,
+      const std::vector<OpcUa_Int32>&  lpos,
+      json& resp
+  )
+  {
+
+
+    json resp;
+    // first check that the whole system is ready
+    if (!is_ready())
+    {
+      resp["status"] = "ERROR";
+      std::ostringstream msg("");
+      msg << log_e("start_move","System is not ready to operate");
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidState;
+
+      LOG(Log::ERR) << msg.str();
+      answer = UaString(resp.dump().c_str());
+      return OpcUa_Good;
+    }
+    //
+    // Operation sequence
+    //
+    // 1. fill FIFOs of red zones
+    // 2. set target destination for all motors
+    // 3. move motors into start point
+    // 4. set inital fire position
+    // 5. initiate movement
+    // 6. open iris
+    // 7. When reaching destination, close iris
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::execute_scan(json &plan, json &resp);
+  UaStatus DIoLaserSystem::pause(json &resp);
+  UaStatus DIoLaserSystem::standby(json &resp);
+  UaStatus DIoLaserSystem::resume(json &resp);
+  UaStatus DIoLaserSystem::warmup(json &resp);
+  UaStatus DIoLaserSystem::shutdown(json &resp)
+  UaStatus DIoLaserSystem::move_to_pos(
+      const std::vector<OpcUa_Int32>&  position,
+      const std::vector<OpcUa_Byte>&  approach,
+      json &resp)
+  {
+    std::ostringstream msg("");
+
+  }
+  bool DIoLaserSystem::validate_config_fragment(json &frag, json &resp)
+  {
+    // check that a series of parameters are set
+    // also check that this fragment has the ID that is corresponding to this specific laser system
+    // this is just a validation check for the available keys.
+    // it will only check the mandatory keys.
+    std::ostringstream msg("");
+    std::vector<std::string> keys = {"id","motor","attenuator","laser",
+        "power_meter", "cib", "piezo"
+    };
+    if (!frag.contains("id"))
+    {
+      reset(msg);
+      msg << log_e("validate_config","Configuration fragment missing system ID");
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidArgument;
+      return false;
+    }
+    if (frag.at("id").get<std::string>() != id())
+    {
+      reset(msg);
+      msg << log_e("validate_config","Configuration fragment has a mismatched ID. Expected ") << id();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidArgument;
+      return false;
+    }
+    // actually, check for all entries and report all missing ones
+    std::vector<std::string> missing;
+    for (auto entry: keys)
+    {
+      if (!frag.contains(entry))
+      {
+        missing.push_back(entry);
+      }
+    }
+    if (missing.size() > 0)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("validate_config","Missing entries in IoLS config fragment [");
+      for (auto e : missing)
+      {
+        msg << "(" <<  e << "),";
+      }
+      msg << "]";
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidArgument;
+      return false;
+    }
+    // all good, return true
+    return true;
+  }
+  void DIoLaserSystem::update()
+  {
+    // call update over all daughters
+    for (Device::DIoLLaserUnit* lunit : iollaserunits())
+    {
+      lunit->update();
+    }
+    for (Device::DIoLMotor* lmotor : iolmotors ())
+    {
+      lmotor->update();
+    }
+    for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
+    {
+      lctl->update();
+    }
+    for (Device::DIoLAttenuator* latt : iolattenuators ())
+    {
+      latt->update();
     }
     for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
     {
       lmeter->update();
     }
-}
-bool DIoLaserSystem::is_ready()
-{
-  for (Device::DIoLLaserUnit* lunit : iollaserunits())
-  {
-    if (!lunit->is_ready())
-    {
-      return false;
-    }
   }
-  for (Device::DIoLMotor* lmotor : iolmotors ())
+  bool DIoLaserSystem::is_ready()
   {
-    if (!lmotor->is_ready())
+    for (Device::DIoLLaserUnit* lunit : iollaserunits())
     {
-      return false;
+      if (!lunit->is_ready())
+      {
+        return false;
+      }
     }
+    for (Device::DIoLMotor* lmotor : iolmotors ())
+    {
+      if (!lmotor->is_ready())
+      {
+        return false;
+      }
+    }
+    for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
+    {
+      if (!lctl->is_ready())
+      {
+        return false;
+      }
+    }
+    for (Device::DIoLAttenuator* latt : iolattenuators ())
+    {
+      if (!latt->is_ready())
+      {
+        return false;
+      }
+    }
+    for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+    {
+      if (!lmeter->is_ready())
+      {
+        return false;
+      }
+    }
+    return true;
   }
-  for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
+  void DIoLaserSystem::reset(std::ostringstream &s)
   {
-    if (!lctl->is_ready())
-    {
-      return false;
-    }
+    s.clear();
+    s.str("");
   }
-  for (Device::DIoLAttenuator* latt : iolattenuators ())
+  void DIoLaserSystem::update_state(State s)
   {
-    if (!latt->is_ready())
-    {
-      return false;
-    }
+    m_state = s;
+    UaString ss(m_state_map.at(m_state).c_str());
+    getAddressSpaceLink()->setState(ss,OpcUa_Good);
   }
-  for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
-  {
-    if (!lmeter->is_ready())
-    {
-      return false;
-    }
-  }
-  return true;
-}
+
+
 }

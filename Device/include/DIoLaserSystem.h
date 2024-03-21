@@ -100,14 +100,38 @@ private:
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
     // -     Don't change this comment, otherwise merge tool may be troubled.  *
     // ----------------------------------------------------------------------- *
-
+    enum State {sOffline, sReady, sWarmup, sPause, sStandby, sLasing};
+    //
+    UaStatus config(json &conf, json &resp);
+    UaStatus check_ready(bool &ready);
+    UaStatus stop(json &resp);
+    UaStatus fire_at_position(const std::vector<int32_t>&  target_pos, uint16_t num_pulses, json &resp);
+    UaStatus fire_segment(
+        const std::vector<OpcUa_Int32>&  spos,
+        const std::vector<OpcUa_Int32>&  lpos,
+        json& resp
+    );
+    UaStatus execute_scan(json &plan, json &resp);
+    UaStatus pause(json &resp);
+    UaStatus standby(json &resp);
+    UaStatus resume(json &resp);
+    UaStatus warmup(json &resp);
+    UaStatus shutdown(json &resp);
+    UaStatus move_to_pos(
+        const std::vector<OpcUa_Int32>&  position,
+        const std::vector<OpcUa_Byte>&  approach,
+        json &resp);
+    inline void reset(std::ostringstream &s);
+    bool validate_config_fragment(json &frag, json &resp);
+    void update_state(State s);
 public:
     // makes a roll call for each system to update itself
     void update();
     // makes a status call over all subsystems
     bool is_ready();
 private:
-
+    std::map<State,std::string> m_state_map;
+    State m_state;
 
 
 };
