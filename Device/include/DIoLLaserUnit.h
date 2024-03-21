@@ -204,11 +204,12 @@ public:
     UaStatus single_shot(json &resp);
     UaStatus fire_standalone(uint32_t num_pulses,json &resp);
     UaStatus switch_laser_shutter(const ShutterState nstate, json &resp);
-
+    Status get_state() const {return m_status;}
+    bool good_for_operation() {return ((m_status == sPause) || (m_status == sStandby) || (m_status == sLasing));}
     UaStatus force_ext_shutter(const ShutterState nstate, json &resp);
     UaStatus terminate(json &resp);
     UaStatus resume(json &resp);
-
+    UaStatus fire_discrete_shots(uint32_t num_pulses,json &resp );
     //
     // auxiliary methods that are called by other services
     //
@@ -247,7 +248,7 @@ private:
 
     UaStatus map_registers(json &reginfo, json &resp);
     UaStatus unmap_registers();
-
+    uint32_t get_cib_shot_count();
     //
     //
     bool m_is_ready;

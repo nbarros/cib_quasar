@@ -276,7 +276,7 @@ namespace Device
 #ifdef SIMULATION
     st = sim_stop_motor(resp);
 #else
-    st = stop_motor(resp);
+    st = stop(resp);
 #endif
 
     if (st != OpcUa_Good)
@@ -407,8 +407,8 @@ namespace Device
     // 2.1. position_set_point
     // 2.2. speed
     // 2.3. acceleration
-    LOG(Log::INF) << "Checking readiness for motor ID=" << m_id
-        << " with positionSetPoint = (" << m_position_setpoint << ")";
+//    LOG(Log::INF) << "Checking readiness for motor ID=" << m_id
+//        << " with positionSetPoint = (" << m_position_setpoint << ")";
     if (m_is_moving)
     {
       return false;
@@ -417,7 +417,7 @@ namespace Device
     {
       return false;
     }
-    LOG(Log::INF) << "It is ready";
+//    LOG(Log::INF) << "It is ready";
     return true;
   }
 
@@ -674,7 +674,7 @@ namespace Device
     return status;
   }
 
-  UaStatus DIoLMotor::stop_motor(json &resp)
+  UaStatus DIoLMotor::stop(json &resp)
   {
     string addr = "http://";
     addr+= m_server_host;

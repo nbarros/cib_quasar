@@ -1,24 +1,53 @@
 {
-"name":"L1",
-"serial_number":"NJAS44DN",
-"port":"auto",
-"baud_rate":9600,
-"repetition_rate":10.0,
-"repetition_rate_divider":0,
-"qswitch":170,
-"discharge_voltage":1.1,
-"pause_timeout_min":10,
-"standby_timeout_min":60,
-"warmup_timer_min" : 30,
-"qswitch_delay_us":170,
-"qswitch_width_us":10,
-"fire_width_us":10,
-"mmap": 
-	{"fire_width": [10,11,0],
-	 "qs_width" : [10,23,12],
-	 "qs_delay" : [11,15,0],
-	 "start" : [0,31,31],
-	 "force_shutter" : [0,30,30],
-	 "qs_enable" : [10,31,31]
+	"name": "L1",
+	"serial_number": "NJAS44DN",
+	"port": "auto",
+	"baud_rate": 9600,
+	"repetition_rate": 10.0,
+	"repetition_rate_divider": 0,
+	"qswitch": 170,
+	"discharge_voltage": 1.1,
+	"pause_timeout_min": 10,
+	"standby_timeout_min": 60,
+	"warmup_timer_min": 30,
+	"qswitch_delay_us": 170,
+	"qswitch_width_us": 10,
+	"fire_width_us": 10,
+	"mmap": {
+		"fire_width": [
+			10,
+			11,
+			0
+		],
+		"qs_width": [
+			10,
+			23,
+			12
+		],
+		"qs_delay": [
+			11,
+			15,
+			0
+		],
+		"start": [
+			0,
+			31,
+			31
+		],
+		"force_shutter": [
+			0,
+			30,
+			30
+		],
+		"qs_enable": [
+			10,
+			31,
+			31
+		],
+		"shot_count": [
+			15,
+			31,
+			0
+		]
 	}
 }

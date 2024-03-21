@@ -68,13 +68,13 @@ namespace Device
       const Configuration::IoLaserSystem& config,
       Parent_DIoLaserSystem* parent
   ):
-                            Base_DIoLaserSystem( config, parent)
+                                        Base_DIoLaserSystem( config, parent)
 
-                            /* fill up constructor initialization list here */
-                            ,m_state(sOffline)
-                            {
+                                        /* fill up constructor initialization list here */
+                                        ,m_state(sOffline)
+                                        {
     /* fill up constructor body here */
-                            }
+                                        }
 
   /* sample dtr */
   DIoLaserSystem::~DIoLaserSystem ()
@@ -82,9 +82,10 @@ namespace Device
     m_state_map.insert({sOffline,"offline"});
     m_state_map.insert({sReady,"ready"});
     m_state_map.insert({sWarmup,"warmup"});
-    m_state_map.insert({sLasing,"lasing"});
+    m_state_map.insert({sOperating,"operating"});
     m_state_map.insert({sPause,"pause"});
     m_state_map.insert({sStandby,"standby"});
+    update_state(sOffline);
   }
 
   /* delegates for cachevariables */
@@ -628,7 +629,7 @@ namespace Device
           {
             reset(msg);
             msg << log_e("config","Malformed configuration. Have ") << iolmotors().size()
-                            << " motors, but configuration shows " << it.value().size();
+                                        << " motors, but configuration shows " << it.value().size();
             resp["status"] = "ERROR";
             resp["messages"].push_back(msg.str());
             resp["status_code"] = OpcUa_BadInvalidArgument;
@@ -818,7 +819,9 @@ namespace Device
     {
       // first thing to be stopped is the laser
       // this should only fail if something is not configured
-      st = iollaserunit()->stop(resp);
+      //st = iollaserunit()->stop(resp);
+      //FIXME: Should we set another method that does *really* stop the laser?
+      st = iollaserunit()->pause(resp);
       if (st != OpcUa_Good)
       {
         reset(msg);
@@ -829,11 +832,12 @@ namespace Device
         {
           resp["status_code"] = OpcUa_Bad;
         }
+        return st;
       }
       // next stop the motors
       for (Device::DIoLMotor* lmotor : iolmotors ())
       {
-        st = lmotor->stop_motor(resp);
+        st = lmotor->stop(resp);
         if (st != OpcUa_Good)
         {
           reset(msg);
@@ -844,10 +848,26 @@ namespace Device
           {
             resp["status_code"] = OpcUa_Bad;
           }
+          return st;
         }
-        // none of the other systems actually matter for this
-        // they are not moving parts
       }
+      // none of the other systems are actually critical
+      // however, if we stop the laser, there is little point in
+      // keeping the power meter reading
+      st = iolpowermeter()->stop_readings(resp);
+      if (st != OpcUa_Good)
+      {
+        reset(msg);
+        msg << log_e("stop","Failed to stop power meter ") << iolpowermeter()->getFullName() << ". See previous messages.";
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        if (!resp.contains("status_code"))
+        {
+          resp["status_code"] = OpcUa_Bad;
+        }
+        return st;
+      }
+      // if it reached this point we are currently stopped
     }
     catch(json::exception &e)
     {
@@ -881,26 +901,56 @@ namespace Device
       resp["status_code"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
+    else
+    {
+      reset(msg);
+      msg << log_i("stop","IoLS system stopped.");
+      resp["status"] = "OK";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Good;
+    }
     return OpcUa_Good;
   }
 
   UaStatus DIoLaserSystem::fire_at_position(const std::vector<int32_t>&  target_pos, uint16_t num_pulses, json &resp)
   {
+    UaStatus st;
+    std::ostringstream msg("");
+    bool got_exception = false;
+    try
     {
-      //
-      json resp;
       // first check that the whole system is in a state that could be considered as valid
+      // the tricky part here is that this definition depends on many things
+      /**
+       * For example, the laser can be considered ready if it is in sLasing, sReady or sStandby states
+       * The motor is ready if it is not moving and has a speed defined
+       * The power meter is always ready, as far as it is configured
+       * The attenuator is always ready
+       */
       if (!is_ready())
       {
+        reset(msg);
         resp["status"] = "ERROR";
-        std::ostringstream msg("");
         msg << log_e("fire_at_position","System is not ready to operate. Check the status of the various subsystems.");
         resp["messages"].push_back(msg.str());
         resp["status_code"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidState;
       }
-      // once it is ready, pass on the information to the respective subsystems
+      // step 0: Check if the laser is in a valid operating state
+      // these are sLasing, sPause and sStandby
+      // any other state requires extra stuff to operate
+      if (!iollaserunit()->good_for_operation())
+      {
+        reset(msg);
+        resp["status"] = "ERROR";
+        msg << log_e("fire_at_position","Laser is not in the right state.");
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_BadInvalidState;
+        LOG(Log::ERR) << msg.str();
+        return OpcUa_BadInvalidState;
+      }
+      // if it is ready, pass on the information to the respective subsystems
       //
       // in this case the laser is not going to just start firing, but simply fire a discrete number of pulses
       // there is a specific callfor that under the IOLaser device
@@ -910,50 +960,33 @@ namespace Device
       {
         // different number of position coordinates and motors
         resp["status"] = "ERROR";
-        std::ostringstream msg("");
+        reset(msg);
         msg << log_e("fire_at_position","Different number of coordinates (")
-                                  << target_pos.size() << ") and available motors ("
-                                  << iolmotors().size() << "). Refusing to operate.";
+                                              << target_pos.size() << ") and available motors ("
+                                              << iolmotors().size() << "). Refusing to operate.";
         resp["messages"].push_back(msg.str());
         resp["status_code"] = OpcUa_BadInvalidArgument;
-
-        return OpcUa_Good;
+        return OpcUa_BadInvalidArgument;
       }
-
+      //
       if (num_pulses < 1)
       {
-        // different number of position coordinates and motors
         resp["status"] = "ERROR";
         std::ostringstream msg("");
         msg << log_e("fire_at_position","Invalid number of pulses (")
-                                  << num_pulses << "). Value must be at least 1.";
+                                              << num_pulses << "). Value must be at least 1.";
         resp["messages"].push_back(msg.str());
         resp["status_code"] = OpcUa_BadInvalidArgument;
-
-        return OpcUa_Good;
+        return OpcUa_BadInvalidArgument;
       }
-
+      //
       // ready to operate
       // -- be sure to set the shutter closed until destination is reached
-      //FIXME: Shutter
-      //  UaStatus status = iolshutter()->close_shutter(resp);
-      //  if (status != OpcUa_Good)
-      //  {
-      //    resp["status"] = "ERROR";
-      //    std::ostringstream msg("");
-      //    msg << log_e("fire_at_position","Failed to close shutter before operation.");
-      //    resp["messages"].push_back(msg.str());
-      //    resp["status_code"] = status;
-      //    return OpcUa_Good;
-      //  }
-
-
       // the logic is the following
       // 1. Call each of the the motors to move to the desired position
       // 2. open the shutter
       // 3. fire a discrete number of shots
       // 4. close the shutter
-      UaStatus status;
       // step 1
       for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < target_pos.size(); idx++)
       {
@@ -961,58 +994,110 @@ namespace Device
         {
           if (lmotor->get_coordinate_index() == idx)
           {
-            status = lmotor->set_position_setpoint(target_pos[idx]);
-            if (status != OpcUa_Good)
+            st = lmotor->set_position_setpoint(target_pos[idx]);
+            if (st != OpcUa_Good)
             {
               resp["status"] = "ERROR";
               std::ostringstream msg("");
               msg << log_e("fire_at_position","Failed to set target position for motor (id : ")
-                                        << lmotor->get_id() << ").";
+                                                    << lmotor->get_id() << ").";
               resp["messages"].push_back(msg.str());
-              resp["status_code"] = static_cast<uint32_t>(status);
-              return OpcUa_Good;
+              resp["status_code"] = static_cast<uint32_t>(st);
+              return st;
             }
-
             // now move the motor
-            lmotor->move_motor(resp);
-            if (resp["status_code"] != OpcUa_Good)
+            st = lmotor->move_motor(resp);
+            if (st != OpcUa_Good)
             {
-              return OpcUa_Good;
+              resp["status"] = "ERROR";
+              std::ostringstream msg("");
+              msg << log_e("fire_at_position","Failed to initiate motor movement on motor (id : ")
+                                                    << lmotor->get_id() << ").";
+              resp["messages"].push_back(msg.str());
+              resp["status_code"] = static_cast<uint32_t>(st);
+              return st;
             }
           }
         }
       }
       // step 1.2: wait until motors are in place
-      // this actually means checking if all subsystems are ready
-      // as a moving motor fails that check
-      // FIXME: This could actually lead to a deadlock, if something else caused
-      // is_ready() to fail
-      while (!is_ready())
+      // does this really make sense? This is a synchronous method
+      // one could be for a long wait until it
+      // executes
+      // FIXME: ideally, this should spawn a separate process that would complete the execution when
+      // the motors reach the destination
+      // for now, as a stopgap measure, we do wait
+      bool is_moving = true;
+      while (is_moving)
       {
-        update();
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        is_moving = false;
+        for (Device::DIoLMotor* lmotor : iolmotors ())
+        {
+          is_moving |= lmotor->is_moving();
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
       }
-
-      // step 2: open the shutter
-      //FIXME: shutter
-      //  iolshutter()->open_shutter(resp);
-      if (resp["status_code"] != OpcUa_Good)
+      //
+      //
+      // we have reached the destination
+      // step 2: resume operation of the laser unit
+      st = iollaserunit()->fire_discrete_shots(num_pulses,resp);
+      if (st != OpcUa_Good)
       {
-        return OpcUa_Good;
+        reset(msg);
+        resp["status"] = "ERROR";
+        msg << log_e("fire_at_position","Failed to fire laser. Check previous messages.");
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = static_cast<uint32_t>(st);
+        // force a pause (again)
+        iollaserunit()->pause(resp);
+        return resp["status_code"];
       }
-
-      // step 3: fire for N pulses
-      // this should use the IoLaserUnit hardware interface
-      // what we do is initate fire and tell shutter to close after N sucessful shots
-
-      iollaserunit()->fire_standalone(num_pulses,resp);
-      if (resp["status_code"] != OpcUa_Good)
-      {
-        return OpcUa_Good;
-      }
-
-      return OpcUa_Good;
+      // at this stage we are done
+      // make sure that the laser is in pause state
+      iollaserunit()->pause(resp);
     }
+    catch(json::exception &e)
+    {
+      reset(msg);
+      msg << log_e("stop","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::runtime_error &e)
+    {
+      reset(msg);
+      msg << log_e("stop","Caught runtime error : ") << e.what();
+      got_exception = true;
+
+    }
+    catch(std::exception &e)
+    {
+      reset(msg);
+      msg << log_e("stop","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      reset(msg);
+      msg << log_e("stop","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+      return OpcUa_Bad;
+    }
+    else
+    {
+      reset(msg);
+      msg << log_i("stop","Command successful.");
+      resp["status"] = "OK";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Good;
+    }
+    return OpcUa_Good;
   }
   UaStatus DIoLaserSystem::fire_segment(
       const std::vector<OpcUa_Int32>&  spos,
@@ -1020,35 +1105,347 @@ namespace Device
       json& resp
   )
   {
+    UaStatus st;
+    std::ostringstream msg("");
+    bool got_exception = false;
+    try
+    {
+      // first check that the whole system is in a state that could be considered as valid
+      // the tricky part here is that this definition depends on many things
+      /**
+       * For example, the laser can be considered ready if it is in sLasing, sReady or sStandby states
+       * The motor is ready if it is not moving and has a speed defined
+       * The power meter is always ready, as far as it is configured
+       * The attenuator is always ready
+       */
+      if (!is_ready())
+      {
+        reset(msg);
+        resp["status"] = "ERROR";
+        msg << log_e("fire_segment","System is not ready to operate. Check the status of the various subsystems.");
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_BadInvalidState;
+        LOG(Log::ERR) << msg.str();
+        return OpcUa_BadInvalidState;
+      }
+      // step 0: Check if the laser is in a valid operating state
+      // these are sLasing, sPause and sStandby
+      // any other state requires extra stuff to operate
+      if (!iollaserunit()->good_for_operation())
+      {
+        reset(msg);
+        resp["status"] = "ERROR";
+        msg << log_e("fire_segment","Laser is not in the right state.");
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_BadInvalidState;
+        LOG(Log::ERR) << msg.str();
+        return OpcUa_BadInvalidState;
+      }
 
+      //
+      // Operation sequence
+      //
+      // 1. set target destination for all motors
+      // 2. move motors into start point
+      // 3. set inital fire position
+      // 5. initiate movement
+      // 6. open iris
+      // 7. When reaching destination, close iris
 
-    json resp;
-    // first check that the whole system is ready
-    if (!is_ready())
+      // if it is ready, pass on the information to the respective subsystems
+      //
+      // in this case the laser is not going to just start firing, but simply fire a discrete number of pulses
+      // there is a specific callfor that under the IOLaser device
+      // -- the motors are identified, so each entry refers to a motor
+      // do a check on the order of position and number of motors
+      if (spos.size()!= iolmotors().size())
+      {
+        // different number of position coordinates and motors
+        resp["status"] = "ERROR";
+        reset(msg);
+        msg << log_e("fire_segment","Different number of start coordinates (")
+                                              << spos.size() << ") and available motors ("
+                                              << iolmotors().size() << "). Refusing to operate.";
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_BadInvalidArgument;
+        return OpcUa_BadInvalidArgument;
+      }
+      // do the same for the target
+      if (lpos.size()!= iolmotors().size())
+      {
+        // different number of position coordinates and motors
+        resp["status"] = "ERROR";
+        reset(msg);
+        msg << log_e("fire_segment","Different number of end coordinates (")
+                                              << spos.size() << ") and available motors ("
+                                              << iolmotors().size() << "). Refusing to operate.";
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_BadInvalidArgument;
+        return OpcUa_BadInvalidArgument;
+      }
+      // second check. Only one of the motors should be moving,
+      // or we're in for a world of pain
+      int n_moving_motors = 0;
+      for (size_t i = 0; i < spos.size(); ++i)
+      {
+        if (spos.at(i) != lpos.at(i))
+        {
+          n_moving_motors++;
+        }
+      }
+      if (n_moving_motors != 1)
+      {
+        resp["status"] = "ERROR";
+        reset(msg);
+        msg << log_e("fire_segment","More than one motor moving. (")
+                                              << n_moving_motors << "). Expected 1. Refusing to operate.";
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = OpcUa_BadInvalidArgument;
+        return OpcUa_BadInvalidArgument;
+      }
+      // all conditions are checked. Now start the operation
+      // the status is set to sOperating and a separate thread is ran to process it
+      // however, during this time, nothing else can be done with the system
+      update_state(sOperating);
+      init_segment_task(spos,lpos);
+      // this is the poor mans equivalent of an async method
+      // for now consider the task done
+    }
+    catch(json::exception &e)
+    {
+      reset(msg);
+      msg << log_e("stop","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::runtime_error &e)
+    {
+      reset(msg);
+      msg << log_e("stop","Caught runtime error : ") << e.what();
+      got_exception = true;
+
+    }
+    catch(std::exception &e)
+    {
+      reset(msg);
+      msg << log_e("stop","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      reset(msg);
+      msg << log_e("stop","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
     {
       resp["status"] = "ERROR";
-      std::ostringstream msg("");
-      msg << log_e("start_move","System is not ready to operate");
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidState;
-
-      LOG(Log::ERR) << msg.str();
-      answer = UaString(resp.dump().c_str());
-      return OpcUa_Good;
+      resp["status_code"] = OpcUa_Bad;
+      return OpcUa_Bad;
     }
-    //
-    // Operation sequence
-    //
-    // 1. fill FIFOs of red zones
-    // 2. set target destination for all motors
-    // 3. move motors into start point
-    // 4. set inital fire position
-    // 5. initiate movement
-    // 6. open iris
-    // 7. When reaching destination, close iris
+    else
+    {
+      reset(msg);
+      msg << log_i("stop","Command successful.");
+      resp["status"] = "OK";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Good;
+    }
     return OpcUa_Good;
   }
-  UaStatus DIoLaserSystem::execute_scan(json &plan, json &resp);
+  void DIoLaserSystem::init_segment_task(const std::vector<OpcUa_Int32>&  spos,
+                                         const std::vector<OpcUa_Int32>&  lpos
+  )
+  {
+    // this task runs on a separate thread
+    // since there is no return to the user space
+    // messages are queued in a separate variable that can then be queried
+    // also keep in mind that at this stage all verifications have been performed, so
+    // the task does not need base checks
+    std::thread([this]()
+                {
+      UaStatus st;
+      std::ostringstream msg("");
+      json resp;
+      //
+      // ready to operate
+      // -- be sure to set the shutter closed until destination is reached
+      // the logic is the following
+      // 0. Make sure that the laser is in Pause state
+      // 1. Call each of the the motors to move to the starting position
+      // 2. Set the target position for each motor
+      // 3. Initiate movement
+      // 4. call resume (switch to sLasing)
+      // 5. Wait for motors to report end of travel
+      // 6. switch back to pause
+      // 7. Assess success
+      //
+      // step 0: before we even start doing anything
+      // force the laser into a pause state
+      st = iollaserunit()->pause(resp);
+      if (st != OpcUa_Good)
+      {
+        reset(msg);
+        msg << log_e("fire_segment","Failed to set laser into Pause state");;
+        resp["messages"].push_back(msg.str());
+        resp["status"] = "ERROR";
+        resp["status_code"] = static_cast<uint32_t>(st);
+        m_task_message_queue = resp;
+        // nothing is being done, so just terminate this task
+        // update the state to error
+        update_state(sError);
+        return;
+      }
+      // step 1
+      // we can initiate the movement
+      st = move_motor(spos,resp);
+      if (st != OpcUa_Good)
+      {
+        reset(msg);
+        msg << log_e("fire_segment","Failed to move to start position");;
+        resp["messages"].push_back(msg.str());
+        resp["status"] = "ERROR";
+        resp["status_code"] = static_cast<uint32_t>(st);
+        m_task_message_queue = resp;
+        // nothing is being done, so just terminate this task
+        // update the state to error
+        update_state(sError);
+        return;
+      }
+      // step 1.2: wait until motors are in place
+      // since this is a separate task, we *must* wait for things to be ready
+      bool is_moving = true;
+      while (is_moving)
+      {
+        is_moving = false;
+        for (Device::DIoLMotor* lmotor : iolmotors ())
+        {
+          is_moving |= lmotor->is_moving();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+      //
+      //
+      // we have reached the destination
+      // step 2: set target position
+      st = move_motor(lpos,resp);
+      if (st != OpcUa_Good)
+      {
+        reset(msg);
+        msg << log_e("fire_segment","Failed to iniiate movement to destination");;
+        resp["messages"].push_back(msg.str());
+        resp["status"] = "ERROR";
+        resp["status_code"] = static_cast<uint32_t>(st);
+        m_task_message_queue = resp;
+        // nothing is being done, so just terminate this task
+        // update the state to error
+        update_state(sError);
+        return;
+      }
+      //
+      // step 3: initiate movement (already done)
+      //
+      //
+      // step 4: tell laser to get into business
+      //
+      st = iollaserunit()->resume(resp);
+      if (st != OpcUa_Good)
+      {
+        reset(msg);
+        resp["status"] = "ERROR";
+        msg << log_e("fire_segment","Failed to activate laser. Check previous messages.");
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = static_cast<uint32_t>(st);
+        // force a pause (again)
+        iollaserunit()->pause(resp);
+        m_task_message_queue = resp;
+        update_state(sError);
+        return;
+      }
+      // step 5: wait for motors to report stopped
+      is_moving = true;
+      while (is_moving)
+      {
+        is_moving = false;
+        for (Device::DIoLMotor* lmotor : iolmotors ())
+        {
+          is_moving |= lmotor->is_moving();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+      // step 6: switch back to pause
+      st = iollaserunit()->pause(resp);
+      if (st != OpcUa_Good)
+      {
+        reset(msg);
+        resp["status"] = "ERROR";
+        msg << log_e("fire_segment","Failed to pase laser at the end. Check previous messages.");
+        resp["messages"].push_back(msg.str());
+        resp["status_code"] = static_cast<uint32_t>(st);
+        // force a pause (again)
+        iollaserunit()->pause(resp);
+        m_task_message_queue = resp;
+        update_state(sError);
+        return;
+      }
+      // if it reached this stage, all is well and we should update the state back to
+      // sPause
+      reset(msg);
+      resp["status"] = "OK";
+      msg << log_e("fire_segment","Operation was successful.");
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Good;
+      update_state(sPause);
+                }
+    ).detach();
+  }
+  UaStatus DIoLaserSystem::move_motor(
+      const std::vector<OpcUa_Int32>&  position,
+      json &resp)
+  {
+    std::ostringstream msg("");
+    UaStatus st;
+
+    for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < position.size(); idx++)
+    {
+      for (Device::DIoLMotor* lmotor : iolmotors ())
+      {
+        if (lmotor->get_coordinate_index() == idx)
+        {
+          st = lmotor->set_position_setpoint(position.at(idx));
+          if (st != OpcUa_Good)
+          {
+            resp["status"] = "ERROR";
+            reset(msg);
+            msg << log_e("move_motor","Failed to set target position for motor (id : ")
+                                            << lmotor->get_id() << ").";
+            resp["messages"].push_back(msg.str());
+            resp["status_code"] = static_cast<uint32_t>(st);
+            // nothing is being done, so just terminate this task
+            return st;
+          }
+          // now move the motor
+          st = lmotor->move_motor(resp);
+          if (st != OpcUa_Good)
+          {
+            resp["status"] = "ERROR";
+            msg << log_e("move_motor","Failed to initiate motor movement on motor (id : ")
+                                            << lmotor->get_id() << ").";
+            resp["messages"].push_back(msg.str());
+            resp["status_code"] = static_cast<uint32_t>(st);
+            return st;
+          }
+        }
+      }
+    }
+    return OpcUa_Good;
+  }
+  UaStatus DIoLaserSystem::execute_scan(json &plan, json &resp)
+  {
+    // this one is a hell of a tricky one
+    // it is in many ways similar to fire segment, with a few caveats
+    return OpcUa_Good;
+  }
   UaStatus DIoLaserSystem::pause(json &resp);
   UaStatus DIoLaserSystem::standby(json &resp);
   UaStatus DIoLaserSystem::resume(json &resp);
@@ -1189,6 +1586,14 @@ namespace Device
     m_state = s;
     UaString ss(m_state_map.at(m_state).c_str());
     getAddressSpaceLink()->setState(ss,OpcUa_Good);
+  }
+  void DIoLaserSystem::get_message_queue(json &resp, bool clear)
+  {
+    resp = m_task_message_queue;
+    if (clear)
+    {
+      m_task_message_queue.clear();
+    }
   }
 
 

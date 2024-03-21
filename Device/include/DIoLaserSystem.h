@@ -100,7 +100,7 @@ private:
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
     // -     Don't change this comment, otherwise merge tool may be troubled.  *
     // ----------------------------------------------------------------------- *
-    enum State {sOffline, sReady, sWarmup, sPause, sStandby, sLasing};
+    enum State {sOffline, sReady, sWarmup, sPause, sStandby, sOperating, sError};
     //
     UaStatus config(json &conf, json &resp);
     UaStatus check_ready(bool &ready);
@@ -121,9 +121,19 @@ private:
         const std::vector<OpcUa_Int32>&  position,
         const std::vector<OpcUa_Byte>&  approach,
         json &resp);
+    // this is a stripped down version that does not make any checks
+    // those are supposed to have been made before
+    UaStatus move_motor(
+        const std::vector<OpcUa_Int32>&  position,
+        json &resp);
     inline void reset(std::ostringstream &s);
     bool validate_config_fragment(json &frag, json &resp);
     void update_state(State s);
+    void init_segment_task(const std::vector<OpcUa_Int32>&  spos,
+                           const std::vector<OpcUa_Int32>&  lpos
+                          );
+    void init_scan_task();
+    void get_message_queue(json &resp, bool clear);
 public:
     // makes a roll call for each system to update itself
     void update();
@@ -132,6 +142,7 @@ public:
 private:
     std::map<State,std::string> m_state_map;
     State m_state;
+    json m_task_message_queue;
 
 
 };

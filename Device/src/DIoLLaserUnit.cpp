@@ -1451,6 +1451,8 @@ namespace Device
     // this will switch the laser into sWarmup state.
     // sWarmup is pretty much the same as a standby.
     // qswitch is off, the internal shutter closed, external shutter open
+    // however it does not have the stop timer turned on
+    // once warmup is done, it automatically switches to sPause
     std::ostringstream msg("");
     bool got_exception = false;
     if (m_mapped_mem == 0x0)
@@ -1594,6 +1596,7 @@ namespace Device
       switch_laser_shutter(ShutterState::sOpen,r);
       // 3. enable qswitch
       cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr, 0x1,m_regs.at("qs_enable").mask,m_regs.at("qs_enable").bit_low);
+      update_status(sLasing);
       // call pause to make sure that all this is done
       // also keep in mind that pause has an associated timer, after which switches to standby
       pause(r);
@@ -1652,9 +1655,6 @@ namespace Device
       // if it was already, it won't change anything and it only costs a
       // handful of microseconds
       (void)force_ext_shutter(ShutterState::sClose,resp);
-      if (!m_part_state.state.laser_started)
-      {
-      }
       // this in itself will also trigger a timer
       // that will be checked e very second for the state of the shutter
       cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr,
@@ -2435,10 +2435,68 @@ namespace Device
     // but then call fire_standalone to use the internal generator
     return OpcUa_BadNotImplemented;
   }
-  UaStatus DIoLLaserUnit::single_shot(json & answer)
+  UaStatus DIoLLaserUnit::fire_discrete_shots(uint32_t num_pulses,json &resp )
   {
     std::ostringstream msg("");
-    json resp;
+    bool caught_exception = false;
+    UaStatus st;
+    if (m_status == sError)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("single_shot","System in error state. Nothing can be done.");
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidState;
+      return OpcUa_BadInvalidState;
+    }
+    if (!m_laser)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("single_shot","There is no connection to the laser. Doing nothing.");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidState;
+      return OpcUa_BadInvalidState;
+    }
+    // if the laser is not in the sReady state, also do nothing
+    // likely some parameter is not set yet
+    // also fail if the laser is firing
+    if (!m_part_state.state.laser_started)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("single_shot","The laser is not operating") << " (current state " << m_status_map.at(m_status) << ")";
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidState;
+      return OpcUa_BadInvalidState;
+    }
+    // we seem to be ready to operate
+    // depending on the exact state, we want to release all shutters
+    // count the appropriate number of pulses and go back to pause state
+    uint32_t n_shots_prev = get_cib_shot_count();
+    st = resume(resp);
+    if (st != OpcUa_Good)
+    {
+      // failed to resume
+      // force a standby
+      (void)standby(resp);
+      return st;
+    }
+    // we are firing, count shots
+    while ((get_cib_shot_count()-n_shots_prev)<num_pulses)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(80));
+    }
+    // we are done. Close the shutter.
+    st = pause(resp);
+    return st;
+  }
+
+  UaStatus DIoLLaserUnit::single_shot(json & resp)
+  {
+    std::ostringstream msg("");
     bool caught_exception = false;
     if (m_status == sError)
     {
@@ -2972,4 +3030,8 @@ namespace Device
     return st;
   }
 
+  uint32_t DIoLLaserUnit::get_cib_shot_count()
+  {
+    return cib::util::reg_read(m_regs.at("shot_count").addr);
+  }
 } // namespace

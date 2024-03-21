@@ -121,7 +121,7 @@ public:
     UaStatus move_wrapper(int32_t dest, json &resp);
     UaStatus get_motor_info();
     UaStatus move_motor(json &resp);
-    UaStatus stop_motor(json &resp);
+    UaStatus stop(json &resp);
     //    UaStatus config_motor(json &resp);
     UaStatus config(json &conf, json &resp);
     bool validate_config_fragment(json &conf, json &resp);
@@ -143,6 +143,7 @@ public:
     //
     void set_server_addr(const std::string &s);
     const std::string get_server_addr() {return m_server_host;}
+    bool is_moving() const {return m_is_moving;}
 
 private:
     const uint16_t get_refresh_ms() {return m_refresh_ms;}

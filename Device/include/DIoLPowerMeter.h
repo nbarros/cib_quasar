@@ -109,6 +109,10 @@ private:
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
     // -     Don't change this comment, otherwise merge tool may be troubled.  *
     // ----------------------------------------------------------------------- *
+public:
+    enum Status{sOffline=0x0,sReady=2,sReading=3};
+    void update();
+    bool is_ready();
     UaStatus set_conn(const std::string port, const uint16_t baud, json &resp);
     // variable proxy setters. These can be called internally (unlike the others)
     UaStatus set_average(const uint16_t ave, json &resp);
@@ -124,10 +128,6 @@ private:
     UaStatus stop_readings(json &resp);
     UaStatus start_readings(json &resp);
     UaStatus terminate(json &resp);
-public:
-    enum Status{sOffline=0x0,sReady=2,sReading=3};
-    void update();
-    bool is_ready();
 private:
     void automatic_port_search();
     void refresh_all_ranges();
