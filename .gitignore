@@ -58,3 +58,5 @@ Documentation/DoxygenGenerated/
 .project
 .cproject
 .settings
+Test/json.hpp
+Cacophony
