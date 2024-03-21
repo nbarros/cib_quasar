@@ -1,0 +1,200 @@
+{
+	"motors": [
+		{
+			"id": "RNN800",
+			"coordinate_index": 0,
+			"server_address": "192.168.2.173",
+			"port": 5000,
+			"speed": 200,
+			"range": [
+				-3100,
+				28786
+			],
+			"acceleration": 200,
+			"decceleration": 200,
+			"refresh_period_ms": 50,
+			"refresh_movememt_ms": 10,
+			"mmap": {
+				"moving": [
+					0,
+					0,
+					0
+				],
+				"direction": [
+					0,
+					3,
+					3
+				],
+				"init_pos": [
+					1,
+					20,
+					0
+				],
+				"cur_pos": [
+					4,
+					20,
+					0
+				]
+			}
+		},
+		{
+			"id": "RNN600",
+			"coordinate_index": 1,
+			"server_address": "192.168.2.173",
+			"port": 5001,
+			"speed": 200,
+			"range": [
+				-3100,
+				28786
+			],
+			"acceleration": 200,
+			"decceleration": 200,
+			"refresh_period_ms": 50,
+			"refresh_movememt_ms": 10,
+			"mmap": {
+				"moving": [
+					0,
+					0,
+					0
+				],
+				"direction": [
+					0,
+					3,
+					3
+				],
+				"init_pos": [
+					1,
+					20,
+					0
+				],
+				"cur_pos": [
+					4,
+					20,
+					0
+				]
+			}
+		},
+		{
+			"id": "LSTAGE",
+			"coordinate_index": 2,
+			"server_address": "192.168.2.173",
+			"port": 5002,
+			"speed": 200,
+			"range": [
+				-3100,
+				28786
+			],
+			"acceleration": 200,
+			"decceleration": 200,
+			"refresh_period_ms": 50,
+			"refresh_movememt_ms": 10,
+			"mmap": {
+				"moving": [
+					0,
+					0,
+					0
+				],
+				"direction": [
+					0,
+					3,
+					3
+				],
+				"init_pos": [
+					1,
+					20,
+					0
+				],
+				"cur_pos": [
+					4,
+					20,
+					0
+				]
+			}
+		}
+	],
+	"laser": {
+		"name": "L1",
+		"serial_number": "NJAS44DN",
+		"port": "auto",
+		"baud_rate": 9600,
+		"repetition_rate": 10.0,
+		"repetition_rate_divider": 0,
+		"qswitch": 170,
+		"discharge_voltage": 1.1,
+		"pause_timeout_min": 10,
+		"standby_timeout_min": 60,
+		"warmup_timer_min": 30,
+		"qswitch_delay_us": 170,
+		"qswitch_width_us": 10,
+		"fire_width_us": 10,
+		"mmap": {
+			"fire_width": [
+				10,
+				11,
+				0
+			],
+			"qs_width": [
+				10,
+				23,
+				12
+			],
+			"qs_delay": [
+				11,
+				15,
+				0
+			],
+			"start": [
+				0,
+				31,
+				31
+			],
+			"force_shutter": [
+				0,
+				30,
+				30
+			],
+			"qs_enable": [
+				10,
+				31,
+				31
+			]
+		}
+	},
+	"attenuator": {
+		"name": "A1",
+		"serial_number": "NJAS44DN",
+		"port": "auto",
+		"baud_rate": 38400,
+		"acceleration": 100,
+		"deceleration": 100,
+		"current_idle": 10,
+		"current_move": 100,
+		"max_speed": 17000,
+		"resolution": 2
+	},
+	"cib": {
+		
+	},
+	"piezo": [
+		{
+			"id": "whatever",
+			"serial_number": "XPTO",
+			"port": "auto",
+			"baud_rate": 9800,
+			"some_setting": 125
+		}
+	],
+	"power_meter": {
+		"type": "PowerMeter",
+		"name": "PWM1",
+		"serial_number": "NJAS44DN",
+		"port": "/dev/ttyUSB0",
+		"baud_rate": 9800,
+		"measurement_mode": 1,
+		"select_range": 1,
+		"wavelength": 266,
+		"energy_threshold": 2,
+		"average_setting": 1,
+		"pulse_width": 2
+	}
+}
