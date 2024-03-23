@@ -22,6 +22,8 @@
 #define __DIoLPiezoController__H__
 
 #include <Base_DIoLPiezoController.h>
+#include <json.hpp>
+using json = nlohmann::json;
 
 namespace Device
 {
@@ -57,13 +59,19 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
+    enum State {sOffline, sReady, sWarmup, sPause, sStandby, sOperating, sError};
     void update() {}
     bool is_ready() {return false;}
+    UaStatus terminate(json &resp);
+    UaStatus set_id(const std::string &id);
+    const std::string get_id() {return m_id;}
 
 private:
+    void update_state(State s);
 
-
-
+    std::string m_id;
+    State m_state;
+    std::map<State,std::string> m_state_map;
 };
 
 }

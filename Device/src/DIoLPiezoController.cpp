@@ -56,6 +56,14 @@ DIoLPiezoController::DIoLPiezoController (
     /* fill up constructor initialization list here */
 {
     /* fill up constructor body here */
+  m_state_map.insert({sOffline,"offline"});
+  m_state_map.insert({sReady,"ready"});
+  m_state_map.insert({sWarmup,"warmup"});
+  m_state_map.insert({sOperating,"operating"});
+  m_state_map.insert({sPause,"pause"});
+  m_state_map.insert({sStandby,"standby"});
+  update_state(sOffline);
+
 }
 
 /* sample dtr */
@@ -74,5 +82,24 @@ DIoLPiezoController::~DIoLPiezoController ()
 // 3     Below you put bodies for custom methods defined for this class.   3
 // 3     You can do whatever you want, but please be decent.               3
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
+UaStatus DIoLPiezoController::set_id(const std::string &id)
+{
+  m_id = id;
+  return OpcUa_Good;
+}
+UaStatus DIoLPiezoController::terminate(json &resp)
+{
+  //
+  //FIXME:  Finish this implementation
+  update_state(sOffline);
+  return OpcUa_Good;
+}
+void DIoLPiezoController::update_state(State s)
+{
+  m_state = s;
+  UaString ss(m_state_map.at(m_state).c_str());
+  //getAddressSpaceLink()->setState(ss,OpcUa_Good);
+}
+
 
 }

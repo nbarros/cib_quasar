@@ -22,6 +22,8 @@
 #define __DIoLCIB__H__
 
 #include <Base_DIoLCIB.h>
+#include <json.hpp>
+using json = nlohmann::json;
 
 namespace Device
 {
@@ -60,6 +62,10 @@ public:
 
     bool is_ready() {return m_is_ready;}
     void update();
+    UaStatus terminate(json &resp);
+    UaStatus set_id(const std::string &id);
+    const std::string get_id() {return m_id;}
+
 private:
     void poll_cpu();
     void poll_mem();
@@ -75,7 +81,7 @@ private:
     long long unsigned int m_prev_tot_sys;
     long long unsigned int m_prev_tot_idle;
     long long unsigned int m_total;
-
+    std::string m_id;
 };
 
 }

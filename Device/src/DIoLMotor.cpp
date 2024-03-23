@@ -47,35 +47,35 @@ using std::ostringstream;
 
 namespace Device
 {
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
-  // 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
-  // 1     Users don't modify this code!!!!                                  1
-  // 1     If you modify this code you may start a fire or a flood somewhere,1
-  // 1     and some human being may possible cease to exist. You don't want  1
-  // 1     to be charged with that!                                          1
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
+// 1     Users don't modify this code!!!!                                  1
+// 1     If you modify this code you may start a fire or a flood somewhere,1
+// 1     and some human being may possible cease to exist. You don't want  1
+// 1     to be charged with that!                                          1
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
 
 
 
 
 
 
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
-  // 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
-  // 2     (code for which only stubs were generated automatically)          2
-  // 2     You should add the implementation but dont alter the headers      2
-  // 2     (apart from constructor, in which you should complete initializati2
-  // 2     on list)                                                          2
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
+// 2     (code for which only stubs were generated automatically)          2
+// 2     You should add the implementation but dont alter the headers      2
+// 2     (apart from constructor, in which you should complete initializati2
+// 2     on list)                                                          2
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
 
-  /* sample ctr */
-  DIoLMotor::DIoLMotor (
-      const Configuration::IoLMotor& config,
-      Parent_DIoLMotor* parent
-  ):
-                Base_DIoLMotor( config, parent)
+/* sample ctr */
+DIoLMotor::DIoLMotor (
+    const Configuration::IoLMotor& config,
+    Parent_DIoLMotor* parent
+):
+    Base_DIoLMotor( config, parent)
 
-                /* fill up constructor initialization list here */
+    /* fill up constructor initialization list here */
                 ,m_sim_pos(0)
                 ,m_sim_speed(0)
                 ,m_sim_tpos(0)
@@ -101,7 +101,7 @@ namespace Device
                 ,m_id("NONE")
                 ,m_coordinate_index(0)
                 ,m_mmap_fd(0)
-                {
+{
     /* fill up constructor body here */
     // initialize cURL
     curl_global_init(CURL_GLOBAL_ALL);
@@ -125,59 +125,59 @@ namespace Device
         timer_start(this);
       }
     }
-                }
+}
 
-  /* sample dtr */
-  DIoLMotor::~DIoLMotor ()
-  {
+/* sample dtr */
+DIoLMotor::~DIoLMotor ()
+{
     curl_global_cleanup();
-  }
+}
 
-  /* delegates for cachevariables */
+/* delegates for cachevariables */
 
-  /* Note: never directly call this function. */
+/* Note: never directly call this function. */
 
-  UaStatus DIoLMotor::writeRange_min ( const OpcUa_Int32& v)
-  {
+UaStatus DIoLMotor::writeRange_min ( const OpcUa_Int32& v)
+{
     return set_range_min(v);
-  }
-  /* Note: never directly call this function. */
+}
+/* Note: never directly call this function. */
 
-  UaStatus DIoLMotor::writeRange_max ( const OpcUa_Int32& v)
-  {
+UaStatus DIoLMotor::writeRange_max ( const OpcUa_Int32& v)
+{
     return set_range_max(v);
-  }
-  /* Note: never directly call this function. */
+}
+/* Note: never directly call this function. */
 
-  UaStatus DIoLMotor::writeRefresh_period_ms ( const OpcUa_UInt16& v)
-  {
+UaStatus DIoLMotor::writeRefresh_period_ms ( const OpcUa_UInt16& v)
+{
     return set_refresh_period(v);
-  }
-  /* Note: never directly call this function. */
+}
+/* Note: never directly call this function. */
 
-  UaStatus DIoLMotor::writeAcceleration ( const OpcUa_UInt32& v)
-  {
+UaStatus DIoLMotor::writeAcceleration ( const OpcUa_UInt32& v)
+{
     return set_acceleration(v);
-  }
-  /* Note: never directly call this function. */
+}
+/* Note: never directly call this function. */
 
-  UaStatus DIoLMotor::writeDeceleration ( const OpcUa_UInt32& v)
-  {
+UaStatus DIoLMotor::writeDeceleration ( const OpcUa_UInt32& v)
+{
     return set_deceleration(v);
-  }
-  /* Note: never directly call this function. */
+}
+/* Note: never directly call this function. */
 
-  UaStatus DIoLMotor::writeSpeed ( const OpcUa_UInt32& v)
-  {
+UaStatus DIoLMotor::writeSpeed ( const OpcUa_UInt32& v)
+{
     return set_speed(v);
-  }
+}
 
-  /* delegators for methods */
-  UaStatus DIoLMotor::callConfig (
-      const UaString&  config_json,
-      UaString& response
-  )
-  {
+/* delegators for methods */
+UaStatus DIoLMotor::callConfig (
+    const UaString&  config_json,
+    UaString& response
+)
+{
     LOG(Log::INF) << "Received JSON configuration file ";
 
     LOG(Log::INF) << "Raw content : " << config_json.toUtf8();
@@ -236,12 +236,12 @@ namespace Device
     // force an update after a config
     update();
     return OpcUa_Good;
-  }
-  UaStatus DIoLMotor::callMove_absolute (
-      OpcUa_Int32 destination,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLMotor::callMove_absolute (
+    OpcUa_Int32 destination,
+    UaString& response
+)
+{
     json resp;
     // the returned status is always OpcUa_Good
     // but the real execution status is passed through the json response
@@ -249,12 +249,12 @@ namespace Device
     st = move_wrapper(destination,resp);
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLMotor::callMove_relative (
-      OpcUa_Int32 num_steps,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLMotor::callMove_relative (
+    OpcUa_Int32 num_steps,
+    UaString& response
+)
+{
     json resp;
     // refresh the current position
     update();
@@ -265,11 +265,11 @@ namespace Device
     st = move_wrapper(m_position+num_steps,resp);
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLMotor::callStop (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLMotor::callStop (
+    UaString& response
+)
+{
     // stopping is a serious business. Should be called immediately
     json resp;
     UaStatus st = OpcUa_Good;
@@ -285,13 +285,13 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
+}
 
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
-  // 3     FULLY CUSTOM CODE STARTS HERE                                     3
-  // 3     Below you put bodies for custom methods defined for this class.   3
-  // 3     You can do whatever you want, but please be decent.               3
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3     FULLY CUSTOM CODE STARTS HERE                                     3
+// 3     Below you put bodies for custom methods defined for this class.   3
+// 3     You can do whatever you want, but please be decent.               3
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
   //TODO: Add an internal method on a timer to query the motor (if the connection is valid)
   UaStatus DIoLMotor::move_wrapper(int32_t dest, json &resp)
   {
@@ -376,7 +376,7 @@ namespace Device
       //	{
       //		// reset the state until connection is lost again
       //		msg_printed = false;
-    }
+}
     //LOG(Log::INF) << "Updating for IOLMotor::ID=" << id();
     // server updates
     // i.e., form the server to the client
@@ -905,19 +905,8 @@ namespace Device
 
   UaStatus DIoLMotor::set_id(const std::string &id)
   {
-    // check that the ID is not yet "NOT SET"
-    UaStatus ss = OpcUa_Good;
-    if (m_id != std::string("NOT SET"))
-    {
-      m_id = id;
-    }
-    else
-    {
-      m_id = id;
-    }
-    //    UaString as_val = UaString(m_id.c_str());
-    //    ss = getAddressSpaceLink()->Set>setId(as_val,ss);
-    return ss;
+    m_id = id;
+    return OpcUa_Good;
   }
 
   UaStatus DIoLMotor::set_refresh_period(const uint16_t &v)
@@ -1210,6 +1199,15 @@ namespace Device
     close(m_mmap_fd);
   }
 
+  bool DIoLMotor::is_in_range(const int32_t &v)
+  {
+    if ((v > m_range_min) and (v < m_range_max)) return true;
+    return false;
+  }
+  UaStatus DIoLMotor::terminate(json &resp)
+  {
+    return OpcUa_Good;
+  }
 
 } // -- namespace
 

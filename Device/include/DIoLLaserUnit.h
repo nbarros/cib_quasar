@@ -261,10 +261,10 @@ private:
     // cache variables for the present state of these parts
     laser_state_u m_part_state;
     // FIXME: Get rid of these
-//    bool m_laser_shutter_closed;
-//    bool m_ext_shutter_closed;
-//    bool m_qswitch_en;
-//    bool m_laser_started;
+    //    bool m_laser_shutter_closed;
+    //    bool m_ext_shutter_closed;
+    //    bool m_qswitch_en;
+    //    bool m_laser_started;
 
     uint32_t m_shot_count;
     //
@@ -299,6 +299,7 @@ private:
     uint32_t m_fire_width;
     std::string m_serial_number;
     uint32_t m_warmup_timer;
+
 
 };
 

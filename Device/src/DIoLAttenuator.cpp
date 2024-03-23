@@ -91,6 +91,7 @@ DIoLAttenuator::DIoLAttenuator (
     ,m_status(sOffline)
 {
     /* fill up constructor body here */
+  m_id = id();
   m_name = config.name();
   m_sn = serial_number();
   // check the port
@@ -398,7 +399,7 @@ UaStatus DIoLAttenuator::callGet_status (
 {
   // should this just return the motor state (we can get when querying the position)
   // or should this actually query all the settings?
-  return OpcUa_BadNotImplemented;
+    return OpcUa_BadNotImplemented;
 }
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
@@ -1259,6 +1260,74 @@ UaStatus DIoLAttenuator::set_max_speed(const uint32_t v,json &resp)
 void DIoLAttenuator::update()
 {
   refresh_position();
+}
+UaStatus DIoLAttenuator::terminate(json &resp)
+{
+  // this can be trickier since we need to hope
+  // that any instability will be caught by the serial exceptions
+  std::ostringstream msg("");
+  bool got_exception = false;
+  try
+  {
+//    stop_readings(resp);
+//    update_status(sOffline);
+    if (m_att) delete m_att;
+    m_att = nullptr;
+  }
+  catch(serial::PortNotOpenedException &e)
+  {
+    // port is not open. Keep status as offline
+    // don't commit any assignments
+    msg.clear(); msg.str("");
+    msg << log_e("terminate"," ") << "Exception: Port not open [" << e.what() << "].";
+    LOG(Log::ERR) << msg.str();
+    got_exception = true;
+  }
+  catch(serial::SerialException &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("terminate"," ") << "Caught a serial exception : [" << e.what() << "].";
+    LOG(Log::ERR) << msg.str();
+    got_exception = true;
+  }
+  catch(std::exception &e)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("terminate"," ") << "Caught an STL exception : [" << e.what() << "].";
+    LOG(Log::ERR) << msg.str();
+    got_exception = true;
+  }
+  catch(...)
+  {
+    // caught something completely unexpected. Just treat it as something went really wrong.
+    // Assume one is offline
+    msg.clear(); msg.str("");
+    msg << log_e("terminate"," ") << "Caught an unknown exception.";
+    LOG(Log::ERR) << msg.str();
+    got_exception = true;
+  }
+  if (got_exception)
+  {
+    // do not attempt any deallocations
+    // just nullify the pointer
+    resp["status"] = "ERROR";
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_Bad;
+//    update_status(sOffline);
+    m_att = nullptr;
+    // the return value is actually not very relevant
+    // one does not call terminate checking its result
+    return OpcUa_Bad;
+  }
+  else
+  {
+    msg.clear(); msg.str("");
+    msg << log_i("terminate","System terminated");
+    resp["status"] = "OK";
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_Good;
+    return OpcUa_Good;
+  }
 }
 
 }

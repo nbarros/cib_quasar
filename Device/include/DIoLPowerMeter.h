@@ -109,6 +109,7 @@ private:
     // -     CUSTOM CODE STARTS BELOW THIS COMMENT.                            *
     // -     Don't change this comment, otherwise merge tool may be troubled.  *
     // ----------------------------------------------------------------------- *
+
 public:
     enum Status{sOffline=0x0,sReady=2,sReading=3};
     void update();
@@ -128,6 +129,9 @@ public:
     UaStatus stop_readings(json &resp);
     UaStatus start_readings(json &resp);
     UaStatus terminate(json &resp);
+    UaStatus set_id(const std::string &id);
+    const std::string get_id() {return m_id;}
+
 private:
     void automatic_port_search();
     void refresh_all_ranges();
@@ -167,6 +171,7 @@ private:
     bool m_pause_measurements;
     std::string m_name;
     std::string m_serial_number;
+    std::string m_id;
 };
 
 }

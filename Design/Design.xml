@@ -2,8 +2,13 @@
 <d:design xmlns:d="http://cern.ch/quasar/Design" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" projectShortName="IoLSlowControlServer" xsi:schemaLocation="http://cern.ch/quasar/Design Design.xsd ">
   <d:class name="IoLMotor">
     <d:devicelogic/><!--The coordinate_id is an entry that permits one to map a motor to the coordinate in the movement instruction. This cannot be changed in runtime-->
-  	<d:configentry dataType="UaString" name="id" storedInDeviceObject="true">
-  </d:configentry><d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="server_addr" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialValue="localhost" initialStatus="OpcUa_Bad">
+    <d:configentry dataType="UaString" name="id"
+    	storedInDeviceObject="true" isKey="true">
+    </d:configentry>
+    <d:configentry dataType="UaString" name="serial_number"
+    	storedInDeviceObject="true">
+    </d:configentry>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="server_addr" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialValue="localhost" initialStatus="OpcUa_Bad">
     </d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="server_port" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_Bad" initialValue="5000">
     </d:cachevariable>
     
@@ -71,12 +76,16 @@
       <d:returnvalue dataType="UaString" name="response"/>
     </d:method>
     
-    
+
+
 
 
   </d:class>
   <d:class name="IoLPowerMeter">
     <d:devicelogic></d:devicelogic>
+    <d:configentry dataType="UaString" name="id" isKey="true"
+    	storedInDeviceObject="true">
+    </d:configentry>
     <d:configentry dataType="UaString" name="serial_number" storedInDeviceObject="true">
   	</d:configentry>
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
@@ -186,10 +195,14 @@
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
   	<d:method name="terminate" executionSynchronicity="synchronous">
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	
 
   </d:class>  
   <d:class name="IoLLaserUnit">
     <d:devicelogic />
+    <d:configentry dataType="UaString" name="id" isKey="true"
+    	storedInDeviceObject="true">
+    </d:configentry>
     <d:configentry dataType="UaString" name="serial_number" storedInDeviceObject="true">
   	</d:configentry>
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
@@ -296,11 +309,14 @@
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
   	<d:method name="resume" executionSynchronicity="synchronous">
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	
 
   </d:class>
   <d:class name="IoLAttenuator">
-    <d:devicelogic/>
-    <d:configentry dataType="UaString" name="serial_number"
+    <d:devicelogic/><d:configentry dataType="UaString" name="id"
+    	isKey="true" storedInDeviceObject="true">
+</d:configentry>
+  	<d:configentry dataType="UaString" name="serial_number"
     	storedInDeviceObject="true" />
     <!-- Variables (none of these are writeable) --><!--intial value of maxval (0xFFFFx)  means to fetch it from the device stored settings-->
     <d:cachevariable initializeWith="valueAndStatus"
@@ -419,12 +435,17 @@
 	<d:method name="get_status" executionSynchronicity="synchronous">
 		<d:returnvalue dataType="UaString" name="response"></d:returnvalue>	
 	</d:method>
-</d:class>
+	
+  </d:class>
   
   
   
   <d:class name="IoLPiezoController">
     <d:devicelogic/>
+    <d:configentry dataType="OpcUa_UInt16" name="id" isKey="true" storedInDeviceObject="true" /><d:configentry
+    	dataType="UaString" name="serial_number"
+    	storedInDeviceObject="true">
+</d:configentry>
     <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt16" name="output_number" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
       <!--Indicates the output number that will be controlled and is provided when adjusting-->
       <d:configRestriction>
@@ -437,12 +458,13 @@
     </d:cachevariable>
     <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="acceleration" nullPolicy="nullForbidden" addressSpaceWrite="regular">
     </d:cachevariable>
-    <d:configentry dataType="OpcUa_UInt16" name="id"/>
+    
   </d:class>
 
   <d:class name="IoLCIB">
     <d:devicelogic/>
-    <d:configentry dataType="OpcUa_UInt16" name="id"/>
+    <d:configentry dataType="OpcUa_UInt16" name="id" isKey="true"
+    	storedInDeviceObject="true" />
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="mem_load" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
     </d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="cpu_load" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="-1.0">
 		</d:cachevariable>
@@ -482,14 +504,16 @@
 		</d:hasobjects>
     <d:hasobjects instantiateUsing="configuration" class="IoLPowerMeter" minOccurs="1" maxOccurs="1">
     </d:hasobjects><d:method name="load_config" executionSynchronicity="synchronous">
-      <d:argument dataType="UaString" name="config"/>
+      <d:argument dataType="UaString" name="conf"/>
       <d:returnvalue dataType="UaString" name="response"/>
     </d:method>
     <d:method name="check_ready" executionSynchronicity="synchronous">
       <d:returnvalue dataType="OpcUa_Boolean" name="ready"/>
     </d:method>
     <d:method name="stop" executionSynchronicity="synchronous">
-      <!--this method send immediate stop commands for all subsystems, starting by the iris. After this call one should recheck the state of the system as the motors may not be in the right state-->
+      <!--this method send immediate stop commands for all subsystems, starting by the iris. After this call one should recheck the state of the system as the motors may not be in the right state--><d:returnvalue
+      	dataType="UaString" name="response">
+</d:returnvalue>
     </d:method>
     <d:method name="fire_at_position" executionSynchronicity="synchronous">
       <d:argument dataType="OpcUa_Int32" name="target_pos">
@@ -525,7 +549,8 @@
     	<d:argument dataType="OpcUa_Int32" name="position">
     		<d:array minimumSize="3" maximumSize="3"></d:array></d:argument>
     	<d:argument dataType="OpcUa_Byte" name="approach">
-    		<d:array minimumSize="3" maximumSize="3" /></d:argument></d:method>
+    		<d:array minimumSize="3" maximumSize="3" /></d:argument>
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
     
   </d:class>
   <d:root>

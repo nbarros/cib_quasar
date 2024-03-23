@@ -109,6 +109,10 @@ public:
     void update();
     bool is_ready() {return (m_status == sReady);}
     UaStatus config(json config, json &resp);
+    UaStatus terminate(json &resp);
+    UaStatus set_id(const std::string &id);
+    const std::string get_id() {return m_id;}
+
 private:
     // -- private methods
     void automatic_port_search();
@@ -152,6 +156,7 @@ private:
     std::map<uint16_t,std::string> m_resolution_states;
     //
     Status m_status;
+    std::string m_id;
 };
 
 }

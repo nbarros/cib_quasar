@@ -11,6 +11,26 @@
 #include <json.hpp>
 using json = nlohmann::json;
 
+void test_parsing_vec()
+{
+  std::string text = "{\"scan_plan\" : [{\"start\":[1,2,3],\"end\":[4,5,6]},{\"start\":[7,8,9],\"end\":[10,11,12]}]}";
+  json frag = json::parse(text);
+
+  printf("Fragment size %lu\n",frag.size());
+  std::vector<json> v = frag.at("scan_plan").get<std::vector<json> >();
+
+  for (auto item: v)
+  {
+    printf("Item [%s]\n",item.dump().c_str());
+  }
+
+  for (auto item: frag.at("scan_plan"))
+  {
+    printf("Item [%s]\n",item.dump().c_str());
+  }
+
+}
+
 int main(int argc, char**argv)
 {
   std::ifstream f("example.json");
@@ -77,6 +97,6 @@ int main(int argc, char**argv)
   }
 
   // test also dumping a map
-
+  test_parsing_vec();
   return 0;
 }

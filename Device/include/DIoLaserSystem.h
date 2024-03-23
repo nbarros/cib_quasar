@@ -24,6 +24,7 @@
 #include <Base_DIoLaserSystem.h>
 #include <json.hpp>
 using json = nlohmann::json;
+#include <atomic>
 
 namespace Device
 {
@@ -48,14 +49,14 @@ public:
 
     /* delegators for methods */
     UaStatus callLoad_config (
-        const UaString&  config,
+        const UaString&  conf,
         UaString& response
     ) ;
     UaStatus callCheck_ready (
         OpcUa_Boolean& ready
     ) ;
     UaStatus callStop (
-
+        UaString& response
     ) ;
     UaStatus callFire_at_position (
         const std::vector<OpcUa_Int32>&  target_pos,
@@ -88,7 +89,8 @@ public:
     ) ;
     UaStatus callMove_to_pos (
         const std::vector<OpcUa_Int32>&  position,
-        const std::vector<OpcUa_Byte>&  approach
+        const std::vector<OpcUa_Byte>&  approach,
+        UaString& response
     ) ;
 
 private:
@@ -132,8 +134,12 @@ private:
     void init_segment_task(const std::vector<OpcUa_Int32>&  spos,
                            const std::vector<OpcUa_Int32>&  lpos
                           );
-    void init_scan_task();
+    void segment_task(const std::vector<OpcUa_Int32>&  spos,
+                           const std::vector<OpcUa_Int32>&  lpos
+                          );
+    void init_scan_task(json &segments);
     void get_message_queue(json &resp, bool clear);
+    bool validate_scan_plan(json &plan, json &resp);
 public:
     // makes a roll call for each system to update itself
     void update();
@@ -143,8 +149,7 @@ private:
     std::map<State,std::string> m_state_map;
     State m_state;
     json m_task_message_queue;
-
-
+    std::map<size_t,size_t> m_map_motor_coordinates;
 };
 
 }

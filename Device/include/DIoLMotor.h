@@ -122,8 +122,8 @@ public:
     UaStatus get_motor_info();
     UaStatus move_motor(json &resp);
     UaStatus stop(json &resp);
-    //    UaStatus config_motor(json &resp);
     UaStatus config(json &conf, json &resp);
+    UaStatus terminate(json &resp);
     bool validate_config_fragment(json &conf, json &resp);
     //
     const bool get_monitor() {return m_monitor;}
@@ -135,7 +135,7 @@ public:
     UaStatus set_acceleration(const uint32_t &v);
     UaStatus set_deceleration(const uint32_t &v);
     UaStatus set_speed(const uint32_t &v);
-    const uint16_t get_coordinate_index() {return m_coordinate_index;}
+    const size_t get_coordinate_index() {return m_coordinate_index;}
     UaStatus set_position_setpoint(const int32_t target);
     // Ua
     UaStatus set_id(const std::string &id);
@@ -144,7 +144,9 @@ public:
     void set_server_addr(const std::string &s);
     const std::string get_server_addr() {return m_server_host;}
     bool is_moving() const {return m_is_moving;}
-
+    bool is_in_range(const int32_t &v);
+    int32_t get_range_min() const {return m_range_min;}
+    int32_t get_range_max() const {return m_range_max;}
 private:
     const uint16_t get_refresh_ms() {return m_refresh_ms;}
     // these are internal variables to simulate the movement itself
@@ -177,7 +179,7 @@ private:
     int32_t m_range_min;
     int32_t m_range_max;
     std::string m_id;
-    uint16_t m_coordinate_index;
+    size_t m_coordinate_index;
     //
     // Variables necessary to map registers in the CIB
     //
