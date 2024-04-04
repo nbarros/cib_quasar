@@ -22,8 +22,12 @@
 
 #include <DIoLPowerMeter.h>
 #include <ASIoLPowerMeter.h>
-
+#ifdef SIMULATION
+#include <PowerMeterSim.hh>
+#else
 #include <PowerMeter.hh>
+#endif
+
 #include <utilities.hh>
 #include <sstream>
 
@@ -724,12 +728,20 @@ UaStatus DIoLPowerMeter::callTerminate (
           // that means that we should terminate and recreate
           delete m_pm;
           m_pm = nullptr;
+#ifdef SIMULATION
+          m_pm = new device::PowerMeterSim();
+#else
           m_pm = new device::PowerMeter(m_comport.c_str(),static_cast<uint32_t>(m_baud_rate));
+#endif
         }
       }
       else
       {
-        m_pm = new device::PowerMeter(m_comport.c_str(),static_cast<uint32_t>(m_baud_rate));
+#ifdef SIMULATION
+          m_pm = new device::PowerMeterSim();
+#else
+          m_pm = new device::PowerMeter(m_comport.c_str(),static_cast<uint32_t>(m_baud_rate));
+#endif
       }
       // set the device to the measurement mode we have set in configuration
       // query instrument for the measurement modes it can do

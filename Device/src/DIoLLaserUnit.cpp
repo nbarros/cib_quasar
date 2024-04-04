@@ -23,7 +23,11 @@
 #include <DIoLLaserUnit.h>
 #include <ASIoLLaserUnit.h>
 #include <utilities.hh>
+#ifdef SIMULATION
+#include <LaserSim.hh>
+#else
 #include <Laser.hh>
+#endif
 #include <string>
 #include <sstream>
 #include <thread>
@@ -127,7 +131,12 @@ DIoLLaserUnit::DIoLLaserUnit (
 
     // it could make sense to map the virtual memory immediately at constructor
     // if this is not successful at this stage, it will not be successful later either
+#ifdef SIMULATION
+    m_mapped_mem = reinterpret_cast<uintptr_t>(new uint32_t[(CIB_CONFIG_ADDR_HIGH-CIB_CONFIG_ADDR_BASE)/sizeof(uint32_t)]);
+#else
     m_mapped_mem = cib::util::map_phys_mem(m_mmap_fd,CIB_CONFIG_ADDR_BASE,CIB_CONFIG_ADDR_HIGH);
+#endif
+
     if (m_mapped_mem == 0x0)
     {
       LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map CIB memory region. This is going to fail spectacularly!!!\n\n";
@@ -2055,12 +2064,20 @@ UaStatus DIoLLaserUnit::callResume (
           // that means that we should terminate and recreate
           delete m_laser;
           m_laser = nullptr;
+#ifdef SIMULATION
+          m_laser = new device::LaserSim();
+#else
           m_laser = new device::Laser(m_comport.c_str(),m_baud_rate);
+#endif
         }
       }
       else
       {
-        m_laser = new device::Laser(m_comport.c_str(),m_baud_rate);
+#ifdef SIMULATION
+          m_laser = new device::LaserSim();
+#else
+          m_laser = new device::Laser(m_comport.c_str(),m_baud_rate);
+#endif
       }
       // -- now that we have the system, let's update the settings in
       // the local cache
@@ -2705,7 +2722,11 @@ UaStatus DIoLLaserUnit::callResume (
         return st;
       }
       // all good so far, so lets initiate the connection by creating an instance of the laser system
+#ifdef SIMULATION
+      m_laser = new device::LaserSim();
+#else
       m_laser = new device::Laser(m_comport.c_str(),static_cast<uint32_t>(m_baud_rate));
+#endif
       update_status(sReady);
       // if the ids match, lets set the parameters
       // special iterator member functions for objects
@@ -2854,10 +2875,14 @@ UaStatus DIoLLaserUnit::callResume (
     {
       msg << log_e("map_registers"," ") << "Memory pointer not yet populated. Inconsistent state.";
       LOG(Log::WRN) << msg.str();
-      return OpcUa_Bad;
+      //return OpcUa_Bad;
     }
     // do a second attempt at mapping the registers
+#ifdef SIMULATION
+    m_mapped_mem = reinterpret_cast<uintptr_t>(new uint32_t[(CIB_CONFIG_ADDR_HIGH-CIB_CONFIG_ADDR_BASE)/sizeof(uint32_t)]);
+#else
     m_mapped_mem = cib::util::map_phys_mem(m_mmap_fd,CIB_CONFIG_ADDR_BASE,CIB_CONFIG_ADDR_HIGH);
+#endif
     if (m_mapped_mem != 0)
     {
       // if there are any registers there, clean them out
@@ -2904,8 +2929,15 @@ UaStatus DIoLLaserUnit::callResume (
   }
   UaStatus DIoLLaserUnit::unmap_registers()
   {
+#ifdef SIMULATION
+    delete [] reinterpret_cast<uint32_t*>(m_mapped_mem);
+    m_mapped_mem = 0;
+    m_mmap_fd = 0;
+    return OpcUa_Good;
+#else
     size_t size = CIB_CONFIG_ADDR_HIGH - CIB_CONFIG_ADDR_BASE;
     int ret = cib::util::unmap_mem(cib::util::cast_to_void(m_mapped_mem), size);
+    close(m_mmap_fd);
     if (ret == 0)
     {
       return OpcUa_Good;
@@ -2914,7 +2946,7 @@ UaStatus DIoLLaserUnit::callResume (
     {
       return OpcUa_Bad;
     }
-    close(m_mmap_fd);
+#endif
   }
 
   UaStatus DIoLLaserUnit::set_qswitch_width(const uint32_t v,json &resp)

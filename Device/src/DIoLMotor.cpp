@@ -101,6 +101,7 @@ DIoLMotor::DIoLMotor (
                 ,m_id("NONE")
                 ,m_coordinate_index(0)
                 ,m_mmap_fd(0)
+                ,m_mapped_mem(0)
 {
     /* fill up constructor body here */
     // initialize cURL
@@ -1164,7 +1165,11 @@ UaStatus DIoLMotor::callStop (
       LOG(Log::WRN) << msg.str();
       return OpcUa_Bad;
     }
+#ifdef SIMULATION
+    m_mapped_mem = reinterpret_cast<uintptr_t>(new uint32_t[(CIB_CONFIG_ADDR_HIGH-CIB_CONFIG_ADDR_BASE)/sizeof(uint32_t)]);
+#else
     m_mapped_mem = cib::util::map_phys_mem(m_mmap_fd,CIB_CONFIG_ADDR_BASE,CIB_CONFIG_ADDR_HIGH);
+#endif
     if (m_mapped_mem != 0)
     {
       // fill up each register and set the respective register pointers
@@ -1186,6 +1191,12 @@ UaStatus DIoLMotor::callStop (
 
   UaStatus DIoLMotor::unmap_registers()
   {
+#ifdef SIMULATION
+    delete [] reinterpret_cast<uint32_t*>(m_mapped_mem);
+    m_mapped_mem = 0;
+    m_mmap_fd = 0;
+    return OpcUa_Good;
+#else
     size_t size = CIB_CONFIG_ADDR_HIGH - CIB_CONFIG_ADDR_BASE;
     int ret = cib::util::unmap_mem(cib::util::cast_to_void(m_mapped_mem), size);
     if (ret == 0)
@@ -1197,6 +1208,7 @@ UaStatus DIoLMotor::callStop (
       return OpcUa_Bad;
     }
     close(m_mmap_fd);
+#endif
   }
 
   bool DIoLMotor::is_in_range(const int32_t &v)
