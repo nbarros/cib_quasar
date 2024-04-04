@@ -23,7 +23,11 @@
 #include <DIoLAttenuator.h>
 #include <ASIoLAttenuator.h>
 
+#ifdef SIMULATION
+#include <AttenuatorSim.hh>
+#else
 #include <Attenuator.hh>
+#endif
 #include <json.hpp>
 
 #include <utilities.hh>
@@ -543,7 +547,11 @@ UaStatus DIoLAttenuator::init_device(json &resp)
     // at this stage, it either has a good value or not
     try
     {
+#ifdef SIMULATION
+      m_att = new device::AttenuatorSim();
+#else
       m_att = new device::Attenuator(m_comport.c_str(),m_baud_rate);
+#endif
       m_status = sReady;
       refresh_position();
       //NOTE: Do we need to refresh the status
