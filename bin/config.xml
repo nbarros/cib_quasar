@@ -1,16 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration xmlns="http://cern.ch/quasar/Configuration" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cern.ch/quasar/Configuration ../Configuration/Configuration.xsd ">
 <IoLaserSystem location="0x1" name="LS1" id="11">
-	<IoLMotor name="RNN800" id="RNN800" serial_number="DEADBEEF1">
-	</IoLMotor>
-	<IoLMotor name="RNN600" id="RNN600" serial_number="DEADBEEF2">
-	</IoLMotor>
+	<IoLMotor name="RNN800" id="RNN800" serial_number="DEADBEEF1"></IoLMotor>
+	<IoLMotor name="RNN600" id="RNN600" serial_number="DEADBEEF2"></IoLMotor>
+	<IoLMotor name="LSTAGE" id="LSTAGE" serial_number="DEADBEEF3"></IoLMotor>
 	<IoLAttenuator name="A1" id="A1" serial_number="HDIUSUD"></IoLAttenuator>
-	<IoLLaserUnit name="L1" id="L1" serial_number="akjwhe32498">
-	</IoLLaserUnit>
-	<IoLPiezoController name="P1" serial_number="DEADBEEF3" output_number="2" max_volts="1.3" step_rate="12" acceleration="3" id="1"></IoLPiezoController>
-	<IoLPiezoController name="P2" serial_number="DEADBEEF4" output_number="1" max_volts="1.3" step_rate="12" acceleration="3" id="0"></IoLPiezoController>
+	<IoLLaserUnit name="L1" id="L1" serial_number="akjwhe32498"></IoLLaserUnit>
 	<IoLCIB id="1" name="CIB1"></IoLCIB>
 	<IoLPowerMeter name="PM1" id="PM1" serial_number="1384u239">
-	<CalculatedVariable name="mytestcalcvar" value="LS1.RNN600.current_position/3"></CalculatedVariable></IoLPowerMeter></IoLaserSystem>
+		<CalculatedVariable name="mytestcalcvar" value="LS1.RNN600.current_position/3"></CalculatedVariable>
+	</IoLPowerMeter>
+</IoLaserSystem>
 </configuration>
