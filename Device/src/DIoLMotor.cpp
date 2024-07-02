@@ -173,6 +173,7 @@ UaStatus DIoLMotor::writeSpeed ( const OpcUa_UInt32& v)
     return set_speed(v);
 }
 
+
 /* delegators for methods */
 UaStatus DIoLMotor::callConfig (
     const UaString&  config_json,
@@ -286,6 +287,14 @@ UaStatus DIoLMotor::callStop (
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
+}
+UaStatus DIoLMotor::callReset (
+    UaString& response
+)
+{
+  // reset is a tricky thing.
+  //FIXME: Implement it
+    return OpcUa_BadNotImplemented;
 }
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333

@@ -25,6 +25,7 @@
 #include <json.hpp>
 using json = nlohmann::json;
 #include <atomic>
+#include <AD5339.h>
 
 namespace Device
 {
@@ -45,6 +46,8 @@ public:
 
     /* delegators for
     cachevariables and sourcevariables */
+    /* Note: never directly call this function. */
+    UaStatus writeDac_level ( const OpcUa_UInt16& v);
 
 
     /* delegators for methods */
@@ -61,15 +64,18 @@ public:
     UaStatus callFire_at_position (
         const std::vector<OpcUa_Int32>&  target_pos,
         OpcUa_UInt16 num_pulses,
+        OpcUa_Boolean enable_lbls_trigger,
         UaString& answer
     ) ;
     UaStatus callFire_segment (
         const std::vector<OpcUa_Int32>&  start_pos,
         const std::vector<OpcUa_Int32>&  last_pos,
+        OpcUa_Boolean enable_lbls_trigger,
         UaString& answer
     ) ;
     UaStatus callExecute_scan (
         const UaString&  plan,
+        OpcUa_Boolean enable_lbls_trigger,
         UaString& answer
     ) ;
     UaStatus callPause (
@@ -150,6 +156,9 @@ private:
     State m_state;
     json m_task_message_queue;
     std::map<size_t,size_t> m_map_motor_coordinates;
+
+    cib::i2c::AD5339 m_dac;
+
 };
 
 }

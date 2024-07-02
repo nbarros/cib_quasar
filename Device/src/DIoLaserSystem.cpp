@@ -25,7 +25,6 @@
 
 #include <DIoLLaserUnit.h>
 #include <DIoLMotor.h>
-#include <DIoLPiezoController.h>
 #include <DIoLAttenuator.h>
 #include <DIoLPowerMeter.h>
 #include <DIoLCIB.h>
@@ -43,43 +42,43 @@ using std::ostringstream;
 
 namespace Device
 {
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
-  // 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
-  // 1     Users don't modify this code!!!!                                  1
-  // 1     If you modify this code you may start a fire or a flood somewhere,1
-  // 1     and some human being may possible cease to exist. You don't want  1
-  // 1     to be charged with that!                                          1
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
+// 1     Users don't modify this code!!!!                                  1
+// 1     If you modify this code you may start a fire or a flood somewhere,1
+// 1     and some human being may possible cease to exist. You don't want  1
+// 1     to be charged with that!                                          1
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
 
 
 
 
 
 
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
-  // 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
-  // 2     (code for which only stubs were generated automatically)          2
-  // 2     You should add the implementation but dont alter the headers      2
-  // 2     (apart from constructor, in which you should complete initializati2
-  // 2     on list)                                                          2
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
+// 2     (code for which only stubs were generated automatically)          2
+// 2     You should add the implementation but dont alter the headers      2
+// 2     (apart from constructor, in which you should complete initializati2
+// 2     on list)                                                          2
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
 
-  /* sample ctr */
-  DIoLaserSystem::DIoLaserSystem (
-      const Configuration::IoLaserSystem& config,
-      Parent_DIoLaserSystem* parent
-  ):
-                                                    Base_DIoLaserSystem( config, parent)
+/* sample ctr */
+DIoLaserSystem::DIoLaserSystem (
+    const Configuration::IoLaserSystem& config,
+    Parent_DIoLaserSystem* parent
+):
+    Base_DIoLaserSystem( config, parent)
 
-                                                    /* fill up constructor initialization list here */
+    /* fill up constructor initialization list here */
                                                     ,m_state(sOffline)
-                                                    {
+{
     /* fill up constructor body here */
-                                                    }
+}
 
-  /* sample dtr */
-  DIoLaserSystem::~DIoLaserSystem ()
-  {
+/* sample dtr */
+DIoLaserSystem::~DIoLaserSystem ()
+{
     m_state_map.insert({sOffline,"offline"});
     m_state_map.insert({sReady,"ready"});
     m_state_map.insert({sWarmup,"warmup"});
@@ -87,18 +86,25 @@ namespace Device
     m_state_map.insert({sPause,"pause"});
     m_state_map.insert({sStandby,"standby"});
     update_state(sOffline);
-  }
+}
 
-  /* delegates for cachevariables */
+/* delegates for cachevariables */
+
+/* Note: never directly call this function. */
+
+UaStatus DIoLaserSystem::writeDac_level ( const OpcUa_UInt16& v)
+{
+  return OpcUa_Good;
+//    return OpcUa_BadNotImplemented;
+}
 
 
-
-  /* delegators for methods */
-  UaStatus DIoLaserSystem::callLoad_config (
+/* delegators for methods */
+UaStatus DIoLaserSystem::callLoad_config (
     const UaString&  conf,
-      UaString& response
-  )
-  {
+    UaString& response
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -152,11 +158,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callCheck_ready (
-      OpcUa_Boolean& ready
-  )
-  {
+}
+UaStatus DIoLaserSystem::callCheck_ready (
+    OpcUa_Boolean& ready
+)
+{
     // check the states of all systems
     // check all associated subsystems if they're ready
     bool rdy = true;
@@ -168,21 +174,17 @@ namespace Device
     {
       rdy |= lmotor->is_ready();
     }
-    for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
-    {
-      rdy |= lctl->is_ready();
-    }
     for (Device::DIoLAttenuator* latt : iolattenuators ())
     {
       rdy |= latt->is_ready();
     }
     ready = rdy;
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callStop (
+}
+UaStatus DIoLaserSystem::callStop (
     UaString& response
-  )
-  {
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -217,13 +219,14 @@ namespace Device
     }
     //response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callFire_at_position (
-      const std::vector<OpcUa_Int32>&  target_pos,
-      OpcUa_UInt16 num_pulses,
-      UaString& answer
-  )
-  {
+}
+UaStatus DIoLaserSystem::callFire_at_position (
+    const std::vector<OpcUa_Int32>&  target_pos,
+    OpcUa_UInt16 num_pulses,
+    OpcUa_Boolean enable_lbls_trigger,
+    UaString& answer
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -258,13 +261,14 @@ namespace Device
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callFire_segment (
-      const std::vector<OpcUa_Int32>&  start_pos,
-      const std::vector<OpcUa_Int32>&  last_pos,
-      UaString& answer
-  )
-  {
+}
+UaStatus DIoLaserSystem::callFire_segment (
+    const std::vector<OpcUa_Int32>&  start_pos,
+    const std::vector<OpcUa_Int32>&  last_pos,
+    OpcUa_Boolean enable_lbls_trigger,
+    UaString& answer
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -299,12 +303,13 @@ namespace Device
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callExecute_scan (
-      const UaString&  plan,
-      UaString& answer
-  )
-  {
+}
+UaStatus DIoLaserSystem::callExecute_scan (
+    const UaString&  plan,
+    OpcUa_Boolean enable_lbls_trigger,
+    UaString& answer
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -341,51 +346,17 @@ namespace Device
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callPause (
-      UaString& answer
-  )
-  {
-    std::ostringstream msg("");
-    bool got_exception = false;
-    json resp;
-
-    UaStatus st;
-    try
-    {
-      st = pause(resp);
-    }
-    catch(json::exception &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("pause","Caught JSON exception : ") << e.what();
-      got_exception = true;
-    }
-    catch(std::exception &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("pause","Caught JSON exception : ") << e.what();
-      got_exception = true;
-    }
-    catch(...)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("pause","Caught an unknown exception");
-      got_exception = true;
-    }
-    if (got_exception)
-    {
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
-    }
-    answer = UaString(resp.dump().c_str());
-    return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callStandby (
-      UaString& answer
-  )
-  {
+}
+UaStatus DIoLaserSystem::callPause (
+    UaString& answer
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLaserSystem::callStandby (
+    UaString& answer
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -420,11 +391,11 @@ namespace Device
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callResume (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLaserSystem::callResume (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -459,11 +430,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callWarmup_laser (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLaserSystem::callWarmup_laser (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -498,11 +469,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callShutdown (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLaserSystem::callShutdown (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -537,13 +508,13 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callMove_to_pos (
-      const std::vector<OpcUa_Int32>&  position,
+}
+UaStatus DIoLaserSystem::callMove_to_pos (
+    const std::vector<OpcUa_Int32>&  position,
     const std::vector<OpcUa_Byte>&  approach,
     UaString& response
-  )
-  {
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -578,13 +549,13 @@ namespace Device
     }
     //response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
+}
 
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
-  // 3     FULLY CUSTOM CODE STARTS HERE                                     3
-  // 3     Below you put bodies for custom methods defined for this class.   3
-  // 3     You can do whatever you want, but please be decent.               3
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3     FULLY CUSTOM CODE STARTS HERE                                     3
+// 3     Below you put bodies for custom methods defined for this class.   3
+// 3     You can do whatever you want, but please be decent.               3
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
   UaStatus DIoLaserSystem::config(json &conf, json &resp)
   {
     UaStatus st;
@@ -721,27 +692,6 @@ namespace Device
         //          }
         //        }
         // ------------------
-        // There's nothing on the piezocontrollers
-        //        if (it.key() == "piezo")
-        //        {
-        //          // there could be up to three piezos
-        //          // but I have absolutely no information about them
-        //          json aconf = it.value();
-        //          st = iolattenuator()->config(aconf,resp);
-        //          if (st != OpcUa_Good)
-        //          {
-        //            reset(msg);
-        //            msg << log_e("config","Failed to configure attenuator.");
-        //            resp["status"] = "ERROR";
-        //            resp["messages"].push_back(msg.str());
-        //            if (!resp.contains("status_code"))
-        //            {
-        //              resp["status_code"] = OpcUa_BadInvalidArgument;
-        //            }
-        //            return OpcUa_BadInvalidArgument;
-        //          }
-        //        }
-        //----------------------------------
         // power meter : one unit
         //----------------------------------
         if (it.key() == "power_meter")
@@ -1992,19 +1942,6 @@ namespace Device
         trouble = true;
       }
     }
-    for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
-    {
-      st = lctl->terminate(resp);
-      if (st != OpcUa_Good)
-      {
-        reset(msg);
-        resp["status"] = "ERROR";
-        msg << log_e("shutdown","Piezo controller ") << lctl->get_id() << " didn't terminate cleanly. Please check.";
-        resp["messages"].push_back(msg.str());
-        resp["status_code"] = static_cast<uint32_t>(st);
-        trouble = true;
-      }
-    }
     for (Device::DIoLAttenuator* latt : iolattenuators ())
     {
       st = latt->terminate(resp);
@@ -2071,7 +2008,7 @@ namespace Device
     // it will only check the mandatory keys.
     std::ostringstream msg("");
     std::vector<std::string> keys = {"id","motor","attenuator","laser",
-        "power_meter", "cib", "piezo"
+        "power_meter", "cib"
     };
     if (!frag.contains("id"))
     {
@@ -2128,10 +2065,6 @@ namespace Device
     {
       lmotor->update();
     }
-    for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
-    {
-      lctl->update();
-    }
     for (Device::DIoLAttenuator* latt : iolattenuators ())
     {
       latt->update();
@@ -2157,13 +2090,6 @@ namespace Device
     for (Device::DIoLMotor* lmotor : iolmotors ())
     {
       if (!lmotor->is_ready())
-      {
-        return false;
-      }
-    }
-    for (Device::DIoLPiezoController* lctl : iolpiezocontrollers () )
-    {
-      if (!lctl->is_ready())
       {
         return false;
       }
