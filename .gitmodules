@@ -1,3 +1,9 @@
 [submodule "LaserControl"]
 	path = LaserControl
 	url = https://github.com/nbarros/LaserControl.git
+[submodule "LaserUtils"]
+	path = LaserUtils
+	url = https://github.com/nbarros/cib_utils.git
+	shallow = true
+[submodule "LaserUtil"]
+	shallow = true
