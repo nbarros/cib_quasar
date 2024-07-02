@@ -75,7 +75,9 @@
     <d:method name="stop" executionSynchronicity="synchronous">
       <d:returnvalue dataType="UaString" name="response"/>
     </d:method>
-    
+    <d:method name="reset" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+
 
 
 
@@ -488,15 +490,23 @@
     	addressSpaceWrite="forbidden"
     	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="UNKNOWN">
     </d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
-    	name="dummy" nullPolicy="nullAllowed" addressSpaceWrite="forbidden"
-    	initialValue="OpcUa_Null" initialStatus="OpcUa_BadWaitingForInitialData">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean"
+    	name="laser_active" nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
+    	initialValue="OpcUa_False" initialStatus="OpcUa_BadWaitingForInitialData">
+    </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus"
+    	dataType="OpcUa_Boolean" name="iols_allowed"
+    	nullPolicy="nullForbidden" addressSpaceWrite="regular"
+    	initialStatus="OpcUa_Good" initialValue="OpcUa_True">
+    </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus"
+    	dataType="OpcUa_UInt16" name="dac_level" nullPolicy="nullForbidden"
+    	addressSpaceWrite="delegated" initialValue="4095"
+    	initialStatus="OpcUa_Good">
     </d:cachevariable>
     <d:hasobjects instantiateUsing="configuration" class="IoLLaserUnit" minOccurs="1" maxOccurs="1">
 		</d:hasobjects>
-    <d:hasobjects instantiateUsing="configuration" class="IoLMotor" minOccurs="2" maxOccurs="3">
-		</d:hasobjects>
-    <d:hasobjects instantiateUsing="configuration" class="IoLPiezoController" minOccurs="0" maxOccurs="3">
+    <d:hasobjects instantiateUsing="configuration" class="IoLMotor" minOccurs="3" maxOccurs="3">
 		</d:hasobjects>
     <d:hasobjects instantiateUsing="configuration" class="IoLAttenuator" maxOccurs="1" minOccurs="1">
 		</d:hasobjects>
@@ -511,7 +521,7 @@
       <d:returnvalue dataType="OpcUa_Boolean" name="ready"/>
     </d:method>
     <d:method name="stop" executionSynchronicity="synchronous">
-      <!--this method send immediate stop commands for all subsystems, starting by the iris. After this call one should recheck the state of the system as the motors may not be in the right state--><d:returnvalue
+      <!--this method sends immediate stop commands for all subsystems, starting by the iris. After this call one should recheck the state of the system as the motors may not be in the right state--><d:returnvalue
       	dataType="UaString" name="response">
 </d:returnvalue>
     </d:method>
@@ -520,7 +530,10 @@
         <d:array minimumSize="3" maximumSize="3"/>
       </d:argument>
       <d:argument dataType="OpcUa_UInt16" name="num_pulses"/>
-      <d:returnvalue dataType="UaString" name="answer"/>
+      <d:argument dataType="OpcUa_Boolean" name="enable_lbls_trigger">
+      	<!--this argument indicates whether the triggers should be sent to the  LBLS system-->
+	  </d:argument>
+    	<d:returnvalue dataType="UaString" name="answer"/>
     </d:method>
     <d:method name="fire_segment" executionSynchronicity="synchronous">
       <d:argument dataType="OpcUa_Int32" name="start_pos">
@@ -529,10 +542,16 @@
       <d:argument dataType="OpcUa_Int32" name="last_pos">
         <d:array maximumSize="3" minimumSize="3"/>
       </d:argument>
+      <d:argument dataType="OpcUa_Boolean" name="enable_lbls_trigger">
+      	<!--this argument indicates whether the triggers should be sent to the  LBLS system-->
+	  </d:argument>
       <d:returnvalue dataType="UaString" name="answer"/>
     </d:method>
     <d:method name="execute_scan" executionSynchronicity="synchronous">
       <d:argument dataType="UaString" name="plan"/>
+      <d:argument dataType="OpcUa_Boolean" name="enable_lbls_trigger">
+      	<!--this argument indicates whether the triggers should be sent to the  LBLS system-->
+	  </d:argument>
       <d:returnvalue dataType="UaString" name="answer"/>
     </d:method>
     <d:method name="pause" executionSynchronicity="synchronous">
@@ -552,6 +571,8 @@
     		<d:array minimumSize="3" maximumSize="3" /></d:argument>
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
     
+
+
   </d:class>
   <d:root>
     <d:hasobjects class="IoLaserSystem" instantiateUsing="configuration"/>
