@@ -146,11 +146,14 @@ private:
     void init_scan_task(json &segments);
     void get_message_queue(json &resp, bool clear);
     bool validate_scan_plan(json &plan, json &resp);
+    void refresh_dac();
 public:
     // makes a roll call for each system to update itself
     void update();
     // makes a status call over all subsystems
     bool is_ready();
+    // really initializes the DAC readout
+    int init_dac();
 private:
     std::map<State,std::string> m_state_map;
     State m_state;

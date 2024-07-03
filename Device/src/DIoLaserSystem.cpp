@@ -74,18 +74,22 @@ DIoLaserSystem::DIoLaserSystem (
                                                     ,m_state(sOffline)
 {
     /* fill up constructor body here */
+  // this had to be in the constructor
+
+  m_state_map.insert({sOffline,"offline"});
+  m_state_map.insert({sReady,"ready"});
+  m_state_map.insert({sWarmup,"warmup"});
+  m_state_map.insert({sOperating,"operating"});
+  m_state_map.insert({sPause,"pause"});
+  m_state_map.insert({sStandby,"standby"});
+
+
 }
 
 /* sample dtr */
 DIoLaserSystem::~DIoLaserSystem ()
 {
-    m_state_map.insert({sOffline,"offline"});
-    m_state_map.insert({sReady,"ready"});
-    m_state_map.insert({sWarmup,"warmup"});
-    m_state_map.insert({sOperating,"operating"});
-    m_state_map.insert({sPause,"pause"});
-    m_state_map.insert({sStandby,"standby"});
-    update_state(sOffline);
+    LOG(Log::INF) << "NFB: Destroying the IoLaserSystem device";
 }
 
 /* delegates for cachevariables */
@@ -1991,6 +1995,76 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       return OpcUa_Good;
     }
   }
+  int DIoLaserSystem::init_dac()
+  {
+    int res;
+    static bool first = true;
+
+    res = m_dac.set_bus(7);
+    if (res != CIB_I2C_OK)
+    {
+      if (first)
+      {
+        LOG(Log::ERR) << "NFB: Failed to set DAC bus number. Returned " << res << " : " << cib::i2c::strerror(res);
+        first = false;
+      }
+      return res;
+    }
+    res = m_dac.set_dev_number(0xd);
+    if (res != CIB_I2C_OK)
+    {
+      if (first)
+      {
+        LOG(Log::ERR) << "NFB: Failed to set dev number. Returned " << res << " : " << cib::i2c::strerror(res);
+        first = false;
+      }
+      return res;
+    }
+    res = m_dac.open_device();
+    if (res != CIB_I2C_OK)
+    {
+      if (first)
+      {
+        LOG(Log::ERR) << "NFB: Failed to open device. Returned  " << res << " : " << cib::i2c::strerror(res);
+        first = false;
+      }
+      return res;
+    }
+    // actually, should take the opportunity and set a high level
+    // this is to avoid spurious triggers at initialization
+
+    res = m_dac.set_level(1,4095);
+    return res;
+  }
+  void DIoLaserSystem::refresh_dac()
+  {
+    static bool first = true;
+    int ret = 0;
+    uint16_t v;
+    AddressSpace::ASIoLaserSystem* as = getAddressSpaceLink();
+    if (!m_dac.is_open())
+    {
+      if(first)
+      {
+        LOG(Log::INF) << "NFB: Opening the connection to the DAC";
+        first = false;
+      }
+      ret = init_dac();
+    }
+    // the DAC failed to initialize. No point in getting the level
+    if (!ret)
+    {
+      ret = m_dac.get_level(1,v);
+    }
+    if (ret)
+    {
+      as->setDac_level(v,OpcUa_BadDataUnavailable);
+    }
+    else
+    {
+      as->setDac_level(v,OpcUa_Good);
+    }
+  }
   UaStatus DIoLaserSystem::move_to_pos(
       const std::vector<OpcUa_Int32>&  position,
       const std::vector<OpcUa_Byte>&  approach,
@@ -2056,6 +2130,13 @@ UaStatus DIoLaserSystem::callMove_to_pos (
   }
   void DIoLaserSystem::update()
   {
+    // first update the local variables
+    update_state(m_state);
+
+    // update the reading of the DAC
+    refresh_dac();
+
+
     // call update over all daughters
     for (Device::DIoLLaserUnit* lunit : iollaserunits())
     {
