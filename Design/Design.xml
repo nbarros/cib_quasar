@@ -62,6 +62,11 @@
     	addressSpaceWrite="delegated" initialValue="200"
     	initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
+    	name="state" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="unknown">
+    </d:cachevariable>
     <!-- methods that allow for standalone motor operation -->
     <d:method name="config" executionSynchronicity="synchronous">
       <d:argument dataType="UaString" name="config_json" />
@@ -77,6 +82,7 @@
     </d:method>
     <d:method name="reset" executionSynchronicity="synchronous">
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+    
 
 
 
@@ -144,7 +150,7 @@
     	initialStatus="OpcUa_Good"
     	initialValue="1">
     </d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="status" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="unknown">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="state" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="unknown">
   	</d:cachevariable>
     <!-- A couple of variables that just list the available options for various range selectable methods -->
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="range_options" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="invalid">
@@ -269,7 +275,7 @@
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
     	name="state" nullPolicy="nullForbidden"
     	addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData"
-    	initialValue="UNKNOWN">
+    	initialValue="unknown">
     </d:cachevariable><!-- Operation methods -->
     <d:method name="set_connection" executionSynchronicity="synchronous">
 		<d:argument dataType="UaString" name="device_port"></d:argument>
@@ -381,6 +387,11 @@
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
     	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="65535">
     </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
+    	name="state" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData"
+    	initialValue="unknown">
+    </d:cachevariable>
     <!-- Cache variables enumerating options -->
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
     	name="resolution_options" nullPolicy="nullForbidden"
@@ -438,29 +449,7 @@
 		<d:returnvalue dataType="UaString" name="response"></d:returnvalue>	
 	</d:method>
 	
-  </d:class>
-  
-  
-  
-  <d:class name="IoLPiezoController">
-    <d:devicelogic/>
-    <d:configentry dataType="OpcUa_UInt16" name="id" isKey="true" storedInDeviceObject="true" /><d:configentry
-    	dataType="UaString" name="serial_number"
-    	storedInDeviceObject="true">
-</d:configentry>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt16" name="output_number" nullPolicy="nullAllowed" addressSpaceWrite="forbidden">
-      <!--Indicates the output number that will be controlled and is provided when adjusting-->
-      <d:configRestriction>
-        <d:restrictionByBounds minInclusive="0" maxInclusive="3"/>
-      </d:configRestriction>
-    </d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_Double" name="max_volts" nullPolicy="nullForbidden" addressSpaceWrite="regular">
-    </d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="step_rate" nullPolicy="nullForbidden" addressSpaceWrite="regular">
-    </d:cachevariable>
-    <d:cachevariable initializeWith="configuration" dataType="OpcUa_UInt32" name="acceleration" nullPolicy="nullForbidden" addressSpaceWrite="regular">
-    </d:cachevariable>
-    
+
   </d:class>
 
   <d:class name="IoLCIB">
@@ -470,7 +459,7 @@
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="mem_load" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
     </d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="cpu_load" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="-1.0">
 		</d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="state" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="9999">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="state" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="unknown">
 		</d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_Boolean" name="external_interlock"
@@ -488,21 +477,21 @@
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
     	name="state" nullPolicy="nullForbidden"
     	addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="UNKNOWN">
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="unknown">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean"
-    	name="laser_active" nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
+    	name="iols_active" nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
     	initialValue="OpcUa_False" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_Boolean" name="iols_allowed"
     	nullPolicy="nullForbidden" addressSpaceWrite="regular"
-    	initialStatus="OpcUa_Good" initialValue="OpcUa_True">
+    	initialStatus="OpcUa_Good" initialValue="OpcUa_False">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_UInt16" name="dac_level" nullPolicy="nullForbidden"
+    	dataType="OpcUa_UInt16" name="dac_threshold" nullPolicy="nullForbidden"
     	addressSpaceWrite="delegated" initialValue="4095"
-    	initialStatus="OpcUa_Good">
+    	initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
     <d:hasobjects instantiateUsing="configuration" class="IoLLaserUnit" minOccurs="1" maxOccurs="1">
 		</d:hasobjects>
@@ -570,7 +559,10 @@
     	<d:argument dataType="OpcUa_Byte" name="approach">
     		<d:array minimumSize="3" maximumSize="3" /></d:argument>
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-    
+    <d:method name="set_dac_threshold" executionSynchronicity="synchronous">
+    	<d:argument dataType="OpcUa_UInt16" name="dac_level"></d:argument>
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+
 
 
   </d:class>
