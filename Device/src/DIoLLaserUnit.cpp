@@ -1597,18 +1597,25 @@ UaStatus DIoLLaserUnit::callResume (
         LOG(Log::WRN) << "Warmup timer reached end but state no longer in warmup. Doing nothing.";
         return;
       }
-      //
-      // 1. close external shutter
-      json r;
-      force_ext_shutter(ShutterState::sClose,r);
-      // 2. open internal shutter
-      switch_laser_shutter(ShutterState::sOpen,r);
-      // 3. enable qswitch
-      cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr, 0x1,m_regs.at("qs_enable").mask,m_regs.at("qs_enable").bit_low);
-      update_status(sLasing);
-      // call pause to make sure that all this is done
-      // also keep in mind that pause has an associated timer, after which switches to standby
-      pause(r);
+      else
+      {
+        // -- reached the end of the warmup
+        // switch to standby...which is pretty mych the same thing, just with a different name
+        update_status(sStandby);
+      }
+
+//      //
+//      // 1. close external shutter
+//      json r;
+//      force_ext_shutter(ShutterState::sClose,r);
+//      // 2. open internal shutter
+//      switch_laser_shutter(ShutterState::sOpen,r);
+//      // 3. enable qswitch
+//      cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr, 0x1,m_regs.at("qs_enable").mask,m_regs.at("qs_enable").bit_low);
+//      update_status(sLasing);
+//      // call pause to make sure that all this is done
+//      // also keep in mind that pause has an associated timer, after which switches to standby
+//      pause(r);
                 }
     ).detach();
   }
