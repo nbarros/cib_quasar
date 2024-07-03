@@ -96,7 +96,7 @@ DIoLaserSystem::~DIoLaserSystem ()
 
 /* Note: never directly call this function. */
 
-UaStatus DIoLaserSystem::writeDac_level ( const OpcUa_UInt16& v)
+UaStatus DIoLaserSystem::writeDac_threshold ( const OpcUa_UInt16& v)
 {
   return OpcUa_Good;
 //    return OpcUa_BadNotImplemented;
@@ -123,9 +123,9 @@ UaStatus DIoLaserSystem::callLoad_config (
         msg << log_e("config","Configuration failed. See previous messages");
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
-        if (!resp.contains("status_code"))
+        if (!resp.contains("statuscode"))
         {
-          resp["status_code"] = OpcUa_BadInvalidArgument;
+          resp["statuscode"] = OpcUa_BadInvalidArgument;
         }
       }
       else
@@ -133,7 +133,7 @@ UaStatus DIoLaserSystem::callLoad_config (
         msg << log_i("config","System configured.");
         resp["messages"].push_back(msg.str());
         resp["status"] = "OK";
-        resp["status_code"] = OpcUa_Good;
+        resp["statuscode"] = OpcUa_Good;
       }
     }
     catch(json::exception &e)
@@ -158,7 +158,7 @@ UaStatus DIoLaserSystem::callLoad_config (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -219,7 +219,7 @@ UaStatus DIoLaserSystem::callStop (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     //response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -261,7 +261,7 @@ UaStatus DIoLaserSystem::callFire_at_position (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -303,7 +303,7 @@ UaStatus DIoLaserSystem::callFire_segment (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -346,7 +346,7 @@ UaStatus DIoLaserSystem::callExecute_scan (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -391,7 +391,7 @@ UaStatus DIoLaserSystem::callStandby (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -430,7 +430,7 @@ UaStatus DIoLaserSystem::callResume (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -469,7 +469,7 @@ UaStatus DIoLaserSystem::callWarmup_laser (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -508,7 +508,7 @@ UaStatus DIoLaserSystem::callShutdown (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -549,10 +549,17 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     //response = UaString(resp.dump().c_str());
     return OpcUa_Good;
+}
+UaStatus DIoLaserSystem::callSet_dac_threshold (
+    OpcUa_UInt16 dac_level,
+    UaString& response
+)
+{
+    return set_dac_threshold(dac_level,response);
 }
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
@@ -574,7 +581,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         msg << log_e("config","System is operating. Can only configure when stopped.");
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidState;
+        resp["statuscode"] = OpcUa_BadInvalidState;
         return OpcUa_BadInvalidState;
       }
       // validate the config fragment
@@ -584,9 +591,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         msg << log_e("stop","Failed to stop laser unit. See previous messages");
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
-        if (!resp.contains("status_code"))
+        if (!resp.contains("statuscode"))
         {
-          resp["status_code"] = OpcUa_BadInvalidArgument;
+          resp["statuscode"] = OpcUa_BadInvalidArgument;
         }
         return OpcUa_BadInvalidArgument;
       }
@@ -609,7 +616,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
                                                     << " motors, but configuration shows " << it.value().size();
             resp["status"] = "ERROR";
             resp["messages"].push_back(msg.str());
-            resp["status_code"] = OpcUa_BadInvalidArgument;
+            resp["statuscode"] = OpcUa_BadInvalidArgument;
             return OpcUa_BadInvalidArgument;
           }
           // we have matching sizes, configure them in order
@@ -626,9 +633,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
                   reset(msg);
                   resp["status"] = "ERROR";
                   resp["messages"].push_back(msg.str());
-                  if (!resp.contains("status_code"))
+                  if (!resp.contains("statuscode"))
                   {
-                    resp["status_code"] = OpcUa_BadInvalidArgument;
+                    resp["statuscode"] = OpcUa_BadInvalidArgument;
                   }
                   return OpcUa_BadInvalidArgument;
                 }
@@ -651,9 +658,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
             msg << log_e("config","Failed to configure laser.");
             resp["status"] = "ERROR";
             resp["messages"].push_back(msg.str());
-            if (!resp.contains("status_code"))
+            if (!resp.contains("statuscode"))
             {
-              resp["status_code"] = OpcUa_BadInvalidArgument;
+              resp["statuscode"] = OpcUa_BadInvalidArgument;
             }
             return OpcUa_BadInvalidArgument;
           }
@@ -669,9 +676,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
             msg << log_e("config","Failed to configure attenuator.");
             resp["status"] = "ERROR";
             resp["messages"].push_back(msg.str());
-            if (!resp.contains("status_code"))
+            if (!resp.contains("statuscode"))
             {
-              resp["status_code"] = OpcUa_BadInvalidArgument;
+              resp["statuscode"] = OpcUa_BadInvalidArgument;
             }
             return OpcUa_BadInvalidArgument;
           }
@@ -688,9 +695,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         //            msg << log_e("config","Failed to configure attenuator.");
         //            resp["status"] = "ERROR";
         //            resp["messages"].push_back(msg.str());
-        //            if (!resp.contains("status_code"))
+        //            if (!resp.contains("statuscode"))
         //            {
-        //              resp["status_code"] = OpcUa_BadInvalidArgument;
+        //              resp["statuscode"] = OpcUa_BadInvalidArgument;
         //            }
         //            return OpcUa_BadInvalidArgument;
         //          }
@@ -709,9 +716,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
             msg << log_e("config","Failed to configure power meter.");
             resp["status"] = "ERROR";
             resp["messages"].push_back(msg.str());
-            if (!resp.contains("status_code"))
+            if (!resp.contains("statuscode"))
             {
-              resp["status_code"] = OpcUa_BadInvalidArgument;
+              resp["statuscode"] = OpcUa_BadInvalidArgument;
             }
             return OpcUa_BadInvalidArgument;
           }
@@ -750,7 +757,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       reset(msg);
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     else
@@ -759,7 +766,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_i("config","IoLS configured.");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     return OpcUa_Good;
   }
@@ -786,9 +793,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         msg << log_e("stop","Failed to stop laser unit. See previous messages");
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
-        if (!resp.contains("status_code"))
+        if (!resp.contains("statuscode"))
         {
-          resp["status_code"] = OpcUa_Bad;
+          resp["statuscode"] = OpcUa_Bad;
         }
         return st;
       }
@@ -802,9 +809,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
           msg << log_e("stop","Failed to stop motor ") << lmotor->id() << ". See previous messages.";
           resp["status"] = "ERROR";
           resp["messages"].push_back(msg.str());
-          if (!resp.contains("status_code"))
+          if (!resp.contains("statuscode"))
           {
-            resp["status_code"] = OpcUa_Bad;
+            resp["statuscode"] = OpcUa_Bad;
           }
           return st;
         }
@@ -819,9 +826,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         msg << log_e("stop","Failed to stop power meter ") << iolpowermeter()->getFullName() << ". See previous messages.";
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
-        if (!resp.contains("status_code"))
+        if (!resp.contains("statuscode"))
         {
-          resp["status_code"] = OpcUa_Bad;
+          resp["statuscode"] = OpcUa_Bad;
         }
         return st;
       }
@@ -856,7 +863,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     else
@@ -865,7 +872,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_i("stop","IoLS system stopped.");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     return OpcUa_Good;
   }
@@ -891,7 +898,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("fire_at_position","System is not ready to operate. Check the status of the various subsystems.");
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidState;
+        resp["statuscode"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidState;
       }
@@ -904,7 +911,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("fire_at_position","Laser is not in the right state.");
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidState;
+        resp["statuscode"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidState;
       }
@@ -923,7 +930,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
                                                           << target_pos.size() << ") and available motors ("
                                                           << iolmotors().size() << "). Refusing to operate.";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidArgument;
+        resp["statuscode"] = OpcUa_BadInvalidArgument;
         return OpcUa_BadInvalidArgument;
       }
       //
@@ -934,7 +941,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         msg << log_e("fire_at_position","Invalid number of pulses (")
                                                           << num_pulses << "). Value must be at least 1.";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidArgument;
+        resp["statuscode"] = OpcUa_BadInvalidArgument;
         return OpcUa_BadInvalidArgument;
       }
       //
@@ -960,7 +967,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
               msg << log_e("fire_at_position","Failed to set target position for motor (id : ")
                                                                 << lmotor->get_id() << ").";
               resp["messages"].push_back(msg.str());
-              resp["status_code"] = static_cast<uint32_t>(st);
+              resp["statuscode"] = static_cast<uint32_t>(st);
               return st;
             }
             // now move the motor
@@ -972,7 +979,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
               msg << log_e("fire_at_position","Failed to initiate motor movement on motor (id : ")
                                                                 << lmotor->get_id() << ").";
               resp["messages"].push_back(msg.str());
-              resp["status_code"] = static_cast<uint32_t>(st);
+              resp["statuscode"] = static_cast<uint32_t>(st);
               return st;
             }
           }
@@ -1006,10 +1013,10 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("fire_at_position","Failed to fire laser. Check previous messages.");
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = static_cast<uint32_t>(st);
+        resp["statuscode"] = static_cast<uint32_t>(st);
         // force a pause (again)
         iollaserunit()->pause(resp);
-        return static_cast<UaStatus>(resp["status_code"].get<uint32_t>());
+        return static_cast<UaStatus>(resp["statuscode"].get<uint32_t>());
       }
       // at this stage we are done
       // make sure that the laser is in pause state
@@ -1044,7 +1051,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     else
@@ -1053,7 +1060,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_i("stop","Command successful.");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     return OpcUa_Good;
   }
@@ -1082,7 +1089,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("fire_segment","System is not ready to operate. Check the status of the various subsystems.");
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidState;
+        resp["statuscode"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidState;
       }
@@ -1095,7 +1102,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("fire_segment","Laser is not in the right state.");
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidState;
+        resp["statuscode"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidState;
       }
@@ -1125,7 +1132,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
                                                           << spos.size() << ") and available motors ("
                                                           << iolmotors().size() << "). Refusing to operate.";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidArgument;
+        resp["statuscode"] = OpcUa_BadInvalidArgument;
         return OpcUa_BadInvalidArgument;
       }
       // do the same for the target
@@ -1138,7 +1145,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
                                                           << spos.size() << ") and available motors ("
                                                           << iolmotors().size() << "). Refusing to operate.";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidArgument;
+        resp["statuscode"] = OpcUa_BadInvalidArgument;
         return OpcUa_BadInvalidArgument;
       }
       // second check. Only one of the motors should be moving,
@@ -1158,7 +1165,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         msg << log_e("fire_segment","More than one motor moving. (")
                                                           << n_moving_motors << "). Expected 1. Refusing to operate.";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidArgument;
+        resp["statuscode"] = OpcUa_BadInvalidArgument;
         return OpcUa_BadInvalidArgument;
       }
       // all conditions are checked. Now start the operation
@@ -1198,7 +1205,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     else
@@ -1207,7 +1214,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_i("stop","Command successful.");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     return OpcUa_Good;
   }
@@ -1239,9 +1246,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         }
         msg << log_e("fire_segment","Operation was successful.");
         m_task_message_queue["messages"].push_back(msg.str());
-        if (!m_task_message_queue.contains("status_code"))
+        if (!m_task_message_queue.contains("statuscode"))
         {
-          m_task_message_queue["status_code"] = OpcUa_Good;
+          m_task_message_queue["statuscode"] = OpcUa_Good;
         }
         update_state(sPause);
       }
@@ -1277,7 +1284,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_e("fire_segment","Failed to set laser into Pause state");;
       resp["messages"].push_back(msg.str());
       resp["status"] = "ERROR";
-      resp["status_code"] = static_cast<uint32_t>(st);
+      resp["statuscode"] = static_cast<uint32_t>(st);
       m_task_message_queue = resp;
       // nothing is being done, so just terminate this task
       // update the state to error
@@ -1293,7 +1300,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_e("fire_segment","Failed to move to start position");;
       resp["messages"].push_back(msg.str());
       resp["status"] = "ERROR";
-      resp["status_code"] = static_cast<uint32_t>(st);
+      resp["statuscode"] = static_cast<uint32_t>(st);
       m_task_message_queue = resp;
       // nothing is being done, so just terminate this task
       // update the state to error
@@ -1323,7 +1330,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_e("fire_segment","Failed to iniiate movement to destination");;
       resp["messages"].push_back(msg.str());
       resp["status"] = "ERROR";
-      resp["status_code"] = static_cast<uint32_t>(st);
+      resp["statuscode"] = static_cast<uint32_t>(st);
       m_task_message_queue = resp;
       // nothing is being done, so just terminate this task
       // update the state to error
@@ -1343,7 +1350,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       resp["status"] = "ERROR";
       msg << log_e("fire_segment","Failed to activate laser. Check previous messages.");
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = static_cast<uint32_t>(st);
+      resp["statuscode"] = static_cast<uint32_t>(st);
       // force a pause (again)
       iollaserunit()->pause(resp);
       m_task_message_queue = resp;
@@ -1369,7 +1376,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       resp["status"] = "ERROR";
       msg << log_e("fire_segment","Failed to pase laser at the end. Check previous messages.");
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = static_cast<uint32_t>(st);
+      resp["statuscode"] = static_cast<uint32_t>(st);
       // force a pause (again)
       iollaserunit()->pause(resp);
       m_task_message_queue = resp;
@@ -1398,7 +1405,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         msg << log_e("move_motor","Failed to set target position for motor (id : ")
                                                     << lmotor->get_id() << ").";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = static_cast<uint32_t>(st);
+        resp["statuscode"] = static_cast<uint32_t>(st);
         // nothing is being done, so just terminate this task
         return st;
       }
@@ -1419,7 +1426,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     //            msg << log_e("move_motor","Failed to set target position for motor (id : ")
     //                                                << lmotor->get_id() << ").";
     //            resp["messages"].push_back(msg.str());
-    //            resp["status_code"] = static_cast<uint32_t>(st);
+    //            resp["statuscode"] = static_cast<uint32_t>(st);
     //            // nothing is being done, so just terminate this task
     //            return st;
     //          }
@@ -1431,7 +1438,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     //            msg << log_e("move_motor","Failed to initiate motor movement on motor (id : ")
     //                                                << lmotor->get_id() << ").";
     //            resp["messages"].push_back(msg.str());
-    //            resp["status_code"] = static_cast<uint32_t>(st);
+    //            resp["statuscode"] = static_cast<uint32_t>(st);
     //            return st;
     //          }
     //        }
@@ -1462,7 +1469,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("execute_scan","System is not ready to operate. Check the status of the various subsystems.");
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidState;
+        resp["statuscode"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidState;
       }
@@ -1475,7 +1482,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("execute_scan","Laser is not in the right state.");
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidState;
+        resp["statuscode"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidState;
       }
@@ -1485,7 +1492,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("execute_scan","Malformed configuration fragment. Missing entry \"scan_plan\"");
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidArgument;
+        resp["statuscode"] = OpcUa_BadInvalidArgument;
         LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidArgument;
       }
@@ -1495,7 +1502,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("execute_scan","Invalid scan plan. Check previous messages.");
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidArgument;
+        resp["statuscode"] = OpcUa_BadInvalidArgument;
         LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidArgument;
       }
@@ -1533,7 +1540,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     else
@@ -1542,7 +1549,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_i("execute_scan","Command successful.");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
 
     return OpcUa_Good;
@@ -1591,9 +1598,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
           m_task_message_queue["status"] = "ERROR";
         }
         m_task_message_queue["messages"].push_back(msg.str());
-        if (!m_task_message_queue.contains("status_code"))
+        if (!m_task_message_queue.contains("statuscode"))
         {
-          m_task_message_queue["status_code"] = static_cast<uint32_t>(st);
+          m_task_message_queue["statuscode"] = static_cast<uint32_t>(st);
         }
         // nothing is being done, so just terminate this task
         // update the state to error
@@ -1619,9 +1626,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
             m_task_message_queue["status"] = "ERROR";
           }
           m_task_message_queue["messages"].push_back(msg.str());
-          if (!m_task_message_queue.contains("status_code"))
+          if (!m_task_message_queue.contains("statuscode"))
           {
-            m_task_message_queue["status_code"] = OpcUa_Bad;
+            m_task_message_queue["statuscode"] = OpcUa_Bad;
           }
           return;
         }
@@ -1640,9 +1647,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
           m_task_message_queue["status"] = "ERROR";
         }
         m_task_message_queue["messages"].push_back(msg.str());
-        if (!m_task_message_queue.contains("status_code"))
+        if (!m_task_message_queue.contains("statuscode"))
         {
-          m_task_message_queue["status_code"] = OpcUa_Bad;
+          m_task_message_queue["statuscode"] = OpcUa_Bad;
         }
         update_state(sError);
         return;
@@ -1657,9 +1664,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         m_task_message_queue["status"] = "OK";
       }
       m_task_message_queue["messages"].push_back(msg.str());
-      if (!m_task_message_queue.contains("status_code"))
+      if (!m_task_message_queue.contains("statuscode"))
       {
-        m_task_message_queue["status_code"] = OpcUa_Good;
+        m_task_message_queue["statuscode"] = OpcUa_Good;
       }
       update_state(sPause);
                 }
@@ -1688,7 +1695,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("pause","System is not ready to operate. Check the status of the various subsystems.");
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidState;
+        resp["statuscode"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidState;
       }
@@ -1700,9 +1707,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("pause","Laser failed to pause. Check previous messages.");
         resp["messages"].push_back(msg.str());
-        if (!m_task_message_queue.contains("status_code"))
+        if (!m_task_message_queue.contains("statuscode"))
         {
-          m_task_message_queue["status_code"] = OpcUa_Good;
+          m_task_message_queue["statuscode"] = OpcUa_Good;
         }
         return OpcUa_BadInvalidState;
       }
@@ -1737,7 +1744,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     else
@@ -1746,7 +1753,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_i("pause","Command successful.");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     return OpcUa_Good;
   }
@@ -1773,7 +1780,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("standby","System is not ready to operate. Check the status of the various subsystems.");
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidState;
+        resp["statuscode"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidState;
       }
@@ -1785,9 +1792,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("standby","Laser failed to pause. Check previous messages.");
         resp["messages"].push_back(msg.str());
-        if (!m_task_message_queue.contains("status_code"))
+        if (!m_task_message_queue.contains("statuscode"))
         {
-          m_task_message_queue["status_code"] = OpcUa_Good;
+          m_task_message_queue["statuscode"] = OpcUa_Good;
         }
         return OpcUa_BadInvalidState;
       }
@@ -1822,7 +1829,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     else
@@ -1831,7 +1838,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_i("standby","Command successful.");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     return OpcUa_Good;
   }
@@ -1850,7 +1857,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       resp["status"] = "ERROR";
       msg << log_e("resume","System is neither in sPause or sStandby. Current state :") << m_state_map.at(m_state);
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidState;
+      resp["statuscode"] = OpcUa_BadInvalidState;
       LOG(Log::ERR) << msg.str();
       return OpcUa_BadInvalidState;
 
@@ -1862,9 +1869,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       resp["status"] = "ERROR";
       msg << log_e("resume","Laser failed to resume. Check previous messages.");
       resp["messages"].push_back(msg.str());
-      if (!m_task_message_queue.contains("status_code"))
+      if (!m_task_message_queue.contains("statuscode"))
       {
-        m_task_message_queue["status_code"] = OpcUa_Bad;
+        m_task_message_queue["statuscode"] = OpcUa_Bad;
       }
       return OpcUa_Bad;
     }
@@ -1884,7 +1891,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       resp["status"] = "ERROR";
       msg << log_e("warmup","Laser system is not in ready state, as it should.");
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidState;
+      resp["statuscode"] = OpcUa_BadInvalidState;
       return OpcUa_BadInvalidState;
     }
     st = iollaserunit()->start_cib(resp);
@@ -1894,7 +1901,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       resp["status"] = "ERROR";
       msg << log_e("warmup","Laser system failed to start. Check previous messages.");
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     // confirm that the laser is in warmup state
@@ -1905,7 +1912,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_e("warmup","Laser system not in expected sWarmup state. Got ") << iollaserunit()->get_state()
                   << " (expected " << DIoLLaserUnit::sWarmup << ")";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     // if it reached this point, we are now in warmup state.
@@ -1927,7 +1934,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       resp["status"] = "ERROR";
       msg << log_e("shutdown","Something weird happened with the laser unit.");
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = static_cast<uint32_t>(st);
+      resp["statuscode"] = static_cast<uint32_t>(st);
       trouble = true;
       // do not return
       // the terminate should propagate everywhere
@@ -1942,7 +1949,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("shutdown","Motor ") << lmotor->get_id() << " didn't terminate cleanly. Please check.";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = static_cast<uint32_t>(st);
+        resp["statuscode"] = static_cast<uint32_t>(st);
         trouble = true;
       }
     }
@@ -1955,7 +1962,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("shutdown","Attenuator ") << latt->get_id() << " didn't terminate cleanly. Please check.";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = static_cast<uint32_t>(st);
+        resp["statuscode"] = static_cast<uint32_t>(st);
         trouble = true;
       }
     }
@@ -1968,7 +1975,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["status"] = "ERROR";
         msg << log_e("shutdown","Attenuator ") << lmeter->get_id() << " didn't terminate cleanly. Please check.";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = static_cast<uint32_t>(st);
+        resp["statuscode"] = static_cast<uint32_t>(st);
         trouble = true;
       }
     }
@@ -1982,7 +1989,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     //        resp["status"] = "ERROR";
     //        msg << log_e("shutdown","CIB ") << lcib->get_id() << " didn't terminate cleanly. Please check.";
     //        resp["messages"].push_back(msg.str());
-    //        resp["status_code"] = static_cast<uint32_t>(st);
+    //        resp["statuscode"] = static_cast<uint32_t>(st);
     //        trouble = true;
     //      }
     //    }
@@ -2058,11 +2065,11 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     }
     if (ret)
     {
-      as->setDac_level(v,OpcUa_BadDataUnavailable);
+      as->setDac_threshold(v,OpcUa_BadDataUnavailable);
     }
     else
     {
-      as->setDac_level(v,OpcUa_Good);
+      as->setDac_threshold(v,OpcUa_Good);
     }
   }
   UaStatus DIoLaserSystem::move_to_pos(
@@ -2090,7 +2097,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_e("validate_config","Configuration fragment missing system ID");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidArgument;
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
       return false;
     }
     if (frag.at("id").get<std::string>() != id())
@@ -2099,7 +2106,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_e("validate_config","Configuration fragment has a mismatched ID. Expected ") << id();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidArgument;
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
       return false;
     }
     // actually, check for all entries and report all missing ones
@@ -2122,7 +2129,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << "]";
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidArgument;
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
       return false;
     }
     // all good, return true
@@ -2238,7 +2245,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         msg << log_e("validate_scan_plan","Missing \"scan_plan\" key.");
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidArgument;
+        resp["statuscode"] = OpcUa_BadInvalidArgument;
         return false;
       }
       std::vector<std::string> entries = {"start","end"};
@@ -2252,7 +2259,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
             msg << log_e("validate_scan_plan","Missing key ") << entry << " in segment " << item.dump();
             resp["status"] = "ERROR";
             resp["messages"].push_back(msg.str());
-            resp["status_code"] = OpcUa_BadInvalidArgument;
+            resp["statuscode"] = OpcUa_BadInvalidArgument;
             return false;
           }
           // 2. check entries for positions
@@ -2264,7 +2271,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
                             << entry << " of segment " << item.dump() << ". Expected " << iolmotors().size();
             resp["status"] = "ERROR";
             resp["messages"].push_back(msg.str());
-            resp["status_code"] = OpcUa_BadInvalidArgument;
+            resp["statuscode"] = OpcUa_BadInvalidArgument;
             return false;
           }
           // 3. check each coordinate to be in range
@@ -2279,7 +2286,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
                              << ", " << iolmotors().at(m_map_motor_coordinates.at(i))->get_range_max() << "]";
               resp["status"] = "ERROR";
               resp["messages"].push_back(msg.str());
-              resp["status_code"] = OpcUa_BadInvalidArgument;
+              resp["statuscode"] = OpcUa_BadInvalidArgument;
               return false;
             }
           }
@@ -2315,7 +2322,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return false;
     }
     else
@@ -2324,8 +2331,112 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       msg << log_i("validate_scan_plan","Configuration validated.");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     return true;
   }
+  UaStatus DIoLaserSystem::set_dac_threshold(uint16_t &val,UaString &resp)
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json jresp;
+    UaStatus st;
+    int ret;
+    try
+    {
+      // first do some quality checks
+      // the DAC only goes to 4095 (0xFFF)
+      if (val > 0xFFF)
+      {
+        msg.clear(); msg.str("");
+        msg << log_e("set_dac_threshold","Value beyond allowed limits [0,4095]");
+        jresp["status"] = "ERROR";
+        jresp["messages"].push_back(msg.str());
+        jresp["statuscode"] = OpcUa_BadInvalidArgument;
+      }
+      else if (!m_dac.is_open())
+      {
+        msg.clear(); msg.str("");
+        msg << log_e("set_dac_threshold","Failed to communicate with the DAC");
+        jresp["status"] = "ERROR";
+        jresp["messages"].push_back(msg.str());
+        jresp["statuscode"] = OpcUa_BadInvalidState;
+      }
+      else // all is good
+      {
+        ret = m_dac.set_level(1,val);
+        if (ret)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e("set_dac_threshold","Failed to set DAC threshold");
+          jresp["status"] = "ERROR";
+          jresp["messages"].push_back(msg.str());
+          jresp["statuscode"] = OpcUa_BadCommunicationError;
+        }
+        else
+        {
+          // read it back again to confirm we have the result
+          uint16_t readback;
+          ret = m_dac.get_level(1,readback);
+          if (ret)
+          {
+            msg.clear(); msg.str("");
+            msg << log_e("set_dac_threshold","Failed to get DAC threshold readback");
+            jresp["status"] = "ERROR";
+            jresp["messages"].push_back(msg.str());
+            jresp["statuscode"] = OpcUa_BadCommunicationError;
+          }
+          else
+          {
+            if (readback != val)
+            {
+              msg.clear(); msg.str("");
+              msg << log_e("set_dac_threshold","Failed to get correct DAC threshold readback. Set ") << val << " readback  " << readback;
+              jresp["status"] = "ERROR";
+              jresp["messages"].push_back(msg.str());
+              jresp["statuscode"] = OpcUa_Bad;
+            }
+            else
+            {
+              jresp["messages"].push_back("DAC set successfully");
+            }
+          }
+        }
+      }
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("move_to_pos","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("move_to_pos","Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("move_to_pos","Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      jresp["status"] = "ERROR";
+      jresp["messages"].push_back(msg.str());
+      jresp["statuscode"] = OpcUa_Bad;
+    }
+    // why was this commented?
+    if (!jresp.contains("status"))
+    {
+      jresp["status"] = "SUCCESS";
+      jresp["statuscode"] = OpcUa_Good;
+    }
+    resp = UaString(jresp.dump().c_str());
+    return OpcUa_Good;
+  }
+
+
 }

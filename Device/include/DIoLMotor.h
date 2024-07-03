@@ -114,6 +114,7 @@ private:
     UaStatus unmap_registers();
 
 public:
+
     void update();
     bool is_ready();
     //

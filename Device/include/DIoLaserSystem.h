@@ -47,7 +47,7 @@ public:
     /* delegators for
     cachevariables and sourcevariables */
     /* Note: never directly call this function. */
-    UaStatus writeDac_level ( const OpcUa_UInt16& v);
+    UaStatus writeDac_threshold ( const OpcUa_UInt16& v);
 
 
     /* delegators for methods */
@@ -98,6 +98,10 @@ public:
         const std::vector<OpcUa_Byte>&  approach,
         UaString& response
     ) ;
+    UaStatus callSet_dac_threshold (
+        OpcUa_UInt16 dac_level,
+        UaString& response
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */
@@ -134,6 +138,8 @@ private:
     UaStatus move_motor(
         const std::vector<OpcUa_Int32>&  position,
         json &resp);
+    UaStatus set_dac_threshold(uint16_t &val,UaString &resp);
+
     inline void reset(std::ostringstream &s);
     bool validate_config_fragment(json &frag, json &resp);
     void update_state(State s);

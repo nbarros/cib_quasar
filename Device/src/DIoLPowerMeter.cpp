@@ -153,9 +153,9 @@ UaStatus DIoLPowerMeter::callInit (
     {
       resp["status"] = "SUCCESS";
     }
-    if (!resp.contains("status_code"))
+    if (!resp.contains("statuscode"))
     {
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -174,9 +174,9 @@ UaStatus DIoLPowerMeter::callSet_connection (
     {
       resp["status"] = "SUCCESS";
     }
-    if (!resp.contains("status_code"))
+    if (!resp.contains("statuscode"))
     {
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -193,9 +193,9 @@ UaStatus DIoLPowerMeter::callSet_average (
     {
       resp["status"] = "OK";
     }
-    if (!resp.contains("status_code"))
+    if (!resp.contains("statuscode"))
     {
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -212,9 +212,9 @@ UaStatus DIoLPowerMeter::callSet_range (
     {
       resp["status"] = "OK";
     }
-    if (!resp.contains("status_code"))
+    if (!resp.contains("statuscode"))
     {
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -231,9 +231,9 @@ UaStatus DIoLPowerMeter::callSet_pulse_width (
     {
       resp["status"] = "OK";
     }
-    if (!resp.contains("status_code"))
+    if (!resp.contains("statuscode"))
     {
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -250,9 +250,9 @@ UaStatus DIoLPowerMeter::callSet_threshold (
     {
       resp["status"] = "OK";
     }
-    if (!resp.contains("status_code"))
+    if (!resp.contains("statuscode"))
     {
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -269,9 +269,9 @@ UaStatus DIoLPowerMeter::callSet_wavelength (
     {
       resp["status"] = "OK";
     }
-    if (!resp.contains("status_code"))
+    if (!resp.contains("statuscode"))
     {
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -288,9 +288,9 @@ UaStatus DIoLPowerMeter::callSet_measurement_mode (
     {
       resp["status"] = "OK";
     }
-    if (!resp.contains("status_code"))
+    if (!resp.contains("statuscode"))
     {
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -301,9 +301,9 @@ UaStatus DIoLPowerMeter::callReset (
 {
     json resp;
     reset(resp);
-    if (resp.contains("status_code"))
+    if (resp.contains("statuscode"))
     {
-      return static_cast<UaStatus>(resp.at("status_code").get<uint32_t>());
+      return static_cast<UaStatus>(resp.at("statuscode").get<uint32_t>());
     }
     else
     {
@@ -346,7 +346,7 @@ UaStatus DIoLPowerMeter::callConfig (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       response = UaString(resp.dump().c_str());
       return OpcUa_Good;
     }
@@ -365,7 +365,7 @@ UaStatus DIoLPowerMeter::callStop_measurements (
     msg.clear(); msg.str("");
     msg << log_i("pause_measurement","Pausing energy measurements.");
     resp["messages"].push_back(msg.str());
-    resp["status_code"] = OpcUa_Good;
+    resp["statuscode"] = OpcUa_Good;
     response = UaString(resp.dump().c_str());
     //
     return OpcUa_Good;
@@ -381,7 +381,7 @@ UaStatus DIoLPowerMeter::callStart_measurements (
     msg.clear(); msg.str("");
     msg << log_e("resume_measurement","Resuming energy measurements.");
     resp["messages"].push_back(msg.str());
-    resp["status_code"] = OpcUa_Good;
+    resp["statuscode"] = OpcUa_Good;
     response = UaString(resp.dump().c_str());
     //
     return OpcUa_Good;
@@ -411,7 +411,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("set_conn","Power Meter is online. You must first shut it down.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidState;
+      resp["statuscode"] = OpcUa_BadInvalidState;
       return OpcUa_BadInvalidState;
 }
     // if the port is already set and the connection is
@@ -423,7 +423,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg.clear(); msg.str("");
       msg << log_e("set_conn","Device is already connected. Should first \'terminate\' present connection.");
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidState;
+      resp["statuscode"] = OpcUa_BadInvalidState;
       return OpcUa_BadInvalidState;
     }
     // check whether the port is "auto"
@@ -436,7 +436,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_i("set_conn","Automatic search found port [") << m_comport << "]";
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     else
     {
@@ -449,7 +449,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("set_conn","Port is invalid [") << m_comport << "]";
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidArgument;
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
       return OpcUa_BadInvalidArgument;
     }
     UaString ss(m_comport.c_str());
@@ -464,7 +464,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_i("set_conn","Baud rate kept to current value[") << m_baud_rate << "]";
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
     }
     else
     {
@@ -512,7 +512,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     status = OpcUa_Good;
     UaString ua_str = UaString(m_status_map.at(m_status).c_str());
-    getAddressSpaceLink()->setStatus(ua_str,status);
+    getAddressSpaceLink()->setState(ua_str,status);
   }
 
   void DIoLPowerMeter::refresh_energy_reading()
@@ -684,7 +684,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("init","There is no port");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
     }
@@ -693,7 +693,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("init"," ") << "Malformed port [" << m_comport << "]. Expected something like [/dev/ttyXXXXX]";
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     if (m_comport == std::string("auto"))
@@ -756,7 +756,7 @@ UaStatus DIoLPowerMeter::callTerminate (
             << sn << "] != [" << m_serial_number<<"]";
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_Bad;
+        resp["statuscode"] = OpcUa_Bad;
         LOG(Log::ERR) << msg.str();
         delete m_pm;
         update_status(sOffline);
@@ -809,7 +809,7 @@ UaStatus DIoLPowerMeter::callTerminate (
           if (rep.at("status").get<std::string>() == std::string("ERROR"))
           {
             resp["status"] = "ERROR";
-            resp["status_code"] = rep.at("status_code");
+            resp["statuscode"] = rep.at("statuscode");
             resp["messages"].insert(std::end(resp["messages"]),std::begin(rep["messages"]),std::end(rep["messages"]));
             msg.clear(); msg.str("");
             msg << log_e("init"," ") << "Failed to complete Power Meter configuration. See previous messages";
@@ -868,7 +868,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       update_status(sOffline);
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     else
@@ -877,7 +877,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_i("config","System inititalized");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
       return OpcUa_Good;
     }
     return OpcUa_Good;
@@ -895,7 +895,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("reset","Power Meter is offline. No reset possible.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidState;
+      resp["statuscode"] = OpcUa_BadInvalidState;
       return OpcUa_BadInvalidState;
     }
     // -- if Reading, stop the measurements
@@ -955,7 +955,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       init(resp);
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     else
@@ -964,7 +964,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_i("reset","System reset");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
       return OpcUa_Good;
     }
     return OpcUa_Good;
@@ -998,7 +998,7 @@ UaStatus DIoLPowerMeter::callTerminate (
                       << " (" << conf.at("name").get<std::string>() <<" <> " << m_name << ")";
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadInvalidArgument;
+        resp["statuscode"] = OpcUa_BadInvalidArgument;
         return OpcUa_BadInvalidArgument;
       }
       // if it is a valid configuration fragment start processing it.
@@ -1055,7 +1055,7 @@ UaStatus DIoLPowerMeter::callTerminate (
             << sn << "] != [" << m_serial_number<<"]";
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_Bad;
+        resp["statuscode"] = OpcUa_Bad;
         LOG(Log::ERR) << msg.str();
         delete m_pm;
         update_status(sOffline);
@@ -1076,7 +1076,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         msg << log_e("init"," ") << "Failed to set measurement mode : " << m_measurement_mode;
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_Bad;
+        resp["statuscode"] = OpcUa_Bad;
         LOG(Log::ERR) << msg.str();
         return OpcUa_Bad;
       }
@@ -1170,7 +1170,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       update_status(sOffline);
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
     }
     else
@@ -1179,7 +1179,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_i("config","System configured");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
       return OpcUa_Good;
     }
     return OpcUa_Good;
@@ -1249,7 +1249,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       // just nullify the pointer
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       update_status(sOffline);
       m_pm = nullptr;
       // the return value is actually not very relevant
@@ -1262,7 +1262,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_i("terminate","System terminated");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
       return OpcUa_Good;
     }
   }
@@ -1275,7 +1275,7 @@ UaStatus DIoLPowerMeter::callTerminate (
   {
     m_status = s;
     UaString ss(m_status_map.at(m_status).c_str());
-    getAddressSpaceLink()->setStatus(ss,OpcUa_Good);
+    getAddressSpaceLink()->setState(ss,OpcUa_Good);
   }
   UaStatus DIoLPowerMeter::set_average(const uint16_t ave, json &resp)
   {
@@ -1286,7 +1286,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("set_average"," ") << "Can't find selected option in available options : " << ave;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     m_pm->average_query(m_ave_setting, u16); // this ensures that the map is filled
     if (u16 != m_ave_setting)
@@ -1295,7 +1295,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("set_average"," ") << "Failed to select average window.";
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       LOG(Log::ERR) << msg.str();
       getAddressSpaceLink()->setAverage_window(u16,OpcUa_Bad);
       return OpcUa_Bad;
@@ -1313,7 +1313,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("set_range"," ") << "Can't find selected range in available options : " << range;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     m_pm->write_range(range, success);
     if (!success)
@@ -1322,7 +1322,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("set_range"," ") << "Failed to select range " << range;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       getAddressSpaceLink()->setRange_selected(m_sel_range,OpcUa_Bad);
       LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
@@ -1340,7 +1340,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("set_pwidth"," ") << "Can't find selected option in available options : " << pwidth;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
     }
     m_pm->pulse_length(pwidth, u16);
     if (u16 != pwidth)
@@ -1349,7 +1349,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("set_pwidth"," ") << "Failed to select pulse width " << pwidth;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       LOG(Log::ERR) << msg.str();
       getAddressSpaceLink()->setPulse_width(u16,OpcUa_Bad);
       return OpcUa_Bad;
@@ -1375,7 +1375,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         msg << log_e("init"," ") << " Failed to set energy threshold to " << thresh;
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_Bad;
+        resp["statuscode"] = OpcUa_Bad;
         LOG(Log::ERR) << msg.str();
         getAddressSpaceLink()->setTrigger_threshold(u16,OpcUa_Bad);
         return OpcUa_Bad;
@@ -1397,7 +1397,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e("set_lambda"," ") << "Failed to set wavelength to " << lambda;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
       LOG(Log::ERR) << msg.str();
       getAddressSpaceLink()->setWavelength(m_wavelength,OpcUa_Bad);
       return OpcUa_Bad;
@@ -1461,7 +1461,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << "]";
       r["status"] = "ERROR";
       r["messages"].push_back(msg.str());
-      r["status_code"] = OpcUa_BadInvalidArgument;
+      r["statuscode"] = OpcUa_BadInvalidArgument;
       return false;
     }
     // all good, return true
