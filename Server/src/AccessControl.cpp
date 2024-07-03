@@ -177,9 +177,26 @@ void
 AccessControl::closeSession(UA_Server *server, UA_AccessControl *ac,
                      const UA_NodeId *sessionId, void *sessionContext)
 {
+
+#ifdef NFB_DEBUG
+  UA_LOG_INFO(&server->config->logger, UA_LOGCATEGORY_SERVER,
+              "AccessControl: entering closeSession");
+#endif
+
     if(sessionContext)
-        UA_ByteString_delete((UA_ByteString*)sessionContext);
-}
+    {
+      UA_ByteString username = *((UA_ByteString*)sessionContext);
+#ifdef NFB_DEBUG
+      UA_LOG_INFO(&server->config->logger, UA_LOGCATEGORY_SERVER,
+                  "AccessControl: closing session for ") << username.data;
+#endif
+      UA_ByteString_delete((UA_ByteString*)sessionContext);
+    }
+#ifdef NFB_DEBUG
+  UA_LOG_INFO(&server->config->logger, UA_LOGCATEGORY_SERVER,
+              "AccessControl: leaving closeSession");
+#endif
+  }
 
 UA_UInt32
 AccessControl::getUserRightsMask(UA_Server *server, UA_AccessControl *ac,
@@ -200,6 +217,7 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
   ////LOG(Log::ERR) << "AccessControl::activateSession : Activating session.";
 
   AccessControl::AccessControlContext *context = (AccessControl::AccessControlContext*)ac->context;
+  UA_ByteString anon = UA_BYTESTRING_ALLOC("anonymous");
 
     /* The empty token is interpreted as anonymous */
     if(userIdentityToken->encoding == UA_EXTENSIONOBJECT_ENCODED_NOBODY)
@@ -217,13 +235,12 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
 //        bstr->data = (UA_Byte*) anonymous_string;
 //        bstr->length = 10;
 //
-//        UA_ByteString *username = UA_ByteString_new();
-        UA_ByteString username = UA_BYTESTRING_ALLOC("anonymous");
+        UA_ByteString *username = UA_ByteString_new();
 //        if(username)
-//          UA_ByteString_copy("anonymous", username);
+          UA_ByteString_copy(&anon, username);
         //printf("Context will have [%s] [%s]\n\n",userToken->userName.data,username->data);
-        *sessionContext = &username;
-
+         *sessionContext = username;
+//        UA_ByteString username2 = *((UA_ByteString*)*sessionContext);
         //*sessionContext = NULL;
         ////LOG(Log::WRN) << "activateSession : Allowing anonymous token. sessionContext will be empty. Returning good.";
 
@@ -259,8 +276,11 @@ AccessControl::activateSession(UA_Server *server, UA_AccessControl *ac,
         }
         /* No userdata atm */
        // *sessionContext = NULL;
-        UA_ByteString username = UA_BYTESTRING_ALLOC("anonymous");
-        *sessionContext = &username;
+        // this does not work as the object is destroyed upon return
+        //UA_ByteString username = UA_BYTESTRING_ALLOC("anonymous");
+        UA_ByteString *username = UA_ByteString_new();
+        UA_ByteString_copy(&anon, username);
+        *sessionContext = username;
 
         //LOG(Log::WRN) << "activateSession : Allowing anonymous policy token. sessionContext will be empty. Returning good.";
 
@@ -364,7 +384,10 @@ UA_Boolean
 AccessControl::allowAddNode(UA_Server *server, UA_AccessControl *ac,
              const UA_NodeId *sessionId, void *sessionContext,
              const UA_AddNodesItem *item) {
-    printf("Called allowAddNode\n");
+#ifdef NFB_DEBUG
+      UA_LOG_INFO(&server->config->logger, UA_LOGCATEGORY_SERVER,
+                  "AccessControl: entering allowAddNode ");
+#endif
     // nobody can add nodes
     return UA_FALSE; //UA_TRUE;
 }
@@ -405,8 +428,8 @@ AccessControl::getUserExecutableOnObject(UA_Server *server, UA_AccessControl *ac
 
    // UA_StatusCode UA_Server_readNodeClass(UA_Server *server, const UA_NodeId nodeId,
   //                        UA_NodeClass *outNodeClass)
-  UA_QualifiedName nqname;
-  UA_Server_readBrowseName(server,*methodId,&nqname);
+//  UA_QualifiedName nqname;
+//  UA_Server_readBrowseName(server,*methodId,&nqname);
   //  UA_Server_readBrowseName(UA_Server *server, const UA_NodeId nodeId,
   //                           UA_QualifiedName *outBrowseName)
 
@@ -550,9 +573,11 @@ void AccessControl::link_callbacks(UA_Server *s)
   //LOG(Log::INF) <<  "AccessControl::link_callbacks : Linking callbacks";
   UA_ServerConfig* config = UA_Server_getConfig(s);
 
-  UA_UsernamePasswordLogin logins[2] = {
+  UA_UsernamePasswordLogin logins[4] = {
       {UA_STRING_STATIC("peter"), UA_STRING_STATIC("peter123")},
-      {UA_STRING_STATIC("nuno"), UA_STRING_STATIC("nuno123")}
+      {UA_STRING_STATIC("nuno"), UA_STRING_STATIC("nuno123")},
+      {UA_STRING_STATIC("dune"), UA_STRING_STATIC("Calib!LArTPC_24")},
+      {UA_STRING_STATIC("iols"), UA_STRING_STATIC("Calib!LArTPC_24")}
   };
 
 
@@ -583,6 +608,6 @@ void AccessControl::link_callbacks(UA_Server *s)
       config->accessControl.getUserExecutableOnObject = AccessControl::getUserExecutableOnObject;
       config->accessControl.allowBrowseNode = AccessControl::allowBrowseNode;
       config->accessControl.getUserExecutable = AccessControl::getUserExecutable;
-
+      config->accessControl.closeSession = AccessControl::closeSession;
   // initialize the
 }
