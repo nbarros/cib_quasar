@@ -6,14 +6,14 @@
 #set(CUSTOM_SERVER_MODULES AccessControl)
 set(CUSTOM_SERVER_MODULES LaserControl LaserUtils)
 include_directories( ${PROJECT_SOURCE_DIR}/LaserUtils/i2c/ )
-include_directories( ${PROJECT_SOURCE_DIR}/LaserUtils/i2c/ )
+#include_directories( ${PROJECT_SOURCE_DIR}/LaserUtils/i2c/ )
 
 set(EXECUTABLE OpcUaServer)
 set(SERVER_INCLUDE_DIRECTORIES  )
 set(SERVER_LINK_LIBRARIES  "-lcurl" spdlog i2c)
 set(SERVER_LINK_DIRECTORIES  )
 
-#add_compile_definitions(SIMULATION)
+add_compile_definitions(SIMULATION)
 
 
 ##set(CMAKE_VERBOSE_MAKEFILE ON)
