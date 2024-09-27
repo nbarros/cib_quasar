@@ -2099,7 +2099,7 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
       resp["statuscode"] = OpcUa_BadInvalidArgument;
       return false;
     }
-    if (frag.at("id").get<std::string>() != id())
+    if (frag.at("id").get<std::string>() != name())
     {
       reset(msg);
       msg << log_e("validate_config","Configuration fragment has a mismatched ID. Expected ") << id();
