@@ -138,7 +138,7 @@ private:
     UaStatus move_motor(
         const std::vector<OpcUa_Int32>&  position,
         json &resp);
-    UaStatus set_dac_threshold(uint16_t &val,UaString &resp);
+    UaStatus set_dac_threshold(uint16_t &val,json &resp);
 
     inline void reset(std::ostringstream &s);
     bool validate_config_fragment(json &frag, json &resp);

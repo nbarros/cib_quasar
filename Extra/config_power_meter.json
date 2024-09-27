@@ -1,8 +1,8 @@
 {
 "type" : "PowerMeter",
-"name" : "PWM1",
-"serial_number":"NJAS44DN",
-"port":"/dev/ttyUSB0",
+"name" : "PM1",
+"serial_number":"A9CQTZ05",
+"port":"auto",
 "baud_rate":9800,
 "measurement_mode":1,
 "select_range":1,

@@ -174,10 +174,10 @@ UaStatus DIoLaserSystem::callCheck_ready (
     {
       rdy |= lunit->is_ready();
     }
-    for (Device::DIoLMotor* lmotor : iolmotors ())
-    {
-      rdy |= lmotor->is_ready();
-    }
+//    for (Device::DIoLMotor* lmotor : iolmotors ())
+//    {
+//      rdy |= lmotor->is_ready();
+//    }
     for (Device::DIoLAttenuator* latt : iolattenuators ())
     {
       rdy |= latt->is_ready();
@@ -559,7 +559,10 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
     UaString& response
 )
 {
-    return set_dac_threshold(dac_level,response);
+    json resp;
+    UaStatus st = set_dac_threshold(dac_level,resp);
+    response = UaString(resp.dump().c_str());
+    return st;
 }
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
@@ -684,24 +687,20 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
           }
         }
         // For now there is no configuration necessary for the CIB
-        //        if (it.key() == "cib")
-        //        {
-        //          // there is only 1 laser
-        //          json aconf = it.value();
-        //          st = iolattenuator()->config(aconf,resp);
-        //          if (st != OpcUa_Good)
-        //          {
-        //            reset(msg);
-        //            msg << log_e("config","Failed to configure attenuator.");
-        //            resp["status"] = "ERROR";
-        //            resp["messages"].push_back(msg.str());
-        //            if (!resp.contains("statuscode"))
-        //            {
-        //              resp["statuscode"] = OpcUa_BadInvalidArgument;
-        //            }
-        //            return OpcUa_BadInvalidArgument;
-        //          }
-        //        }
+        if (it.key() == "cib")
+        {
+          json cconf = it.value();
+          for (json::iterator it = cconf.begin(); it != cconf.end(); ++it)
+          {
+            LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
+            if (it.key() == "dac_threshold")
+            {
+              //
+              uint16_t v = it.value();
+              set_dac_threshold(v,resp);
+            }
+          }
+        }
         // ------------------
         // power meter : one unit
         //----------------------------------
@@ -2088,7 +2087,7 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
     // this is just a validation check for the available keys.
     // it will only check the mandatory keys.
     std::ostringstream msg("");
-    std::vector<std::string> keys = {"id","motor","attenuator","laser",
+    std::vector<std::string> keys = {"id","motors","attenuator","laser",
         "power_meter", "cib"
     };
     if (!frag.contains("id"))
@@ -2335,7 +2334,7 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
     }
     return true;
   }
-  UaStatus DIoLaserSystem::set_dac_threshold(uint16_t &val,UaString &resp)
+  UaStatus DIoLaserSystem::set_dac_threshold(uint16_t &val,json &resp)
   {
     std::ostringstream msg("");
     bool got_exception = false;
@@ -2434,7 +2433,8 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
       jresp["status"] = "SUCCESS";
       jresp["statuscode"] = OpcUa_Good;
     }
-    resp = UaString(jresp.dump().c_str());
+    //resp = UaString(jresp.dump().c_str());
+    resp = jresp;
     return OpcUa_Good;
   }
 
