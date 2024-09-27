@@ -554,11 +554,13 @@ UaStatus DIoLAttenuator::init_device(json &resp)
     // at this stage, it either has a good value or not
     try
     {
-#ifdef SIMULATION
-      m_att = new device::AttenuatorSim();
-#else
+//#ifdef SIMULATION
+//      m_att = new device::AttenuatorSim();
+//#else
+      LOG(Log::ERR) << "DIoLAttenuator::init : Initializing the attenuator with port  " << m_comport << " : " << m_baud_rate;
+
       m_att = new device::Attenuator(m_comport.c_str(),m_baud_rate);
-#endif
+//#endif
       m_status = sReady;
       refresh_position();
       //NOTE: Do we need to refresh the status
