@@ -695,7 +695,7 @@ UaStatus DIoLAttenuator::config(json config, json &resp)
         uint16_t v = it.value();
         ret = ret | set_current_idle(v,resp);
       }
-      if (it.key() == "current_moving")
+      if (it.key() == "current_move")
       {
         uint16_t v = it.value();
         ret = ret | set_current_moving(v,resp);
@@ -706,6 +706,8 @@ UaStatus DIoLAttenuator::config(json config, json &resp)
         ret = ret | set_resolution(v,resp);
       }
     }
+    LOG(Log::INF) << "All done configuring the Attenuator\n";
+
     // if at this point ret is not good, something failed to set
     // however, this in itself is not necessarily a problem, as the deaults still hold
     // so keep it as a warning
