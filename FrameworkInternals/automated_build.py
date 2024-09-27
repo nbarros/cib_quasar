@@ -114,4 +114,5 @@ def automatedBuild(context, *args):
         process = subprocess.Popen(["nproc"], stdout=subprocess.PIPE)
         nproc_out, err = process.communicate()
         num_cpus = int(nproc_out)
-        subprocessWithImprovedErrors([getCommand("cmake"), "--build", ".", "--config", builder, "--", "-j", str(num_cpus)], "cmake --build")
+        subprocessWithImprovedErrors([getCommand("cmake"), "--build", ".", "--config", builder, "--", "-j", "2"], "cmake --build")
+        #subprocessWithImprovedErrors([getCommand("cmake"), "--build", ".", "--config", builder, "--", "-j", str(num_cpus)],"cmake --build")
