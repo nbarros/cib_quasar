@@ -31,8 +31,28 @@ namespace device {
 namespace Device
 {
 
-  typedef struct
+  // structure describing memory maps
+  typedef struct cib_reg_t
   {
+    uintptr_t paddr;
+    uintptr_t vaddr;
+    size_t size;
+    int id;
+  } cib_reg_t;
+
+  typedef struct conf_param_t
+  {
+    cib_reg_t reg;
+    uintptr_t offset;
+    uint16_t bit_low;
+    uint16_t bit_high;
+    uint32_t mask;
+    size_t n_bits;
+  } conf_param_t;
+
+  typedef struct laser_regs_t
+  {
+    uint16_t reg_id;
     uint16_t offset;
     uint16_t bit_high;
     uint16_t bit_low;
@@ -45,15 +65,15 @@ namespace Device
     // lsb
     bool ext_shutter_closed    : 1;
     bool laser_shutter_closed  : 1;
-    bool qswitch_en            : 1;
-    bool laser_started         : 1;
+    bool qswitch_enable        : 1;
+    bool fire_enable           : 1;
     uint8_t padding            : 4;
     // msb
     laser_state_t() :
       ext_shutter_closed(0x0),
       laser_shutter_closed(0x0),
-      qswitch_en(0x0),
-      laser_started(0x0),
+      qswitch_enable(0x0),
+      fire_enable(0x0),
       padding(0x0) {}
   } laser_state_t;
 
@@ -173,8 +193,10 @@ public:
                                       `
                                        `--> sPause  --> sLasing
                                                     `-> sStandby
-
+in terms of methods the actions are:
+config -> init -> start_cib -> [pause, standby, resume, force_ext_shutter] -> stop -> terminate
      */
+
 
     // bitfield with the settings that are already configured
     typedef struct {
@@ -222,6 +244,7 @@ public:
     //
 private:
     // -- private methods
+    void init_cib_registers();
     void update_status(Status nst);
     void automatic_port_search();
     void refresh_status(json &resp);
@@ -238,6 +261,16 @@ private:
     UaStatus set_qswitch_delay(const uint32_t v,json &resp);
     UaStatus set_qswitch_width(const uint32_t v,json &resp);
     UaStatus set_fire_width(const uint32_t v,json &resp);
+    // methods that are called  often
+    void enable_fire();
+    void enable_qswitch();
+    void disable_fire();
+    void disable_qswitch();
+    void close_ext_shutter();
+    void open_ext_shutter();
+    void set_fire(const uint32_t s);
+    void set_qswitch(const uint32_t s);
+    void set_ext_shutter(const uint32_t s);
 
 
     //
@@ -247,7 +280,7 @@ private:
     void start_standby_timer();
 
     UaStatus map_registers(json &reginfo, json &resp);
-    UaStatus unmap_registers();
+//    UaStatus unmap_registers();
     uint32_t get_cib_shot_count();
     //
     //
@@ -260,12 +293,7 @@ private:
     double m_rate_hz;
     // cache variables for the present state of these parts
     laser_state_u m_part_state;
-    // FIXME: Get rid of these
-    //    bool m_laser_shutter_closed;
-    //    bool m_ext_shutter_closed;
-    //    bool m_qswitch_en;
-    //    bool m_laser_started;
-
+    //
     uint32_t m_shot_count;
     //
     std::string m_comport;
@@ -275,7 +303,6 @@ private:
     //
     std::map<Status,std::string> m_status_map;
     std::string m_name;
-    //conf_word m_config;
     //
     // these timers are not yet set up
     // they should be set up at the IoLaserSystem level
@@ -285,7 +312,7 @@ private:
     // Variables necessary to map registers in the CIB
     //
     int m_mmap_fd;
-    uintptr_t m_mapped_mem;
+    //    uintptr_t m_mapped_mem;
     // variables that are relevant for the memory mapped registers
     // we could actually make this absolutely generic, dependent on the configuration
     // of course the usage then would be different
@@ -300,6 +327,7 @@ private:
     std::string m_serial_number;
     uint32_t m_warmup_timer;
 
+    std::map<int,cib_reg_t> m_reg_map;
 
 };
 
