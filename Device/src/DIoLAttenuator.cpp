@@ -423,7 +423,7 @@ void DIoLAttenuator::automatic_port_search()
   m_comport = util::find_port(m_sn);
   if (m_comport.size() == 0)
   {
-    LOG(Log::ERR) << "DIoLPowerMeter::automatic_port_search : Couldn't find device port";
+    LOG(Log::ERR) << "DIoLAttenuator::automatic_port_search : Couldn't find device port for serial number " << m_sn;
   }
 
   m_status = sOffline;
@@ -431,7 +431,7 @@ void DIoLAttenuator::automatic_port_search()
  catch(...)
  {
    m_status = sOffline;
-   LOG(Log::ERR) << "DIoLPowerMeter::automatic_port_search : Caught an exception searching for the port";
+   LOG(Log::ERR) << "DIoLAttenuator::automatic_port_search : Caught an exception searching for the port";
    m_comport = "";
  }
 }
@@ -541,9 +541,16 @@ UaStatus DIoLAttenuator::init_device(json &resp)
     {
       msg.clear(); msg.str("");
       msg << log_w("init","port set to automatic. Searching for port using serial number");
-      resp.push_back(msg.str());
+      resp["messages"].push_back(msg.str());
       automatic_port_search();
     }
+    if (m_comport.size() == 0)
+    {
+      msg << log_e("init","Port is empty. Aborting");
+      resp["messages"].push_back(msg.str());
+      return OpcUa_Bad;
+    }
+
     // at this stage, it either has a good value or not
     try
     {
@@ -636,6 +643,7 @@ UaStatus DIoLAttenuator::config(json config, json &resp)
       return OpcUa_BadInvalidArgument;
     }
 
+    m_sn = sn;
     std::string comport = config.at("port").get<std::string>();
     uint32_t baud_rate = config.at("baud_rate").get<std::uint32_t>();
 
