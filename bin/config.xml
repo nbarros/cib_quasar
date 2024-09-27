@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration xmlns="http://cern.ch/quasar/Configuration" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cern.ch/quasar/Configuration ../Configuration/Configuration.xsd ">
-<IoLaserSystem location="0x1" name="LS1" id="11">
+<IoLaserSystem location="0x1" name="LS1" id="LS1">
 	<IoLMotor name="RNN800" id="RNN800" serial_number="DEADBEEF1"></IoLMotor>
 	<IoLMotor name="RNN600" id="RNN600" serial_number="DEADBEEF2"></IoLMotor>
 	<IoLMotor name="LSTAGE" id="LSTAGE" serial_number="DEADBEEF3"></IoLMotor>
