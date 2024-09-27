@@ -517,6 +517,8 @@ UaStatus DIoLMotor::callReset (
       curl_easy_setopt(curl, CURLOPT_PORT, lport);
 
       curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+      curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 500L);
+
       //curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
       curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.42.0");
       curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
@@ -619,6 +621,7 @@ UaStatus DIoLMotor::callReset (
       ret |= curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
       ret |= curl_easy_setopt(curl, CURLOPT_PORT, lport);
       ret |= curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+      ret |= curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 500L);
       //curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
       ret |= curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.42.0");
       ret |= curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
@@ -702,6 +705,8 @@ UaStatus DIoLMotor::callReset (
       ret |= curl_easy_setopt(curl, CURLOPT_PORT, lport);
       //
       ret |= curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+      ret |= curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 500L);
+
       //curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
       ret |= curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.42.0");
       ret |= curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
