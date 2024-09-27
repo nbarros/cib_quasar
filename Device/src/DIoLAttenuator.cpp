@@ -626,7 +626,8 @@ UaStatus DIoLAttenuator::config(json config, json &resp)
     std::string name, sn;
     name = config.at("name").get<std::string>();
     sn = config.at("serial_number").get<std::string>();
-    if (!((name == m_name) && (sn == m_sn)))
+    // NFB: Do not check SN. We do want to be able to change this without reboot the server
+    if (!(name == m_name))
     {
       msg.clear(); msg.str("");
       msg << log_e("config","Device mismatch (name,sn) = (") << name << "," << sn
