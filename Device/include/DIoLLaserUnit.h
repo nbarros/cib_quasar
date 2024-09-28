@@ -24,6 +24,7 @@
 #include <Base_DIoLLaserUnit.h>
 #include <json.hpp>
 using json = nlohmann::json;
+#include <atomic>
 namespace device {
   class Laser;
 }
@@ -328,7 +329,7 @@ private:
     uint32_t m_warmup_timer;
 
     std::map<int,cib_reg_t> m_reg_map;
-
+    std::atomic<bool> m_serial_busy;
 };
 
 }
