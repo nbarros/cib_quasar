@@ -33,7 +33,8 @@
 #include <utilities.hh>
 #include <sstream>
 #include <vector>
-
+#include <thread>
+#include <chrono>
 using std::ostringstream;
 using std::string;
 using std::vector;
@@ -93,6 +94,7 @@ DIoLAttenuator::DIoLAttenuator (
     ,m_current_moving(10)
     ,m_transmission(0.0)
     ,m_status(sOffline)
+    ,m_serial_busy(false)
 {
     /* fill up constructor body here */
   m_id = id();
@@ -446,13 +448,18 @@ void DIoLAttenuator::refresh_status(json &resp)
   if (m_status != sReady)
   {
     msg.clear();msg.str("");
-    msg << log_e("refresh","device is not initialized");
+    msg << log_e("refresh","device is not fully initialized");
     resp["messages"].push_back(msg.str());
     return;
   }
   //
   try
   {
+    while (m_serial_busy.load())
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    m_serial_busy.store(true);
     m_att->refresh_status();
     // now fetch all local variables
     m_att->get_offset(m_offset);
@@ -479,6 +486,7 @@ void DIoLAttenuator::refresh_status(json &resp)
     getAddressSpaceLink()->setMotor_state(m_motor_state, OpcUa_Good);
     std::string p_smap_str = util::serialize_map(m_motor_states);
     getAddressSpaceLink()->setMotor_state_options(UaString(p_smap_str.c_str()),p_smap_str.size(),OpcUa_Good);
+    m_serial_busy.store(false);
   }
   catch(serial::PortNotOpenedException &e)
   {
@@ -508,10 +516,13 @@ void DIoLAttenuator::refresh_status(json &resp)
   {
     resp["messages"].push_back(msg.str());
   }
+  m_serial_busy.store(false);
+
 }
 
 void DIoLAttenuator::refresh_position()
 {
+  bool got_exception = false;
   if (!m_att)
   {
     // set the current address space values to invalid
@@ -519,9 +530,41 @@ void DIoLAttenuator::refresh_position()
     getAddressSpaceLink()->setMotor_state(m_motor_state, OpcUa_BadDataUnavailable);
   }
   else {
+    try
+    {
+
+    while (m_serial_busy.load())
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    m_serial_busy.store(true);
     m_att->get_position(m_position, m_motor_state, false);
+    m_serial_busy.store(false);
     getAddressSpaceLink()->setPosition(m_position, OpcUa_Good);
     getAddressSpaceLink()->setMotor_state(m_motor_state, OpcUa_Good);
+    }
+    catch(serial::PortNotOpenedException &e)
+    {
+      got_exception = true;
+    }
+    catch(serial::SerialException &e)
+    {
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      got_exception = true;
+    }
+    catch(...)
+    {
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      getAddressSpaceLink()->setPosition(m_position, OpcUa_BadDataUnavailable);
+      getAddressSpaceLink()->setMotor_state(m_motor_state, OpcUa_BadDataUnavailable);
+    }
+    m_serial_busy.store(false);
   }
 }
 
@@ -776,7 +819,13 @@ UaStatus DIoLAttenuator::set_transmission(double t, json &resp)
   try
   {
     // wait for the value to be set?
+    while (m_serial_busy.load())
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    m_serial_busy.store(true);
     m_att->set_transmission(t, true);
+    m_serial_busy.store(false);
     m_transmission = t;
     getAddressSpaceLink()->setTransmission(m_transmission,OpcUa_Good);
   }
@@ -810,6 +859,8 @@ UaStatus DIoLAttenuator::set_transmission(double t, json &resp)
     getAddressSpaceLink()->setTransmission(m_transmission,OpcUa_Bad);
     return OpcUa_Bad;
   }
+  m_serial_busy.store(false);
+
   return OpcUa_Good;
 }
 
@@ -866,8 +917,15 @@ UaStatus DIoLAttenuator::stop(json &resp)
   try
   {
     // wait for the value to be set?
+    while (m_serial_busy.load())
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    m_serial_busy.store(true);
     m_att->stop(false);
     m_att->get_position(m_position, m_motor_state, false);
+    m_serial_busy.store(false);
+
     getAddressSpaceLink()->setPosition(m_position, OpcUa_Good);
     getAddressSpaceLink()->setMotor_state(m_motor_state, OpcUa_Good);
   }
@@ -929,7 +987,14 @@ UaStatus DIoLAttenuator::set_resolution(const uint16_t v,json &resp)
   // all should be good now
   try
   {
+    // wait for the value to be set?
+    while (m_serial_busy.load())
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    m_serial_busy.store(true);
     m_att->set_resolution(v);
+    m_serial_busy.store(false);
     m_resolution_setting = v;
     getAddressSpaceLink()->setResolution_setting(m_resolution_setting, OpcUa_Good);
   }
@@ -991,7 +1056,13 @@ UaStatus DIoLAttenuator::set_current_idle(const uint16_t v,json &resp)
   // all should be good now
   try
   {
+    while (m_serial_busy.load())
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    m_serial_busy.store(true);
     m_att->set_idle_current(v);
+    m_serial_busy.store(false);
     m_current_idle = v;
     getAddressSpaceLink()->setIdle_current_setting(m_current_idle, OpcUa_Good);
   }
@@ -1023,6 +1094,7 @@ UaStatus DIoLAttenuator::set_current_idle(const uint16_t v,json &resp)
   {
     resp["messages"].push_back(msg.str());
     getAddressSpaceLink()->setIdle_current_setting(m_current_idle, OpcUa_Bad);
+    m_serial_busy.store(false);
     return OpcUa_Bad;
   }
   return OpcUa_Good;
@@ -1053,7 +1125,13 @@ UaStatus DIoLAttenuator::set_current_moving(const uint16_t v,json &resp)
   // all should be good now
   try
   {
+    while (m_serial_busy.load())
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    m_serial_busy.store(true);
     m_att->set_moving_current(v);
+    m_serial_busy.store(false);
     m_current_moving = v;
     getAddressSpaceLink()->setMoving_current_setting(m_current_moving, OpcUa_Good);
   }
@@ -1085,6 +1163,7 @@ UaStatus DIoLAttenuator::set_current_moving(const uint16_t v,json &resp)
   {
     resp["messages"].push_back(msg.str());
     getAddressSpaceLink()->setMoving_current_setting(m_current_moving, OpcUa_Bad);
+    m_serial_busy.store(false);
     return OpcUa_Bad;
   }
   return OpcUa_Good;
@@ -1116,7 +1195,13 @@ UaStatus DIoLAttenuator::set_acceleration(const uint16_t v,json &resp)
   // all should be good now
   try
   {
+    while (m_serial_busy.load())
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    m_serial_busy.store(true);
     m_att->set_acceleration(v);
+    m_serial_busy.store(false);
     m_acceleration = v;
     getAddressSpaceLink()->setAcceleration(m_acceleration, OpcUa_Good);
   }
@@ -1146,6 +1231,7 @@ UaStatus DIoLAttenuator::set_acceleration(const uint16_t v,json &resp)
   }
   if (got_exception)
   {
+    m_serial_busy.store(false);
     resp["messages"].push_back(msg.str());
     getAddressSpaceLink()->setAcceleration(m_acceleration, OpcUa_Bad);
     return OpcUa_Bad;
@@ -1178,7 +1264,14 @@ UaStatus DIoLAttenuator::set_deceleration(const uint16_t v,json &resp)
   // all should be good now
   try
   {
+    while (m_serial_busy.load())
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    m_serial_busy.store(true);
     m_att->set_deceleration(v);
+    m_serial_busy.store(false);
+
     m_deceleration = v;
     getAddressSpaceLink()->setDeceleration(m_deceleration, OpcUa_Good);
   }
@@ -1208,6 +1301,7 @@ UaStatus DIoLAttenuator::set_deceleration(const uint16_t v,json &resp)
   }
   if (got_exception)
   {
+    m_serial_busy.store(false);
     resp["messages"].push_back(msg.str());
     getAddressSpaceLink()->setDeceleration(m_deceleration, OpcUa_Bad);
     return OpcUa_Bad;
@@ -1241,7 +1335,13 @@ UaStatus DIoLAttenuator::set_max_speed(const uint32_t v,json &resp)
   // all should be good now
   try
   {
+    while (m_serial_busy.load())
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    m_serial_busy.store(true);
     m_att->set_max_speed(v);
+    m_serial_busy.store(false);
     m_max_speed = v;
     getAddressSpaceLink()->setMax_speed(m_max_speed, OpcUa_Good);
   }
@@ -1271,6 +1371,7 @@ UaStatus DIoLAttenuator::set_max_speed(const uint32_t v,json &resp)
   }
   if (got_exception)
   {
+    m_serial_busy.store(false);
     resp["messages"].push_back(msg.str());
     getAddressSpaceLink()->setMax_speed(m_max_speed, OpcUa_Bad);
     return OpcUa_Bad;

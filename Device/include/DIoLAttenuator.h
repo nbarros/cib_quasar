@@ -24,6 +24,7 @@
 #include <Base_DIoLAttenuator.h>
 #include <json.hpp>
 using json = nlohmann::json;
+#include <atomic>
 namespace device
 {
   class Attenuator;
@@ -157,6 +158,7 @@ private:
     //
     Status m_status;
     std::string m_id;
+    std::atomic<bool> m_serial_busy;
 };
 
 }
