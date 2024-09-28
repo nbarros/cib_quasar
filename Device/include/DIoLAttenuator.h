@@ -119,7 +119,7 @@ private:
     void automatic_port_search();
     void refresh_status(json &resp);
     void refresh_position();
-    void set_status(Status& st);
+    void set_status(const Status st);
     UaStatus init_device(json &resp);
     // private workers for all the exposed methods
     UaStatus set_transmission(double t, json &resp);
