@@ -515,8 +515,8 @@ void DIoLAttenuator::refresh_status(json &resp)
   if (got_exception)
   {
     resp["messages"].push_back(msg.str());
+    m_serial_busy.store(false);
   }
-  m_serial_busy.store(false);
 
 }
 
@@ -609,7 +609,6 @@ UaStatus DIoLAttenuator::init_device(json &resp)
       //NOTE: Do we need to refresh the status
       // this is a rather philosophical question:should the local cache be loaded
       // from the device, or from the configuration (and then passed to the device)?
-      //refresh_status(resp);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -697,7 +696,7 @@ UaStatus DIoLAttenuator::config(json config, json &resp)
     if (s != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Failed to initialize device. Correct your configuration.");
+      msg << log_e("config","Failed to initialize   device. Correct your configuration.");
       resp["messages"].push_back(msg.str());
       m_status = sOffline;
       return OpcUa_BadInvalidArgument;
@@ -750,6 +749,9 @@ UaStatus DIoLAttenuator::config(json config, json &resp)
       }
     }
     LOG(Log::INF) << "All done configuring the Attenuator\n";
+
+    // refresh the system status
+    refresh_status(resp);
 
     // if at this point ret is not good, something failed to set
     // however, this in itself is not necessarily a problem, as the deaults still hold
