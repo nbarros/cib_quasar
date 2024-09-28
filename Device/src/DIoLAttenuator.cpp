@@ -100,13 +100,29 @@ DIoLAttenuator::DIoLAttenuator (
   m_id = id();
   m_name = config.name();
   m_sn = serial_number();
-  // check the port
-  // at this stage do nothing else
+  // Fill up the resolution settings
+  m_resolution_states.insert(std::pair<uint16_t,std::string>(1,"full"));
+  m_resolution_states.insert(std::pair<uint16_t,std::string>(2,"half"));
+  m_resolution_states.insert(std::pair<uint16_t,std::string>(4,"quarter"));
+  m_resolution_states.insert(std::pair<uint16_t,std::string>(8,"eighth"));
+  m_resolution_states.insert(std::pair<uint16_t,std::string>(6,"sixteeth"));
+
+  m_motor_states.insert(std::pair<uint16_t,std::string>(0,"stopped"));
+  m_motor_states.insert(std::pair<uint16_t,std::string>(1,"accelerating"));
+  m_motor_states.insert(std::pair<uint16_t,std::string>(2,"deccelerating"));
+  m_motor_states.insert(std::pair<uint16_t,std::string>(3,"running"));
+  m_motor_states.insert(std::pair<uint16_t,std::string>(4,"unknown"));
+
+  m_status_map.insert(std::pair<State,std::string>(sOffline,"offline"));
+  m_status_map.insert(std::pair<State,std::string>(sReady,"ready"));
+
 }
 
 /* sample dtr */
 DIoLAttenuator::~DIoLAttenuator ()
 {
+  m_resolution_states.clear();
+  m_motor_states.clear();
   if (m_att) delete m_att;
 }
 
@@ -428,11 +444,11 @@ void DIoLAttenuator::automatic_port_search()
     LOG(Log::ERR) << "DIoLAttenuator::automatic_port_search : Couldn't find device port for serial number " << m_sn;
   }
 
-  m_status = sOffline;
+  set_status(sOffline);
  }
  catch(...)
  {
-   m_status = sOffline;
+   set_status(sOffline);
    LOG(Log::ERR) << "DIoLAttenuator::automatic_port_search : Caught an exception searching for the port";
    m_comport = "";
  }
@@ -482,11 +498,11 @@ void DIoLAttenuator::refresh_status(json &resp)
     //
     // this one actually queries the device again
     m_att->get_position(m_position, m_motor_state, false);
+    m_serial_busy.store(false);
     getAddressSpaceLink()->setPosition(m_position, OpcUa_Good);
     getAddressSpaceLink()->setMotor_state(m_motor_state, OpcUa_Good);
     std::string p_smap_str = util::serialize_map(m_motor_states);
     getAddressSpaceLink()->setMotor_state_options(UaString(p_smap_str.c_str()),p_smap_str.size(),OpcUa_Good);
-    m_serial_busy.store(false);
   }
   catch(serial::PortNotOpenedException &e)
   {
@@ -604,7 +620,7 @@ UaStatus DIoLAttenuator::init_device(json &resp)
 
       m_att = new device::Attenuator(m_comport.c_str(),m_baud_rate);
 //#endif
-      m_status = sReady;
+      set_status(sReady);
       refresh_position();
       //NOTE: Do we need to refresh the status
       // this is a rather philosophical question:should the local cache be loaded
@@ -668,7 +684,7 @@ UaStatus DIoLAttenuator::config(json config, json &resp)
     msg << log_w("config","There is already a connected device. Closing and resetting connection.");
     resp["messages"].push_back(msg.str());
     delete m_att;
-    m_status = sOffline;
+    set_status(sOffline);
   }
   try
   {
@@ -698,10 +714,10 @@ UaStatus DIoLAttenuator::config(json config, json &resp)
       msg.clear(); msg.str("");
       msg << log_e("config","Failed to initialize   device. Correct your configuration.");
       resp["messages"].push_back(msg.str());
-      m_status = sOffline;
+      set_status(sOffline);
       return OpcUa_BadInvalidArgument;
     }
-    m_status = sReady;
+    set_status(sReady);
     // everything good so far... loop over the whole configuration
 
     for (json::iterator it = config.begin(); it != config.end(); ++it)
@@ -884,7 +900,7 @@ UaStatus DIoLAttenuator::set_connection(const std::string port, const uint32_t b
     msg << log_w(label,"There is already a connected device. Closing and resetting connection.");
     resp["messages"].push_back(msg.str());
     delete m_att;
-    m_status = sOffline;
+    set_status(sOffline);
   }
 
   m_comport = port;
@@ -895,7 +911,7 @@ UaStatus DIoLAttenuator::set_connection(const std::string port, const uint32_t b
     msg.clear(); msg.str("");
     msg << log_e(label,"Failed to initialize device. Check previous messages.");
     resp["messages"].push_back(msg.str());
-    m_status = sOffline;
+    set_status(sOffline);
     return OpcUa_BadInvalidArgument;
   }
 
@@ -1452,6 +1468,12 @@ UaStatus DIoLAttenuator::terminate(json &resp)
     resp["status_code"] = OpcUa_Good;
     return OpcUa_Good;
   }
+}
+
+void DIoLAttenuator::set_status(Status &st)
+{
+  m_status = st;
+  getAddressSpaceLink()->setState(UaString(m_status_map.at(st).c_str()),OpcUa_Good);
 }
 
 }
