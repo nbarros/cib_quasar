@@ -66,7 +66,7 @@
 	"serial_number":"A9CQTZ05",
 	"port":"auto",
 	"baud_rate":9600,
-	"measurement_mode":1,
+	"measurement_mode":3,
 	"select_range":1,
 	"wavelength":266,
 	"energy_threshold":2,

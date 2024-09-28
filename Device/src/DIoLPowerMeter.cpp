@@ -715,11 +715,11 @@ namespace Device
       m_measurement_modes.insert({1, "passive"});
       if (energy)
       {
-        m_measurement_modes.insert({2, "energy"});
+        m_measurement_modes.insert({2, "power"});
       }
       if (power)
       {
-        m_measurement_modes.insert({3, "power"});
+        m_measurement_modes.insert({3, "energy"});
       }
       if (freq)
       {
@@ -2075,7 +2075,7 @@ namespace Device
     else
     {
       // this means to query what is currently set
-      local_mode = 0;
+      local_mode = 1;
       std::ostringstream msg("");
       msg.clear(); msg.str("");
       msg << log_e("init","Selected measurement mode is not available. Check variable for valid options.");
