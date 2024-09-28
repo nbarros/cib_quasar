@@ -1304,7 +1304,7 @@ namespace Device
       if (m_pm)
       {
         msg.clear(); msg.str("");
-        msg << log_w("init","System already initialized. Just reconfiguring.");
+        msg << log_w("config","System already initialized. Just reconfiguring.");
         resp["messages"].push_back(msg.str());
         bool clean_and_rebuild = false;
 
@@ -1373,7 +1373,7 @@ namespace Device
       if (st != OpcUa_Good)
       {
         msg.clear(); msg.str("");
-        msg << log_e("init"," ") << "Failed to set measurement mode : " << m_measurement_mode;
+        msg << log_e("config"," ") << "Failed to set measurement mode : " << m_measurement_mode;
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_Bad;
