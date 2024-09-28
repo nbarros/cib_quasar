@@ -113,8 +113,8 @@ DIoLAttenuator::DIoLAttenuator (
   m_motor_states.insert(std::pair<uint16_t,std::string>(3,"running"));
   m_motor_states.insert(std::pair<uint16_t,std::string>(4,"unknown"));
 
-  m_status_map.insert(std::pair<State,std::string>(sOffline,"offline"));
-  m_status_map.insert(std::pair<State,std::string>(sReady,"ready"));
+  m_status_map.insert(std::pair<Status,std::string>(sOffline,"offline"));
+  m_status_map.insert(std::pair<Status,std::string>(sReady,"ready"));
 
 }
 
