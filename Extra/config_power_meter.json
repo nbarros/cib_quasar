@@ -3,7 +3,7 @@
 "name" : "PM1",
 "serial_number":"A9CQTZ05",
 "port":"auto",
-"baud_rate":9800,
+"baud_rate":9600,
 "measurement_mode":1,
 "select_range":1,
 "wavelength":266,
