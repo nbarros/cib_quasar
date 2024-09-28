@@ -301,15 +301,26 @@ namespace Device
   )
   {
     json resp;
-    reset(resp);
-    if (resp.contains("statuscode"))
-    {
-      return static_cast<UaStatus>(resp.at("statuscode").get<uint32_t>());
-    }
-    else
-    {
-      return OpcUa_Good;
-    }
+    UaStatus st = reset(resp);
+//    std::ostringstream msg("");
+//    if (st != OpcUa_Good)
+//    {
+//      resp["status"] = "ERROR";
+//      msg.clear(); msg.str("");
+//      msg << log_i("reset","Failed to reset power meter.");
+//      resp["messages"].push_back(msg.str());
+//    }
+//    else
+//    {
+//      resp["status"] = "OK";
+//      msg.clear(); msg.str("");
+//      msg << log_i("reset","Power meter reset.");
+//      resp["messages"].push_back(msg.str());
+//
+//    }
+//    resp["statuscode"] = st;
+//    response = UaString(resp.dump().c_str());
+    return st;
   }
   UaStatus DIoLPowerMeter::callConfig (
       const UaString&  conf,
@@ -359,14 +370,25 @@ namespace Device
       UaString& response
   )
   {
-    m_pause_measurements = true;
     json resp;
+    UaStatus st = stop_readings(resp);
     std::ostringstream msg("");
-    resp["status"] = "OK";
-    msg.clear(); msg.str("");
-    msg << log_i("pause_measurement","Pausing energy measurements.");
-    resp["messages"].push_back(msg.str());
-    resp["statuscode"] = OpcUa_Good;
+    if (st != OpcUa_Good)
+    {
+      resp["status"] = "ERROR";
+      msg.clear(); msg.str("");
+      msg << log_i("stop_measurements","Failed to stop measurements.");
+      resp["messages"].push_back(msg.str());
+    }
+    else
+    {
+      resp["status"] = "OK";
+      msg.clear(); msg.str("");
+      msg << log_i("stop_measurements","Measurements stopped.");
+      resp["messages"].push_back(msg.str());
+
+    }
+    resp["statuscode"] = static_cast<uint32_t>(st);
     response = UaString(resp.dump().c_str());
     //
     return OpcUa_Good;
@@ -375,24 +397,55 @@ namespace Device
       UaString& response
   )
   {
-    m_pause_measurements = false;
+
     json resp;
+    UaStatus st = start_readings(resp);
     std::ostringstream msg("");
-    resp["status"] = "OK";
-    msg.clear(); msg.str("");
-    msg << log_e("resume_measurement","Resuming energy measurements.");
-    resp["messages"].push_back(msg.str());
-    resp["statuscode"] = OpcUa_Good;
+    if (st != OpcUa_Good)
+    {
+      resp["status"] = "ERROR";
+      msg.clear(); msg.str("");
+      msg << log_i("stop_measurements","Failed to start measurements.");
+      resp["messages"].push_back(msg.str());
+    }
+    else
+    {
+      resp["status"] = "OK";
+      msg.clear(); msg.str("");
+      msg << log_i("stop_measurements","Measurements started.");
+      resp["messages"].push_back(msg.str());
+
+    }
+    resp["statuscode"] = static_cast<uint32_t>(st);
     response = UaString(resp.dump().c_str());
-    //
+
     return OpcUa_Good;
   }
   UaStatus DIoLPowerMeter::callTerminate (
       UaString& response
   )
   {
-    if (m_pm) delete m_pm;
-    m_status = sOffline;
+    json resp;
+    UaStatus st = terminate(resp);
+    std::ostringstream msg("");
+    if (st != OpcUa_Good)
+    {
+      resp["status"] = "ERROR";
+      msg.clear(); msg.str("");
+      msg << log_i("stop_measurements","Failed to start measurements.");
+      resp["messages"].push_back(msg.str());
+    }
+    else
+    {
+      resp["status"] = "OK";
+      msg.clear(); msg.str("");
+      msg << log_i("stop_measurements","Measurements started.");
+      resp["messages"].push_back(msg.str());
+
+    }
+    resp["statuscode"] = static_cast<uint32_t>(st);
+    response = UaString(resp.dump().c_str());
+
     return OpcUa_Good;
   }
 
