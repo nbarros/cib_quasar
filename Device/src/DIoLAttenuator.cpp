@@ -1470,7 +1470,7 @@ UaStatus DIoLAttenuator::terminate(json &resp)
   }
 }
 
-void DIoLAttenuator::set_status(Status &st)
+void DIoLAttenuator::set_status(const Status st)
 {
   m_status = st;
   getAddressSpaceLink()->setState(UaString(m_status_map.at(st).c_str()),OpcUa_Good);
