@@ -1380,6 +1380,8 @@ namespace Device
         LOG(Log::ERR) << msg.str();
         return OpcUa_Bad;
       }
+      // now refresh the ranges
+      refresh_all_ranges();
       for (json::iterator it = conf.begin(); it != conf.end(); ++it)
       {
         LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
