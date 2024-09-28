@@ -156,6 +156,7 @@ private:
     // maps
     std::map<uint16_t,std::string> m_motor_states;
     std::map<uint16_t,std::string> m_resolution_states;
+    std::map<Status,std::string> m_status_map;
     //
     Status m_status;
     std::string m_id;
