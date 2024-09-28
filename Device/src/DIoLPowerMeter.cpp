@@ -659,7 +659,7 @@ namespace Device
       // serial number
       // this has been shown to work for most cases, but there is always a chance that something fails
       // for example, the wrong serial number was provided
-      m_comport = util::find_port(serial_number());
+      m_comport = util::find_port(m_serial_number);
       if (m_comport.size() == 0)
       {
         LOG(Log::ERR) << "DIoLPowerMeter::automatic_port_search : Couldn't find device port";
@@ -1291,6 +1291,7 @@ namespace Device
       // to be established before processing the other settings
       std::string port = conf.at("port").get<std::string>();
       uint16_t baud = conf.at("baud_rate").get<uint16_t>();
+      m_serial_number = conf.at("serial_number").get<std::string>();
       st = set_conn(port,baud,resp);
       if ( st != OpcUa_Good)
       {
