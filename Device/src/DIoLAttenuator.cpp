@@ -659,7 +659,7 @@ UaStatus DIoLAttenuator::config(json config, json &resp)
 
   // first look up for "port" and "baud_rate"
   // since those are mandatory
-  bool got_exception = true;
+  bool got_exception = false;
   ostringstream msg("");
   UaStatus ret = OpcUa_Good;
   // if a connection is already established, throw a warning, but reset the device
