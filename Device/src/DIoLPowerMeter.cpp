@@ -1026,19 +1026,20 @@ namespace Device
       m_pm->head_info(type, sn, name, power, energy, freq);
       m_serial_busy.store(false);
       // crosscheck that the serial number is the same as the configuration
-      if (sn != m_serial_number)
-      {
-        msg.clear(); msg.str("");
-        msg << log_e("init"," ") << "Device mismatch. Device serial number vs. configured : ["
-            << sn << "] != [" << m_serial_number<<"]";
-        resp["status"] = "ERROR";
-        resp["messages"].push_back(msg.str());
-        resp["statuscode"] = OpcUa_Bad;
-        LOG(Log::ERR) << msg.str();
-        delete m_pm;
-        update_status(sOffline);
-        return OpcUa_Bad;
-      }
+      // it is not...one is from the cable, and the other is from the device itself.
+//      if (sn != m_serial_number)
+//      {
+//        msg.clear(); msg.str("");
+//        msg << log_e("init"," ") << "Device mismatch. Device serial number vs. configured : ["
+//            << sn << "] != [" << m_serial_number<<"]";
+//        resp["status"] = "ERROR";
+//        resp["messages"].push_back(msg.str());
+//        resp["statuscode"] = OpcUa_Bad;
+//        LOG(Log::ERR) << msg.str();
+//        delete m_pm;
+//        update_status(sOffline);
+//        return OpcUa_Bad;
+//      }
       update_status(sReady);
       // if all is good update port and baud in the address space
       UaString dport(m_comport.c_str());
