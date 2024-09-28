@@ -3,5 +3,10 @@
 "serial_number":"6ATT1788D",
 "port":"auto",
 "baud_rate":38400,
-"acceleration":0
+"acceleration":0,
+"deceleration":0,
+"current_idle":36,
+"current_move":114,
+"max_speed":59000,
+"resolution":2
 }

@@ -24,6 +24,7 @@
 #include <Base_DIoLPowerMeter.h>
 #include <json.hpp>
 using json = nlohmann::json;
+#include <atomic>
 
 namespace device {
   class PowerMeter;
@@ -172,6 +173,7 @@ private:
     std::string m_name;
     std::string m_serial_number;
     std::string m_id;
+    std::atomic<bool> m_serial_busy;
 };
 
 }
