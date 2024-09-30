@@ -307,14 +307,14 @@ namespace Device
 //    {
 //      resp["status"] = "ERROR";
 //      msg.clear(); msg.str("");
-//      msg << log_i("reset","Failed to reset power meter.");
+//      msg << log_i(label.c_str(),"Failed to reset power meter.");
 //      resp["messages"].push_back(msg.str());
 //    }
 //    else
 //    {
 //      resp["status"] = "OK";
 //      msg.clear(); msg.str("");
-//      msg << log_i("reset","Power meter reset.");
+//      msg << log_i(label.c_str(),"Power meter reset.");
 //      resp["messages"].push_back(msg.str());
 //
 //    }
@@ -329,6 +329,8 @@ namespace Device
   {
     std::ostringstream msg("");
     bool got_exception = false;
+    const std::string label = "config";
+
     json resp;
     json cf;
     try
@@ -339,19 +341,19 @@ namespace Device
     catch(json::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Caught JSON exception : ") << e.what();
+      msg << log_e(label.c_str(),"Caught JSON exception : ") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Caught JSON exception : ") << e.what();
+      msg << log_e(label.c_str(),"Caught JSON exception : ") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Caught an unknown exception");
+      msg << log_e(label.c_str(),"Caught an unknown exception");
       got_exception = true;
     }
     if (got_exception)
@@ -371,20 +373,22 @@ namespace Device
   )
   {
     json resp;
+    const std::string label = "stop_measurements";
+
     UaStatus st = stop_readings(resp);
     std::ostringstream msg("");
     if (st != OpcUa_Good)
     {
       resp["status"] = "ERROR";
       msg.clear(); msg.str("");
-      msg << log_i("stop_measurements","Failed to stop measurements.");
+      msg << log_i(label.c_str(),"Failed to stop measurements.");
       resp["messages"].push_back(msg.str());
     }
     else
     {
       resp["status"] = "OK";
       msg.clear(); msg.str("");
-      msg << log_i("stop_measurements","Measurements stopped.");
+      msg << log_i(label.c_str(),"Measurements stopped.");
       resp["messages"].push_back(msg.str());
 
     }
@@ -399,20 +403,22 @@ namespace Device
   {
 
     json resp;
+    const std::string label = "start_measurements";
+
     UaStatus st = start_readings(resp);
     std::ostringstream msg("");
     if (st != OpcUa_Good)
     {
       resp["status"] = "ERROR";
       msg.clear(); msg.str("");
-      msg << log_i("stop_measurements","Failed to start measurements.");
+      msg << log_i(label.c_str(),"Failed to start measurements.");
       resp["messages"].push_back(msg.str());
     }
     else
     {
       resp["status"] = "OK";
       msg.clear(); msg.str("");
-      msg << log_i("stop_measurements","Measurements started.");
+      msg << log_i(label.c_str(),"Measurements started.");
       resp["messages"].push_back(msg.str());
 
     }
@@ -426,20 +432,22 @@ namespace Device
   )
   {
     json resp;
+    const std::string label = "terminate";
+
     UaStatus st = terminate(resp);
     std::ostringstream msg("");
     if (st != OpcUa_Good)
     {
       resp["status"] = "ERROR";
       msg.clear(); msg.str("");
-      msg << log_i("stop_measurements","Failed to start measurements.");
+      msg << log_i(label.c_str(),"Failed to start measurements.");
       resp["messages"].push_back(msg.str());
     }
     else
     {
       resp["status"] = "OK";
       msg.clear(); msg.str("");
-      msg << log_i("stop_measurements","Measurements started.");
+      msg << log_i(label.c_str(),"Measurements started.");
       resp["messages"].push_back(msg.str());
 
     }
@@ -933,11 +941,13 @@ namespace Device
     // if the port does not start by '/'
     bool got_exception = false;
     ostringstream msg("");
+    const std::string label = "init";
+
     UaStatus ret = OpcUa_Good;
     if (m_status != sOffline)
     {
       msg.clear(); msg.str("");
-      msg << log_w("init","System already initialized.Skipping.");
+      msg << log_w(label.c_str(),"System already initialized.Skipping.");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -945,7 +955,7 @@ namespace Device
     }
     if (m_comport.size() == 0)
     {
-      msg << log_e("init","There is no port");
+      msg << log_e(label.c_str(),"There is no port");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -954,7 +964,7 @@ namespace Device
     }
     if (m_comport.at(0)!= '/')
     {
-      msg << log_e("init"," ") << "Malformed port [" << m_comport << "]. Expected something like [/dev/ttyXXXXX]";
+      msg << log_e(label.c_str()," ") << "Malformed port [" << m_comport << "]. Expected something like [/dev/ttyXXXXX]";
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -963,7 +973,7 @@ namespace Device
     if (m_comport == std::string("auto"))
     {
       msg.clear(); msg.str("");
-      msg << log_w("init","Port set to auto. Probing ports.");
+      msg << log_w(label.c_str(),"Port set to auto. Probing ports.");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -976,7 +986,7 @@ namespace Device
       if (m_pm)
       {
         msg.clear(); msg.str("");
-        msg << log_w("init","System already initialized. Just reconfiguring.");
+        msg << log_w(label.c_str(),"System already initialized. Just reconfiguring.");
         resp["messages"].push_back(msg.str());
         bool clean_and_rebuild = false;
         if (m_serial_busy.load())
@@ -1030,7 +1040,7 @@ namespace Device
 //      if (sn != m_serial_number)
 //      {
 //        msg.clear(); msg.str("");
-//        msg << log_e("init"," ") << "Device mismatch. Device serial number vs. configured : ["
+//        msg << log_e(label.c_str()," ") << "Device mismatch. Device serial number vs. configured : ["
 //            << sn << "] != [" << m_serial_number<<"]";
 //        resp["status"] = "ERROR";
 //        resp["messages"].push_back(msg.str());
@@ -1090,7 +1100,7 @@ namespace Device
             resp["statuscode"] = rep.at("statuscode");
             resp["messages"].insert(std::end(resp["messages"]),std::begin(rep["messages"]),std::end(rep["messages"]));
             msg.clear(); msg.str("");
-            msg << log_e("init"," ") << "Failed to complete Power Meter configuration. See previous messages";
+            msg << log_e(label.c_str()," ") << "Failed to complete Power Meter configuration. See previous messages";
             resp["messages"].push_back(msg.str());
             return OpcUa_Uncertain;
           }
@@ -1112,21 +1122,21 @@ namespace Device
       // port is not open. Keep status as offline
       // don't commit any assignments
       msg.clear(); msg.str("");
-      msg << log_e("init"," ") << "Exception: Port not open [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("init"," ") << "Caught a serial exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("init"," ") << "Caught an STL exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1135,7 +1145,7 @@ namespace Device
       // caught something completely unexpected. Just treat it as something went really wrong.
       // Assume one is offline
       msg.clear(); msg.str("");
-      msg << log_e("init"," ") << "Caught an unknown exception.";
+      msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1153,7 +1163,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("config","System inititalized");
+      msg << log_i(label.c_str(),"System inititalized");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -1168,10 +1178,12 @@ namespace Device
     // to avoid weird states, after the reset the connection is terminated and reopened
     std::ostringstream msg("");
     bool got_exception = false;
+    const std::string label = "reset";
+
     if (m_status == sOffline)
     {
       msg.clear(); msg.str("");
-      msg << log_e("reset","Power Meter is offline. No reset possible.");
+      msg << log_e(label.c_str(),"Power Meter is offline. No reset possible.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1181,7 +1193,7 @@ namespace Device
     if (m_status == sReading)
     {
       msg.clear(); msg.str("");
-      msg << log_w("reset","Power Meter is taking readings. Stopping first.");
+      msg << log_w(label.c_str(),"Power Meter is taking readings. Stopping first.");
       resp["messages"].push_back(msg.str());
       stop_readings(resp);
     }
@@ -1195,7 +1207,7 @@ namespace Device
       m_pm->reset();
       m_serial_busy.store(false);
       msg.clear(); msg.str("");
-      msg << log_e("reset"," ") << "Restarting the connection to the device.";
+      msg << log_e(label.c_str()," ") << "Restarting the connection to the device.";
       terminate(resp);
       // re-initialize
       init(resp,false);
@@ -1205,21 +1217,21 @@ namespace Device
       // port is not open. Keep status as offline
       // don't commit any assignments
       msg.clear(); msg.str("");
-      msg << log_e("reset"," ") << "Exception: Port not open [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("reset"," ") << "Caught a serial exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("reset"," ") << "Caught an STL exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1228,7 +1240,7 @@ namespace Device
       // caught something completely unexpected. Just treat it as something went really wrong.
       // Assume one is offline
       msg.clear(); msg.str("");
-      msg << log_e("reset"," ") << "Caught an unknown exception.";
+      msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1247,7 +1259,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("reset","System reset");
+      msg << log_i(label.c_str(),"System reset");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -1260,12 +1272,14 @@ namespace Device
     bool got_exception = false;
     UaStatus st = OpcUa_Good;
     ostringstream msg("");
+    const std::string label = "config";
+
     try
     {
       if (m_status != sOffline)
       {
         msg.clear(); msg.str("");
-        msg << log_e("config","System already initialized.Should first terminate.Skipping.");
+        msg << log_e(label.c_str(),"System already initialized.Should first terminate.Skipping.");
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1280,7 +1294,7 @@ namespace Device
       if (conf.at("name").get<std::string>() != m_name)
       {
         msg.clear(); msg.str("");
-        msg << log_e("config","Mismatch between name in object and configuration fragment :")
+        msg << log_e(label.c_str(),"Mismatch between name in object and configuration fragment :")
                           << " (" << conf.at("name").get<std::string>() <<" <> " << m_name << ")";
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
@@ -1304,7 +1318,7 @@ namespace Device
       if (m_pm)
       {
         msg.clear(); msg.str("");
-        msg << log_w("config","System already initialized. Just reconfiguring.");
+        msg << log_w(label.c_str(),"System already initialized. Just reconfiguring.");
         resp["messages"].push_back(msg.str());
         bool clean_and_rebuild = false;
 
@@ -1351,7 +1365,7 @@ namespace Device
 //      if (sn != m_serial_number)
 //      {
 //        msg.clear(); msg.str("");
-//        msg << log_e("init"," ") << "Device mismatch. Device serial number vs. configured : ["
+//        msg << log_e(label.c_str()," ") << "Device mismatch. Device serial number vs. configured : ["
 //            << sn << "] != [" << m_serial_number<<"]";
 //        resp["status"] = "ERROR";
 //        resp["messages"].push_back(msg.str());
@@ -1373,7 +1387,7 @@ namespace Device
       if (st != OpcUa_Good)
       {
         msg.clear(); msg.str("");
-        msg << log_e("config"," ") << "Failed to set measurement mode : " << m_measurement_mode;
+        msg << log_e(label.c_str()," ") << "Failed to set measurement mode : " << m_measurement_mode;
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_Bad;
@@ -1437,21 +1451,21 @@ namespace Device
       // port is not open. Keep status as offline
       // don't commit any assignments
       msg.clear(); msg.str("");
-      msg << log_e("config"," ") << "Exception: Port not open [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config"," ") << "Caught a serial exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config"," ") << "Caught an STL exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1460,7 +1474,7 @@ namespace Device
       // caught something completely unexpected. Just treat it as something went really wrong.
       // Assume one is offline
       msg.clear(); msg.str("");
-      msg << log_e("config"," ") << "Caught an unknown exception.";
+      msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1479,7 +1493,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("config","System configured");
+      msg << log_i(label.c_str(),"System configured");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -1489,11 +1503,13 @@ namespace Device
   }
   UaStatus DIoLPowerMeter::stop_readings(json &resp)
   {
+    const std::string label = "stop_readings";
+
     if (m_status == sOffline)
     {
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_e("reset","Power Meter is offline. Nothing to stop.");
+      msg << log_e(label.c_str(),"Power Meter is offline. Nothing to stop.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1506,11 +1522,12 @@ namespace Device
   }
   UaStatus DIoLPowerMeter::start_readings(json &resp)
   {
+    const std::string label = "start_readings";
     if (m_status == sOffline)
     {
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_e("reset","Power Meter is offline. Nothing to start.");
+      msg << log_e(label.c_str(),"Power Meter is offline. Nothing to start.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1527,6 +1544,7 @@ namespace Device
     // that any instability will be caught by the serial exceptions
     std::ostringstream msg("");
     bool got_exception = false;
+    const std::string label = "terminate";
     try
     {
       stop_readings(resp);
@@ -1539,21 +1557,21 @@ namespace Device
       // port is not open. Keep status as offline
       // don't commit any assignments
       msg.clear(); msg.str("");
-      msg << log_e("terminate"," ") << "Exception: Port not open [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("terminate"," ") << "Caught a serial exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("terminate"," ") << "Caught an STL exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1562,7 +1580,7 @@ namespace Device
       // caught something completely unexpected. Just treat it as something went really wrong.
       // Assume one is offline
       msg.clear(); msg.str("");
-      msg << log_e("terminate"," ") << "Caught an unknown exception.";
+      msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1582,7 +1600,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("terminate","System terminated");
+      msg << log_i(label.c_str(),"System terminated");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -1604,10 +1622,10 @@ namespace Device
   {
     uint16_t u16;
     std::ostringstream msg("");
-
+    const std::string label = "set_average";
     if (m_status == sOffline)
     {
-      msg << log_e("set_average"," ") << "Device is offline. Can't query";
+      msg << log_e(label.c_str()," ") << "Device is offline. Can't query";
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1616,7 +1634,7 @@ namespace Device
     bool got_exception = false;
     if (m_ave_windows.count(ave) == 0)
     {
-      msg << log_e("set_average"," ") << "Can't find selected option in available options : " << ave;
+      msg << log_e(label.c_str()," ") << "Can't find selected option in available options : " << ave;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1637,21 +1655,21 @@ namespace Device
       // port is not open. Keep status as offline
       // don't commit any assignments
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Exception: Port not open [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught a serial exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an STL exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1660,7 +1678,7 @@ namespace Device
       // caught something completely unexpected. Just treat it as something went really wrong.
       // Assume one is offline
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an unknown exception.";
+      msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1678,7 +1696,7 @@ namespace Device
     }
     if (u16 != m_ave_setting)
     {
-      msg << log_e("set_average"," ") << "Failed to select average window.";
+      msg << log_e(label.c_str()," ") << "Failed to select average window.";
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1694,10 +1712,11 @@ namespace Device
   {
     bool success = true;
     std::ostringstream msg("");
+    const std::string label = "set_range";
    if (m_status == sOffline)
     {
       msg.clear(); msg.str("");
-      msg << log_e("reset","Power Meter is offline. Can't communicate.");
+      msg << log_e(label.c_str(),"Power Meter is offline. Can't communicate.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1705,7 +1724,7 @@ namespace Device
     }
     if (m_ranges.count(range) == 0)
     {
-      msg << log_e("set_range"," ") << "Can't find selected range in available options : " << range;
+      msg << log_e(label.c_str()," ") << "Can't find selected range in available options : " << range;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1728,21 +1747,21 @@ namespace Device
       // port is not open. Keep status as offline
       // don't commit any assignments
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Exception: Port not open [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
      msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught a serial exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an STL exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1751,7 +1770,7 @@ namespace Device
       // caught something completely unexpected. Just treat it as something went really wrong.
       // Assume one is offline
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an unknown exception.";
+      msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1770,7 +1789,7 @@ namespace Device
 
     if (!success)
     {
-      msg << log_e("set_range"," ") << "Failed to select range " << range;
+      msg << log_e(label.c_str()," ") << "Failed to select range " << range;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1784,13 +1803,14 @@ namespace Device
   }
   UaStatus DIoLPowerMeter::set_pwidth(const uint16_t pwidth, json &resp)
   {
+    const std::string label = "set_pwidth";
     uint16_t u16;
     std::ostringstream msg("");
 
     if (m_status == sOffline)
     {
       msg.clear(); msg.str("");
-      msg << log_e("reset","Power Meter is offline. Can't communicate.");
+      msg << log_e(label.c_str(),"Power Meter is offline. Can't communicate.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1798,7 +1818,7 @@ namespace Device
     }
     if (m_pulse_widths.count(pwidth) == 0)
     {
-      msg << log_e("set_pwidth"," ") << "Can't find selected option in available options : " << pwidth;
+      msg << log_e(label.c_str()," ") << "Can't find selected option in available options : " << pwidth;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1820,21 +1840,21 @@ namespace Device
       // port is not open. Keep status as offline
       // don't commit any assignments
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Exception: Port not open [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught a serial exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an STL exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1843,7 +1863,7 @@ namespace Device
       // caught something completely unexpected. Just treat it as something went really wrong.
       // Assume one is offline
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an unknown exception.";
+      msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1877,11 +1897,12 @@ namespace Device
   {
     uint16_t current, min, max, u16;
     bool got_exception = false;
+    const std::string label = "set_thresh";
     std::ostringstream msg("");
     if (m_status == sOffline)
     {
       msg.clear(); msg.str("");
-      msg << log_e("reset","Power Meter is offline. Can't communicate.");
+      msg << log_e(label.c_str(),"Power Meter is offline. Can't communicate.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1911,7 +1932,7 @@ namespace Device
         m_serial_busy.store(false);
         if (u16 != thresh)
         {
-          msg << log_e("init"," ") << " Failed to set energy threshold to " << thresh;
+          msg << log_e(label.c_str()," ") << " Failed to set energy threshold to " << thresh;
           resp["status"] = "ERROR";
           resp["messages"].push_back(msg.str());
           resp["statuscode"] = OpcUa_Bad;
@@ -1929,21 +1950,21 @@ namespace Device
       // port is not open. Keep status as offline
       // don't commit any assignments
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Exception: Port not open [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught a serial exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an STL exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1952,7 +1973,7 @@ namespace Device
       // caught something completely unexpected. Just treat it as something went really wrong.
       // Assume one is offline
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an unknown exception.";
+      msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -1977,10 +1998,11 @@ namespace Device
     bool success;
     bool got_exception = false;
     std::ostringstream msg("");
+    const std::string label = "set_lambda";
     if (m_status == sOffline)
     {
       msg.clear(); msg.str("");
-      msg << log_e("reset","Power Meter is offline. Can't communicate.");
+      msg << log_e(label.c_str(),"Power Meter is offline. Can't communicate.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -2001,21 +2023,21 @@ namespace Device
       // port is not open. Keep status as offline
       // don't commit any assignments
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Exception: Port not open [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught a serial exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an STL exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -2024,7 +2046,7 @@ namespace Device
       // caught something completely unexpected. Just treat it as something went really wrong.
       // Assume one is offline
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an unknown exception.";
+      msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -2042,7 +2064,7 @@ namespace Device
     }
     if (!success)
     {
-      msg << log_e("set_lambda"," ") << "Failed to set wavelength to " << lambda;
+      msg << log_e(label.c_str()," ") << "Failed to set wavelength to " << lambda;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -2061,10 +2083,11 @@ namespace Device
     uint16_t local_mode;
     UaStatus st = OpcUa_Good;
     std::ostringstream msg("");
+    const std::string label = "set_mmode";
     if (m_status == sOffline)
     {
       msg.clear(); msg.str("");
-      msg << log_e("reset","Power Meter is offline. Can't communicate.");
+      msg << log_e(label.c_str(),"Power Meter is offline. Can't communicate.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -2080,7 +2103,7 @@ namespace Device
       local_mode = 1;
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_e("init","Selected measurement mode is not available. Check variable for valid options.");
+      msg << log_e(label.c_str(),"Selected measurement mode is not available. Check variable for valid options.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -2108,21 +2131,21 @@ namespace Device
       // port is not open. Keep status as offline
       // don't commit any assignments
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Exception: Port not open [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught a serial exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an STL exception : [" << e.what() << "].";
+      msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -2131,7 +2154,7 @@ namespace Device
       // caught something completely unexpected. Just treat it as something went really wrong.
       // Assume one is offline
       msg.clear(); msg.str("");
-      msg << log_e("set_average"," ") << "Caught an unknown exception.";
+      msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
@@ -2159,7 +2182,8 @@ namespace Device
     // actually, check for all entries and report all missing ones
     std::vector<std::string> missing;
     std::ostringstream msg("");
-    for (auto entry: keys)
+    const std::string label = "valid_config";
+   for (auto entry: keys)
     {
       if (!c.contains(entry))
       {
@@ -2169,7 +2193,7 @@ namespace Device
     if (missing.size() > 0)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Missing entries in Power Meter config fragment [");
+      msg << log_e(label.c_str(),"Missing entries in Power Meter config fragment [");
       for (auto e : missing)
       {
         msg << "(" <<  e << "),";
