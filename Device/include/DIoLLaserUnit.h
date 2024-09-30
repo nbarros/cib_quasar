@@ -269,10 +269,19 @@ private:
     void disable_qswitch();
     void close_ext_shutter();
     void open_ext_shutter();
+    UaStatus close_shutter(json &resp);
+    UaStatus open_shutter(json &resp);
+    UaStatus start_fire(json &resp);
+    UaStatus stop_fire(json &resp);
     void set_fire(const uint32_t s);
     void set_qswitch(const uint32_t s);
     void set_ext_shutter(const uint32_t s);
-
+    //
+    UaStatus check_laser_instance(json &resp);
+    UaStatus check_error_state(json &resp);
+    UaStatus check_offline_state(json &resp);
+    UaStatus check_not_offline_state(json &resp);
+    UaStatus check_cib_mem(json &resp);
 
     //
     void start_lasing_timer();
