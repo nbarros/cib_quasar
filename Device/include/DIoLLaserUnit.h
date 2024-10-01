@@ -273,6 +273,7 @@ private:
     UaStatus open_shutter(json &resp);
     UaStatus start_fire(json &resp);
     UaStatus stop_fire(json &resp);
+    UaStatus laser_security(uint16_t &code, std::string &desc,json &resp);
     void set_fire(const uint32_t s);
     void set_qswitch(const uint32_t s);
     void set_ext_shutter(const uint32_t s);

@@ -533,7 +533,10 @@ UaStatus DIoLLaserUnit::callCheck_laser_status (
       return OpcUa_Good;
     }
     //
-    refresh_status(resp);
+    std::string desc;
+    laser_security(status,desc,resp);
+    description= UaString(desc.c_str());
+    //    refresh_status(resp);
     //
     return OpcUa_Good;
     //
@@ -1763,7 +1766,7 @@ UaStatus DIoLLaserUnit::callResume (
       m_laser->security(status, desc);
       m_serial_busy.store(false);
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
-      UaString ss(m_status_map.at(status).c_str());
+      UaString ss(m_status_map.at(m_status).c_str());
       getAddressSpaceLink()->setState(ss,OpcUa_Good);
     }
     catch(serial::PortNotOpenedException &e)
@@ -3333,6 +3336,58 @@ UaStatus DIoLLaserUnit::callResume (
     getAddressSpaceLink()->setLaser_shutter_open(true,OpcUa_Good);
     return OpcUa_Good;
   }
+  UaStatus DIoLLaserUnit::laser_security(uint16_t &code, std::string &desc,json &resp)
+  {
+    const std::string lbl = "security";
+    std::ostringstream msg("");
+    bool got_exception = false;
+    try
+    {
+      if (m_serial_busy.load())
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      m_serial_busy.store(true);
+      m_laser->security(code,desc);
+      m_serial_busy.store(false);
+    }
+    catch(serial::PortNotOpenedException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch(serial::SerialException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      m_serial_busy.store(false);
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"]= OpcUa_BadCommunicationError;
+      return OpcUa_BadCommunicationError;
+    }
+    getAddressSpaceLink()->setLaser_status_code(code,OpcUa_Good);
+    return OpcUa_Good;
+  }
+
   UaStatus DIoLLaserUnit::check_error_state(json &resp)
   {
     const std::string lbl = "check_error";
