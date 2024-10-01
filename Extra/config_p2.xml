@@ -6,7 +6,7 @@
 	<IoLMotor name="LSTAGE" id="LSTAGE"></IoLMotor>
 	<IoLAttenuator name="A1" id="A1"></IoLAttenuator>
 	<IoLLaserUnit name="L1" id="L1"></IoLLaserUnit>
-	<IoLCIB id="1" name="CIB1"><CalculatedVariable name="dac_mV" value="LS1.CIB1.dac_threshold*2500/4095"></CalculatedVariable></IoLCIB>
+	<IoLCIB id="CIB1" name="CIB1"><CalculatedVariable name="dac_mV" value="LS1.CIB1.dac_threshold*2500/4095"></CalculatedVariable></IoLCIB>
 	<IoLPowerMeter name="PM1" id="PM1">
 		
 	</IoLPowerMeter>
