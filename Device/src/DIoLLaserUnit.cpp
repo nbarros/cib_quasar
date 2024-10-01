@@ -2508,9 +2508,9 @@ UaStatus DIoLLaserUnit::callResume (
     // it will only check the mandatory keys.
     const std::string lbl = "validate_config";
     std::vector<std::string> mandatory_keys = {
-        "name","port","serial_number","baud_rate",
+        "id","port","serial_number","baud_rate",
         "pause_timeout_min","standby_timeout_min","qswitch_delay_us","qswitch_width_us",
-        "fire_width_us","mmap"
+        "fire_width_us","mmap", "warmup_timer_min"
     };
     std::vector<std::string> optional_keys = {
         "repetition_rate_divider", "discharge_voltage", "repetition_rate"
