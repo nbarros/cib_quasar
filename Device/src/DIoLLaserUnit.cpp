@@ -1249,6 +1249,9 @@ UaStatus DIoLLaserUnit::callResume (
     //    UaStatus st = OpcUa_Good;
     std::ostringstream msg("");
     const std::string lbl = "terminate";
+#ifdef DEBUG
+    LOG(Log::WRN) << log_w(lbl.c_str(),"Terminating the current object instance.");
+#endif
     // this is meant to do a smooth temrination of the device
     if (m_status == sOffline)
     {
@@ -1260,6 +1263,9 @@ UaStatus DIoLLaserUnit::callResume (
         // this should *NEVER* happen, but if it does, we're in trouble.
         msg.clear(); msg.str("");
         msg << log_w(lbl.c_str(),"There is live pointer but state is offline. This should NEVER happen. Attempting to clear object.");
+#ifdef DEBUG
+        LOG(Log::WRN) << msg.str();
+#endif
         resp["messages"].push_back(msg.str());
         delete m_laser;
         m_laser = nullptr;
@@ -1287,15 +1293,24 @@ UaStatus DIoLLaserUnit::callResume (
     else
     {
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"CIB memory not mappedCan't control the laser driver.");
+      msg << log_e(lbl.c_str(),"CIB memory not mapped. Can't control the laser driver.");
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
       resp["messages"].push_back(msg.str());
     }
     // close the internal shutter
+#ifdef DEBUG
+      LOG(Log::INF) << log_i(lbl.c_str(),"Closing laser shutter");
+#endif
     switch_laser_shutter(ShutterState::sClose,resp);
     // at this stage, nothing else to be done.
     // just delete the device and go into offline mode
     // -- now just delete the device
-    delete m_laser;
+    if (m_laser)
+    {
+      delete m_laser;
+    }
     m_laser = nullptr;
     update_status(sOffline);
     return OpcUa_Good;
@@ -2662,9 +2677,15 @@ UaStatus DIoLLaserUnit::callResume (
         LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
         if (it.key() == "repetition_rate")
         {
+#ifdef DEBUG
+            LOG(Log::INF) << log_i(lbl.c_str(),"Setting repetition rate to ") << it.value();
+#endif
           st = write_rate(it.value(),resp);
           if (st != OpcUa_Good)
           {
+#ifdef DEBUG
+            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set repetition rate");
+#endif
             getAddressSpaceLink()->setRep_rate_hz(m_rate_hz, st);
             terminate(resp);
             return st;
@@ -2672,9 +2693,15 @@ UaStatus DIoLLaserUnit::callResume (
         }
         if (it.key() == "repetition_rate_divider")
         {
+#ifdef DEBUG
+            LOG(Log::INF) << log_i(lbl.c_str(),"Setting repetition rate divider to ") << it.value();
+#endif
           st = write_divider(it.value(),resp);
           if (st != OpcUa_Good)
           {
+#ifdef DEBUG
+            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set repetition rate divider");
+#endif
             getAddressSpaceLink()->setRep_rate_divider(m_divider,st);
             terminate(resp);
             return st;
@@ -2695,6 +2722,9 @@ UaStatus DIoLLaserUnit::callResume (
           st = write_hv(it.value(), resp);
           if (st != OpcUa_Good)
           {
+#ifdef DEBUG
+            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set voltage");
+#endif
             getAddressSpaceLink()->setDischarge_voltage_kV(m_pump_hv, st);
             terminate(resp);
             return st;
@@ -2702,17 +2732,29 @@ UaStatus DIoLLaserUnit::callResume (
         }
         if (it.key() == "pause_timeout_min")
         {
+#ifdef DEBUG
+            LOG(Log::INF) << log_i(lbl.c_str(),"Setting pause timeout to ") << it.value();
+#endif
           set_pause_timeout(it.value(), resp);
         }
         if (it.key() == "standby_timeout_min")
         {
+#ifdef DEBUG
+            LOG(Log::INF) << log_i(lbl.c_str(),"Setting standby timeout to ") << it.value();
+#endif
           set_standby_timeout(it.value(), resp);
         }
         if (it.key() == "qswitch_delay_us")
         {
+#ifdef DEBUG
+            LOG(Log::INF) << log_i(lbl.c_str(),"Setting qswitch delay to ") << it.value();
+#endif
           st = set_qswitch_delay(it.value(), resp);
           if (st != OpcUa_Good)
           {
+#ifdef DEBUG
+            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set qswitch delay");
+#endif
             getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, st);
             terminate(resp);
             return st;
@@ -2720,9 +2762,16 @@ UaStatus DIoLLaserUnit::callResume (
         }
         if (it.key() == "qswitch_width_us")
         {
+#ifdef DEBUG
+            LOG(Log::INF) << log_i(lbl.c_str(),"Setting qswitch width to ") << it.value();
+#endif
           st = set_qswitch_width(it.value(), resp);
           if (st != OpcUa_Good)
           {
+#ifdef DEBUG
+            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set qswitch width");
+#endif
+
             getAddressSpaceLink()->setQswitch_width_us(m_qswitch_width, st);
             terminate(resp);
             return st;
@@ -2730,9 +2779,15 @@ UaStatus DIoLLaserUnit::callResume (
         }
         if (it.key() == "fire_width_us")
         {
+#ifdef DEBUG
+            LOG(Log::INF) << log_i(lbl.c_str(),"Setting fire width to ") << it.value();
+#endif
           st = set_fire_width(it.value(), resp);
           if (st != OpcUa_Good)
           {
+#ifdef DEBUG
+            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set fire width");
+#endif
             getAddressSpaceLink()->setFire_width_us(m_fire_width, st);
             terminate(resp);
             return st;
