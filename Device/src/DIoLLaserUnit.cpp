@@ -2582,7 +2582,7 @@ UaStatus DIoLLaserUnit::callResume (
       json conf = config;
       // the very first thing is to check that the laser is offline
       // if it isn't fail immediately
-      st = check_offline_state(resp);
+      st = check_not_offline_state(resp);
       if (st != OpcUa_Good)
       {
         return st;
