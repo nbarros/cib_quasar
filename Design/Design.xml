@@ -5,9 +5,6 @@
     <d:configentry dataType="UaString" name="id"
     	storedInDeviceObject="true" isKey="true">
     </d:configentry>
-    <d:configentry dataType="UaString" name="serial_number"
-    	storedInDeviceObject="true">
-    </d:configentry>
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="server_addr" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialValue="localhost" initialStatus="OpcUa_Bad">
     </d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="server_port" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_Bad" initialValue="5000">
     </d:cachevariable>
@@ -94,8 +91,6 @@
     <d:configentry dataType="UaString" name="id" isKey="true"
     	storedInDeviceObject="true">
     </d:configentry>
-    <d:configentry dataType="UaString" name="serial_number" storedInDeviceObject="true">
-  	</d:configentry>
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
     	name="port" nullPolicy="nullForbidden"
     	addressSpaceWrite="forbidden"
@@ -211,8 +206,6 @@
     <d:configentry dataType="UaString" name="id" isKey="true"
     	storedInDeviceObject="true">
     </d:configentry>
-    <d:configentry dataType="UaString" name="serial_number" storedInDeviceObject="true">
-  	</d:configentry>
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
     	name="port" nullPolicy="nullForbidden"
     	addressSpaceWrite="forbidden" initialValue="auto"
@@ -324,8 +317,6 @@
     <d:devicelogic/><d:configentry dataType="UaString" name="id"
     	isKey="true" storedInDeviceObject="true">
 </d:configentry>
-  	<d:configentry dataType="UaString" name="serial_number"
-    	storedInDeviceObject="true" />
     <!-- Variables (none of these are writeable) --><!--intial value of maxval (0xFFFFx)  means to fetch it from the device stored settings-->
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_UInt16" name="resolution_setting"
@@ -466,13 +457,19 @@
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
     	initialValue="OpcUa_False" initialStatus="OpcUa_BadWaitingForInitialData"><!--what is this for?-->
     </d:cachevariable>
-    <!--could add here some registers indicating what is going on in the CIB itself, for instance, timing system state-->
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="dac_threshold" nullPolicy="nullForbidden" addressSpaceWrite="delegated" initialValue="4095" initialStatus="OpcUa_BadWaitingForInitialData">
+    </d:cachevariable><!--could add here some registers indicating what is going on in the CIB itself, for instance, timing system state--><d:cachevariable
+    	initializeWith="valueAndStatus" dataType="OpcUa_Byte" name="pdts_state"
+    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden">
+</d:cachevariable>
+  	<d:method name="set_dac_threshold" executionSynchronicity="synchronous">
+    	<d:argument dataType="OpcUa_UInt16" name="dac_level"></d:argument>
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method><d:method name="reset_pdts" executionSynchronicity="synchronous">
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
   </d:class>
   <d:class name="IoLaserSystem">
     <d:devicelogic/>
     <d:configentry dataType="UaString" name="id" isKey="true"
-    	storedInDeviceObject="true" />
-    <d:configentry dataType="UaString" name="location"
     	storedInDeviceObject="true" />
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString"
     	name="state" nullPolicy="nullForbidden"
@@ -488,11 +485,7 @@
     	nullPolicy="nullForbidden" addressSpaceWrite="regular"
     	initialStatus="OpcUa_Good" initialValue="OpcUa_False">
     </d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_UInt16" name="dac_threshold" nullPolicy="nullForbidden"
-    	addressSpaceWrite="delegated" initialValue="4095"
-    	initialStatus="OpcUa_BadWaitingForInitialData">
-    </d:cachevariable>
+    
     <d:hasobjects instantiateUsing="configuration" class="IoLLaserUnit" minOccurs="1" maxOccurs="1">
 		</d:hasobjects>
     <d:hasobjects instantiateUsing="configuration" class="IoLMotor" minOccurs="3" maxOccurs="3">
@@ -501,7 +494,7 @@
 		</d:hasobjects>
     <d:hasobjects instantiateUsing="configuration" class="IoLCIB" minOccurs="1" maxOccurs="1">
 		</d:hasobjects>
-    <d:hasobjects instantiateUsing="configuration" class="IoLPowerMeter" minOccurs="1" maxOccurs="1">
+    <d:hasobjects instantiateUsing="configuration" class="IoLPowerMeter" minOccurs="1" maxOccurs="2">
     </d:hasobjects><d:method name="load_config" executionSynchronicity="synchronous">
       <d:argument dataType="UaString" name="conf"/>
       <d:returnvalue dataType="UaString" name="response"/>
@@ -559,9 +552,7 @@
     	<d:argument dataType="OpcUa_Byte" name="approach">
     		<d:array minimumSize="3" maximumSize="3" /></d:argument>
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-    <d:method name="set_dac_threshold" executionSynchronicity="synchronous">
-    	<d:argument dataType="OpcUa_UInt16" name="dac_level"></d:argument>
-    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+    
 
 
 
