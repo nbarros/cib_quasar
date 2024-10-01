@@ -99,7 +99,7 @@ DIoLAttenuator::DIoLAttenuator (
     /* fill up constructor body here */
   m_id = id();
   m_name = config.name();
-  m_sn = serial_number();
+  m_sn = "";
   // Fill up the resolution settings
   m_resolution_states.insert(std::pair<uint16_t,std::string>(1,"full"));
   m_resolution_states.insert(std::pair<uint16_t,std::string>(2,"half"));

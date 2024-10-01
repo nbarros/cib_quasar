@@ -25,7 +25,6 @@
 #include <json.hpp>
 using json = nlohmann::json;
 #include <atomic>
-#include <AD5339.h>
 
 namespace Device
 {
@@ -46,8 +45,6 @@ public:
 
     /* delegators for
     cachevariables and sourcevariables */
-    /* Note: never directly call this function. */
-    UaStatus writeDac_threshold ( const OpcUa_UInt16& v);
 
 
     /* delegators for methods */
@@ -98,10 +95,6 @@ public:
         const std::vector<OpcUa_Byte>&  approach,
         UaString& response
     ) ;
-    UaStatus callSet_dac_threshold (
-        OpcUa_UInt16 dac_level,
-        UaString& response
-    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */
@@ -138,7 +131,7 @@ private:
     UaStatus move_motor(
         const std::vector<OpcUa_Int32>&  position,
         json &resp);
-    UaStatus set_dac_threshold(uint16_t &val,json &resp);
+//    UaStatus set_dac_threshold(uint16_t &val,json &resp);
 
     inline void reset(std::ostringstream &s);
     bool validate_config_fragment(json &frag, json &resp);
@@ -152,21 +145,18 @@ private:
     void init_scan_task(json &segments);
     void get_message_queue(json &resp, bool clear);
     bool validate_scan_plan(json &plan, json &resp);
-    void refresh_dac();
 public:
     // makes a roll call for each system to update itself
     void update();
     // makes a status call over all subsystems
     bool is_ready();
     // really initializes the DAC readout
-    int init_dac();
 private:
     std::map<State,std::string> m_state_map;
     State m_state;
     json m_task_message_queue;
     std::map<size_t,size_t> m_map_motor_coordinates;
 
-    cib::i2c::AD5339 m_dac;
 
 };
 

@@ -473,12 +473,8 @@ UaStatus DIoLMotor::callReset (
       while (get_monitor())
       {
         auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(10);
-#ifdef SIMULATION
-        if (sim_get_motor_info() != OpcUa_Good)
-#else
-          prev_pos =m_position_cib;
-          m_position_cib = cib::util::reg_read(m_regs.at("cur_pos").addr);
-#endif
+        prev_pos =m_position_cib;
+        m_position_cib = cib::util::reg_read(m_regs.at("cur_pos").addr);
 
         // if the position didn't change and the latest speed readout
         // is 0, set m_is_moving = false

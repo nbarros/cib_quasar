@@ -459,8 +459,10 @@
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="dac_threshold" nullPolicy="nullForbidden" addressSpaceWrite="delegated" initialValue="4095" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable><!--could add here some registers indicating what is going on in the CIB itself, for instance, timing system state--><d:cachevariable
-    	initializeWith="valueAndStatus" dataType="OpcUa_Byte" name="pdts_state"
-    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden">
+    	initializeWith="valueAndStatus" dataType="OpcUa_Byte"
+    	name="pdts_state" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
 </d:cachevariable>
   	<d:method name="set_dac_threshold" executionSynchronicity="synchronous">
     	<d:argument dataType="OpcUa_UInt16" name="dac_level"></d:argument>

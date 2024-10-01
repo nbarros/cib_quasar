@@ -89,18 +89,10 @@ DIoLaserSystem::DIoLaserSystem (
 /* sample dtr */
 DIoLaserSystem::~DIoLaserSystem ()
 {
-    LOG(Log::INF) << "NFB: Destroying the IoLaserSystem device";
 }
 
 /* delegates for cachevariables */
 
-/* Note: never directly call this function. */
-
-UaStatus DIoLaserSystem::writeDac_threshold ( const OpcUa_UInt16& v)
-{
-  return OpcUa_Good;
-//    return OpcUa_BadNotImplemented;
-}
 
 
 /* delegators for methods */
@@ -554,16 +546,6 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     //response = UaString(resp.dump().c_str());
     return OpcUa_Good;
 }
-UaStatus DIoLaserSystem::callSet_dac_threshold (
-    OpcUa_UInt16 dac_level,
-    UaString& response
-)
-{
-    json resp;
-    UaStatus st = set_dac_threshold(dac_level,resp);
-    response = UaString(resp.dump().c_str());
-    return st;
-}
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
 // 3     FULLY CUSTOM CODE STARTS HERE                                     3
@@ -689,16 +671,19 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
         // For now there is no configuration necessary for the CIB
         if (it.key() == "cib")
         {
-          json cconf = it.value();
-          for (json::iterator it = cconf.begin(); it != cconf.end(); ++it)
+          json aconf = it.value();
+          st = iolcib()->config(aconf,resp);
+          if (st != OpcUa_Good)
           {
-            LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
-            if (it.key() == "dac_threshold")
+            reset(msg);
+            msg << log_e("config","Failed to configure CIB.");
+            resp["status"] = "ERROR";
+            resp["messages"].push_back(msg.str());
+            if (!resp.contains("statuscode"))
             {
-              //
-              uint16_t v = it.value();
-              set_dac_threshold(v,resp);
+              resp["statuscode"] = OpcUa_BadInvalidArgument;
             }
+            return OpcUa_BadInvalidArgument;
           }
         }
         // ------------------
@@ -708,18 +693,21 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
         {
           // there is only 1
           json pconf = it.value();
-          st = iolpowermeter()->config(pconf,resp);
-          if (st != OpcUa_Good)
+          for (auto meter : iolpowermeters())
           {
-            reset(msg);
-            msg << log_e("config","Failed to configure power meter.");
-            resp["status"] = "ERROR";
-            resp["messages"].push_back(msg.str());
-            if (!resp.contains("statuscode"))
+            st = meter->config(pconf,resp);
+            if (st != OpcUa_Good)
             {
-              resp["statuscode"] = OpcUa_BadInvalidArgument;
+              reset(msg);
+              msg << log_e("config","Failed to configure power meter.");
+              resp["status"] = "ERROR";
+              resp["messages"].push_back(msg.str());
+              if (!resp.contains("statuscode"))
+              {
+                resp["statuscode"] = OpcUa_BadInvalidArgument;
+              }
+              return OpcUa_BadInvalidArgument;
             }
-            return OpcUa_BadInvalidArgument;
           }
         }
       } // loop json
@@ -818,18 +806,21 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
       // none of the other systems are actually critical
       // however, if we stop the laser, there is little point in
       // keeping the power meter reading
-      st = iolpowermeter()->stop_readings(resp);
-      if (st != OpcUa_Good)
+      for (auto meter : iolpowermeters())
       {
-        reset(msg);
-        msg << log_e("stop","Failed to stop power meter ") << iolpowermeter()->getFullName() << ". See previous messages.";
-        resp["status"] = "ERROR";
-        resp["messages"].push_back(msg.str());
-        if (!resp.contains("statuscode"))
+        st = meter->stop_readings(resp);
+        if (st != OpcUa_Good)
         {
-          resp["statuscode"] = OpcUa_Bad;
+          reset(msg);
+          msg << log_e("stop","Failed to stop power meter ") << meter->getFullName() << ". See previous messages.";
+          resp["status"] = "ERROR";
+          resp["messages"].push_back(msg.str());
+          if (!resp.contains("statuscode"))
+          {
+            resp["statuscode"] = OpcUa_Bad;
+          }
+          return st;
         }
-        return st;
       }
       // if it reached this point we are currently stopped
     }
@@ -2001,76 +1992,7 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
       return OpcUa_Good;
     }
   }
-  int DIoLaserSystem::init_dac()
-  {
-    int res;
-    static bool first = true;
 
-    res = m_dac.set_bus(7);
-    if (res != CIB_I2C_OK)
-    {
-      if (first)
-      {
-        LOG(Log::ERR) << "NFB: Failed to set DAC bus number. Returned " << res << " : " << cib::i2c::strerror(res);
-        first = false;
-      }
-      return res;
-    }
-    res = m_dac.set_dev_number(0xd);
-    if (res != CIB_I2C_OK)
-    {
-      if (first)
-      {
-        LOG(Log::ERR) << "NFB: Failed to set dev number. Returned " << res << " : " << cib::i2c::strerror(res);
-        first = false;
-      }
-      return res;
-    }
-    res = m_dac.open_device();
-    if (res != CIB_I2C_OK)
-    {
-      if (first)
-      {
-        LOG(Log::ERR) << "NFB: Failed to open device. Returned  " << res << " : " << cib::i2c::strerror(res);
-        first = false;
-      }
-      return res;
-    }
-    // actually, should take the opportunity and set a high level
-    // this is to avoid spurious triggers at initialization
-
-    res = m_dac.set_level(1,4095);
-    return res;
-  }
-  void DIoLaserSystem::refresh_dac()
-  {
-    static bool first = true;
-    int ret = 0;
-    uint16_t v;
-    AddressSpace::ASIoLaserSystem* as = getAddressSpaceLink();
-    if (!m_dac.is_open())
-    {
-      if(first)
-      {
-        LOG(Log::INF) << "NFB: Opening the connection to the DAC";
-        first = false;
-      }
-      ret = init_dac();
-    }
-    // the DAC failed to initialize. No point in getting the level
-    if (!ret)
-    {
-      ret = m_dac.get_level(1,v);
-    }
-    if (ret)
-    {
-      as->setDac_threshold(v,OpcUa_BadDataUnavailable);
-    }
-    else
-    {
-      as->setDac_threshold(v,OpcUa_Good);
-    }
-  }
   UaStatus DIoLaserSystem::move_to_pos(
       const std::vector<OpcUa_Int32>&  position,
       const std::vector<OpcUa_Byte>&  approach,
@@ -2139,8 +2061,6 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
     // first update the local variables
     update_state(m_state);
 
-    // update the reading of the DAC
-    refresh_dac();
 
 
     // call update over all daughters
@@ -2333,109 +2253,6 @@ UaStatus DIoLaserSystem::callSet_dac_threshold (
       resp["statuscode"] = OpcUa_Good;
     }
     return true;
-  }
-  UaStatus DIoLaserSystem::set_dac_threshold(uint16_t &val,json &resp)
-  {
-    std::ostringstream msg("");
-    bool got_exception = false;
-    json jresp;
-    UaStatus st;
-    int ret;
-    try
-    {
-      // first do some quality checks
-      // the DAC only goes to 4095 (0xFFF)
-      if (val > 0xFFF)
-      {
-        msg.clear(); msg.str("");
-        msg << log_e("set_dac_threshold","Value beyond allowed limits [0,4095]");
-        jresp["status"] = "ERROR";
-        jresp["messages"].push_back(msg.str());
-        jresp["statuscode"] = OpcUa_BadInvalidArgument;
-      }
-      else if (!m_dac.is_open())
-      {
-        msg.clear(); msg.str("");
-        msg << log_e("set_dac_threshold","Failed to communicate with the DAC");
-        jresp["status"] = "ERROR";
-        jresp["messages"].push_back(msg.str());
-        jresp["statuscode"] = OpcUa_BadInvalidState;
-      }
-      else // all is good
-      {
-        ret = m_dac.set_level(1,val);
-        if (ret)
-        {
-          msg.clear(); msg.str("");
-          msg << log_e("set_dac_threshold","Failed to set DAC threshold");
-          jresp["status"] = "ERROR";
-          jresp["messages"].push_back(msg.str());
-          jresp["statuscode"] = OpcUa_BadCommunicationError;
-        }
-        else
-        {
-          // read it back again to confirm we have the result
-          uint16_t readback;
-          ret = m_dac.get_level(1,readback);
-          if (ret)
-          {
-            msg.clear(); msg.str("");
-            msg << log_e("set_dac_threshold","Failed to get DAC threshold readback");
-            jresp["status"] = "ERROR";
-            jresp["messages"].push_back(msg.str());
-            jresp["statuscode"] = OpcUa_BadCommunicationError;
-          }
-          else
-          {
-            if (readback != val)
-            {
-              msg.clear(); msg.str("");
-              msg << log_e("set_dac_threshold","Failed to get correct DAC threshold readback. Set ") << val << " readback  " << readback;
-              jresp["status"] = "ERROR";
-              jresp["messages"].push_back(msg.str());
-              jresp["statuscode"] = OpcUa_Bad;
-            }
-            else
-            {
-              jresp["messages"].push_back("DAC set successfully");
-            }
-          }
-        }
-      }
-    }
-    catch(json::exception &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("move_to_pos","Caught JSON exception : ") << e.what();
-      got_exception = true;
-    }
-    catch(std::exception &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("move_to_pos","Caught JSON exception : ") << e.what();
-      got_exception = true;
-    }
-    catch(...)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("move_to_pos","Caught an unknown exception");
-      got_exception = true;
-    }
-    if (got_exception)
-    {
-      jresp["status"] = "ERROR";
-      jresp["messages"].push_back(msg.str());
-      jresp["statuscode"] = OpcUa_Bad;
-    }
-    // why was this commented?
-    if (!jresp.contains("status"))
-    {
-      jresp["status"] = "SUCCESS";
-      jresp["statuscode"] = OpcUa_Good;
-    }
-    //resp = UaString(jresp.dump().c_str());
-    resp = jresp;
-    return OpcUa_Good;
   }
 
 

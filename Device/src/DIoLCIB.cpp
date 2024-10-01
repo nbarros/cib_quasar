@@ -30,120 +30,347 @@ extern "C"
 #include <cstdint>
 #include <cinttypes>
 #include <cstdio>
+#define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
+
+#define log_e(m,s) log_msg("ERROR",m,s)
+#define log_w(m,s) log_msg("WARN",m,s)
+#define log_i(m,s) log_msg("INFO",m,s)
+
+using std::ostringstream;
 
 namespace Device
 {
-// 1111111111111111111111111111111111111111111111111111111111111111111111111
-// 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
-// 1     Users don't modify this code!!!!                                  1
-// 1     If you modify this code you may start a fire or a flood somewhere,1
-// 1     and some human being may possible cease to exist. You don't want  1
-// 1     to be charged with that!                                          1
-// 1111111111111111111111111111111111111111111111111111111111111111111111111
+  // 1111111111111111111111111111111111111111111111111111111111111111111111111
+  // 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
+  // 1     Users don't modify this code!!!!                                  1
+  // 1     If you modify this code you may start a fire or a flood somewhere,1
+  // 1     and some human being may possible cease to exist. You don't want  1
+  // 1     to be charged with that!                                          1
+  // 1111111111111111111111111111111111111111111111111111111111111111111111111
 
 
 
 
 
 
-// 2222222222222222222222222222222222222222222222222222222222222222222222222
-// 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
-// 2     (code for which only stubs were generated automatically)          2
-// 2     You should add the implementation but dont alter the headers      2
-// 2     (apart from constructor, in which you should complete initializati2
-// 2     on list)                                                          2
-// 2222222222222222222222222222222222222222222222222222222222222222222222222
+  // 2222222222222222222222222222222222222222222222222222222222222222222222222
+  // 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
+  // 2     (code for which only stubs were generated automatically)          2
+  // 2     You should add the implementation but dont alter the headers      2
+  // 2     (apart from constructor, in which you should complete initializati2
+  // 2     on list)                                                          2
+  // 2222222222222222222222222222222222222222222222222222222222222222222222222
 
-/* sample ctr */
-DIoLCIB::DIoLCIB (
-    const Configuration::IoLCIB& config,
-    Parent_DIoLCIB* parent
-):
-    Base_DIoLCIB( config, parent)
+  /* sample ctr */
+  DIoLCIB::DIoLCIB (
+      const Configuration::IoLCIB& config,
+      Parent_DIoLCIB* parent
+  ):
+        Base_DIoLCIB( config, parent)
 
-    /* fill up constructor initialization list here */
-	, m_is_ready(false)
-	, m_cpu_load(0.0)
-	, m_used_mem(0.0)
-	, m_prev_tot_usr(0)
-	, m_prev_tot_usr_low(0)
-	, m_prev_tot_sys(0)
-	, m_prev_tot_idle(0)
-	, m_total(0)
-{
+        /* fill up constructor initialization list here */
+        , m_is_ready(false)
+        , m_cpu_load(0.0)
+        , m_used_mem(0.0)
+        , m_prev_tot_usr(0)
+        , m_prev_tot_usr_low(0)
+        , m_prev_tot_sys(0)
+        , m_prev_tot_idle(0)
+        , m_total(0)
+        {
     /* fill up constructor body here */
-  // start by initializing the initial counters
-  FILE* file = fopen("/proc/stat", "r");
-  int ret = fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
-  ret = fclose(file);
-  (void)ret; // this is just to suppress the compilation warning
-}
+    // start by initializing the initial counters
+    FILE* file = fopen("/proc/stat", "r");
+    int ret = fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
+    ret = fclose(file);
+    (void)ret; // this is just to suppress the compilation warning
+        }
 
-/* sample dtr */
-DIoLCIB::~DIoLCIB ()
-{
-}
-
-/* delegates for cachevariables */
-
-
-
-/* delegators for methods */
-
-// 3333333333333333333333333333333333333333333333333333333333333333333333333
-// 3     FULLY CUSTOM CODE STARTS HERE                                     3
-// 3     Below you put bodies for custom methods defined for this class.   3
-// 3     You can do whatever you want, but please be decent.               3
-// 3333333333333333333333333333333333333333333333333333333333333333333333333
-
-void DIoLCIB::poll_mem()
-{
-  struct sysinfo memInfo;
-  sysinfo (&memInfo);
-  // unit size in bytes
-  uint64_t total = memInfo.totalram*memInfo.mem_unit/(1024*1024);
-  uint64_t free  = memInfo.freeram*memInfo.mem_unit/(1024*1024);
-  m_used_mem = static_cast<float>(total-free)/static_cast<float>(total);
-  getAddressSpaceLink()->setMem_load(m_used_mem,OpcUa_Good);
-}
-
-void DIoLCIB::poll_cpu()
-{
-  unsigned long long tot_usr, tot_usr_low, tot_sys, tot_idle;
-  FILE* file = fopen("/proc/stat", "r");
-  int ret = fscanf(file, "cpu %llu %llu %llu %llu", &tot_usr, &tot_usr_low,&tot_sys, &tot_idle);
-  ret = fclose(file);
-  (void)ret; // this is just to suppress the compilation warning
-
-  if ((tot_usr < m_prev_tot_usr) ||
-      (tot_usr_low < m_prev_tot_usr_low) ||
-      (tot_sys < m_prev_tot_sys) ||
-      (tot_idle < m_prev_tot_idle))
+  /* sample dtr */
+  DIoLCIB::~DIoLCIB ()
   {
+  }
+
+  /* delegates for cachevariables */
+
+  /* Note: never directly call this function. */
+
+  UaStatus DIoLCIB::writeDac_threshold ( const OpcUa_UInt16& v)
+  {
+    return OpcUa_BadNotImplemented;
+  }
+
+
+  /* delegators for methods */
+  UaStatus DIoLCIB::callSet_dac_threshold (
+      OpcUa_UInt16 dac_level,
+      UaString& response
+  )
+  {
+    json resp;
+    UaStatus st = set_dac_threshold(dac_level,resp);
+    response = UaString(resp.dump().c_str());
+    return st;
+  }
+  UaStatus DIoLCIB::callReset_pdts (
+      UaString& response
+  )
+  {
+    return OpcUa_BadNotImplemented;
+  }
+
+  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+  // 3     FULLY CUSTOM CODE STARTS HERE                                     3
+  // 3     Below you put bodies for custom methods defined for this class.   3
+  // 3     You can do whatever you want, but please be decent.               3
+  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+
+  void DIoLCIB::poll_mem()
+  {
+    struct sysinfo memInfo;
+    sysinfo (&memInfo);
+    // unit size in bytes
+    uint64_t total = memInfo.totalram*memInfo.mem_unit/(1024*1024);
+    uint64_t free  = memInfo.freeram*memInfo.mem_unit/(1024*1024);
+    m_used_mem = static_cast<float>(total-free)/static_cast<float>(total);
+    getAddressSpaceLink()->setMem_load(m_used_mem,OpcUa_Good);
+  }
+
+  void DIoLCIB::poll_cpu()
+  {
+    unsigned long long tot_usr, tot_usr_low, tot_sys, tot_idle;
+    FILE* file = fopen("/proc/stat", "r");
+    int ret = fscanf(file, "cpu %llu %llu %llu %llu", &tot_usr, &tot_usr_low,&tot_sys, &tot_idle);
+    ret = fclose(file);
+    (void)ret; // this is just to suppress the compilation warning
+
+    if ((tot_usr < m_prev_tot_usr) ||
+        (tot_usr_low < m_prev_tot_usr_low) ||
+        (tot_sys < m_prev_tot_sys) ||
+        (tot_idle < m_prev_tot_idle))
+    {
       //Overflow detection. Just skip this value.
-    m_cpu_load = -1.0;
-    getAddressSpaceLink()->setCpu_load(m_cpu_load,OpcUa_Uncertain);
+      m_cpu_load = -1.0;
+      getAddressSpaceLink()->setCpu_load(m_cpu_load,OpcUa_Uncertain);
+    }
+    else
+    {
+      m_total = (tot_usr - m_prev_tot_usr) +
+          (tot_usr_low - m_prev_tot_usr_low) +
+          (tot_sys - m_prev_tot_sys);
+      m_cpu_load = m_total/(m_total + (tot_idle-m_prev_tot_idle));
+      getAddressSpaceLink()->setCpu_load(m_cpu_load,OpcUa_Good);
+    }
+    // update the previous to repoll
+    m_prev_tot_usr = tot_usr;
+    m_prev_tot_usr_low = tot_usr_low;
+    m_prev_tot_sys = tot_sys;
+    m_prev_tot_idle = tot_idle;
   }
-  else
+
+  void DIoLCIB::update()
   {
-    m_total = (tot_usr - m_prev_tot_usr) +
-              (tot_usr_low - m_prev_tot_usr_low) +
-              (tot_sys - m_prev_tot_sys);
-    m_cpu_load = m_total/(m_total + (tot_idle-m_prev_tot_idle));
-    getAddressSpaceLink()->setCpu_load(m_cpu_load,OpcUa_Good);
+    // refresh the other two
+    poll_mem();
+    poll_cpu();
+    // update the reading of the DAC
+    refresh_dac();
+
   }
-  // update the previous to repoll
-  m_prev_tot_usr = tot_usr;
-  m_prev_tot_usr_low = tot_usr_low;
-  m_prev_tot_sys = tot_sys;
-  m_prev_tot_idle = tot_idle;
-}
+  UaStatus DIoLCIB::set_dac_threshold(uint16_t &val,json &resp)
+  {
+    std::ostringstream msg("");
+    bool got_exception = false;
+    json jresp;
+    UaStatus st;
+    const std::string lbl = "set_dac_threshold";
+    int ret;
+    try
+    {
+      // first do some quality checks
+      // the DAC only goes to 4095 (0xFFF)
+      if (val > 0xFFF)
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Value beyond allowed limits [0,4095]");
+        jresp["status"] = "ERROR";
+        jresp["messages"].push_back(msg.str());
+        jresp["statuscode"] = OpcUa_BadInvalidArgument;
+      }
+      else if (!m_dac.is_open())
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Failed to communicate with the DAC");
+        jresp["status"] = "ERROR";
+        jresp["messages"].push_back(msg.str());
+        jresp["statuscode"] = OpcUa_BadInvalidState;
+      }
+      else // all is good
+      {
+        ret = m_dac.set_level(1,val);
+        if (ret)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Failed to set DAC threshold");
+          jresp["status"] = "ERROR";
+          jresp["messages"].push_back(msg.str());
+          jresp["statuscode"] = OpcUa_BadCommunicationError;
+        }
+        else
+        {
+          // read it back again to confirm we have the result
+          uint16_t readback;
+          ret = m_dac.get_level(1,readback);
+          if (ret)
+          {
+            msg.clear(); msg.str("");
+            msg << log_e(lbl.c_str(),"Failed to get DAC threshold readback");
+            jresp["status"] = "ERROR";
+            jresp["messages"].push_back(msg.str());
+            jresp["statuscode"] = OpcUa_BadCommunicationError;
+          }
+          else
+          {
+            if (readback != val)
+            {
+              msg.clear(); msg.str("");
+              msg << log_e(lbl.c_str(),"Failed to get correct DAC threshold readback. Set ") << val << " readback  " << readback;
+              jresp["status"] = "ERROR";
+              jresp["messages"].push_back(msg.str());
+              jresp["statuscode"] = OpcUa_Bad;
+            }
+            else
+            {
+              jresp["messages"].push_back("DAC set successfully");
+            }
+          }
+        }
+      }
+    }
+    catch(json::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Caught an unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      jresp["status"] = "ERROR";
+      jresp["messages"].push_back(msg.str());
+      jresp["statuscode"] = OpcUa_Bad;
+    }
+    // why was this commented?
+    if (!jresp.contains("status"))
+    {
+      jresp["status"] = "SUCCESS";
+      jresp["statuscode"] = OpcUa_Good;
+    }
+    //resp = UaString(jresp.dump().c_str());
+    resp = jresp;
+    return OpcUa_Good;
+  }
+  void DIoLCIB::refresh_dac()
+  {
+    static bool first = true;
+    int ret = 0;
+    uint16_t v;
+    AddressSpace::ASIoLCIB* as = getAddressSpaceLink();
+    if (!m_dac.is_open())
+    {
+      if(first)
+      {
+        LOG(Log::INF) << "NFB: Opening the connection to the DAC";
+        first = false;
+      }
+      ret = init_dac();
+    }
+    // the DAC failed to initialize. No point in getting the level
+    if (!ret)
+    {
+      ret = m_dac.get_level(1,v);
+    }
+    if (ret)
+    {
+      as->setDac_threshold(v,OpcUa_BadDataUnavailable);
+    }
+    else
+    {
+      as->setDac_threshold(v,OpcUa_Good);
+    }
+  }
+  int DIoLCIB::init_dac()
+  {
+    int res;
+    static bool first = true;
 
-void DIoLCIB::update()
-{
-  // refresh the other two
-  poll_mem();
-  poll_cpu();
-}
+    res = m_dac.set_bus(7);
+    if (res != CIB_I2C_OK)
+    {
+      if (first)
+      {
+        LOG(Log::ERR) << "NFB: Failed to set DAC bus number. Returned " << res << " : " << cib::i2c::strerror(res);
+        first = false;
+      }
+      return res;
+    }
+    res = m_dac.set_dev_number(0xd);
+    if (res != CIB_I2C_OK)
+    {
+      if (first)
+      {
+        LOG(Log::ERR) << "NFB: Failed to set dev number. Returned " << res << " : " << cib::i2c::strerror(res);
+        first = false;
+      }
+      return res;
+    }
+    res = m_dac.open_device();
+    if (res != CIB_I2C_OK)
+    {
+      if (first)
+      {
+        LOG(Log::ERR) << "NFB: Failed to open device. Returned  " << res << " : " << cib::i2c::strerror(res);
+        first = false;
+      }
+      return res;
+    }
+    // actually, should take the opportunity and set a high level
+    // this is to avoid spurious triggers at initialization
 
+    res = m_dac.set_level(1,4095);
+    return res;
+  }
+  UaStatus DIoLCIB::config(json &conf, json &resp)
+  {
+    UaStatus st = OpcUa_Good;
+    for (json::iterator it = conf.begin(); it != conf.end(); ++it)
+    {
+      LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
+      if (it.key() == "dac_threshold")
+      {
+        //
+        uint16_t v = it.value();
+        st = set_dac_threshold(v,resp);
+        if (st != OpcUa_Good)
+        {
+          resp["status"] = "ERROR";
+          resp["messages"].push_back("Failed to set DAC threshold");
+          resp["statuscode"] = OpcUa_Bad;
+          return st;
+        }
+      }
+    }
+    return st;
+  }
 }

@@ -51,35 +51,35 @@ using std::ostringstream;
 
 namespace Device
 {
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
-  // 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
-  // 1     Users don't modify this code!!!!                                  1
-  // 1     If you modify this code you may start a fire or a flood somewhere,1
-  // 1     and some human being may possible cease to exist. You don't want  1
-  // 1     to be charged with that!                                          1
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
+// 1     Users don't modify this code!!!!                                  1
+// 1     If you modify this code you may start a fire or a flood somewhere,1
+// 1     and some human being may possible cease to exist. You don't want  1
+// 1     to be charged with that!                                          1
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
 
 
 
 
 
 
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
-  // 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
-  // 2     (code for which only stubs were generated automatically)          2
-  // 2     You should add the implementation but dont alter the headers      2
-  // 2     (apart from constructor, in which you should complete initializati2
-  // 2     on list)                                                          2
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
+// 2     (code for which only stubs were generated automatically)          2
+// 2     You should add the implementation but dont alter the headers      2
+// 2     (apart from constructor, in which you should complete initializati2
+// 2     on list)                                                          2
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
 
-  /* sample ctr */
-  DIoLPowerMeter::DIoLPowerMeter (
-      const Configuration::IoLPowerMeter& config,
-      Parent_DIoLPowerMeter* parent
-  ):
-        Base_DIoLPowerMeter( config, parent)
+/* sample ctr */
+DIoLPowerMeter::DIoLPowerMeter (
+    const Configuration::IoLPowerMeter& config,
+    Parent_DIoLPowerMeter* parent
+):
+    Base_DIoLPowerMeter( config, parent)
 
-        /* fill up constructor initialization list here */
+    /* fill up constructor initialization list here */
         ,m_pm(nullptr)
         ,m_comport("auto")
         ,m_status(sOffline)
@@ -93,9 +93,9 @@ namespace Device
         ,m_pause_measurements(false)
         ,m_serial_number("")
         ,m_serial_busy(false)
-        {
-    m_name = config.name();
-    m_serial_number = config.serial_number();
+{
+    m_name = config.id();
+    m_serial_number = "";
     /* fill up constructor body here */
     // first probe the for the port that this meter is attached to
     m_threshold_limits.first = 0;
@@ -131,22 +131,22 @@ namespace Device
     //    }
     //
 
-        }
+}
 
-  /* sample dtr */
-  DIoLPowerMeter::~DIoLPowerMeter ()
-  {
-  }
+/* sample dtr */
+DIoLPowerMeter::~DIoLPowerMeter ()
+{
+}
 
-  /* delegates for cachevariables */
+/* delegates for cachevariables */
 
 
 
-  /* delegators for methods */
-  UaStatus DIoLPowerMeter::callInit (
-      UaString& response
-  )
-  {
+/* delegators for methods */
+UaStatus DIoLPowerMeter::callInit (
+    UaString& response
+)
+{
     json resp;
     init(resp);
     // complete the structure of the response object
@@ -160,13 +160,13 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLPowerMeter::callSet_connection (
-      const UaString&  port,
-      OpcUa_UInt16 baud_rate,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLPowerMeter::callSet_connection (
+    const UaString&  port,
+    OpcUa_UInt16 baud_rate,
+    UaString& response
+)
+{
     json resp;
     std::string p = port.toUtf8();
     set_conn(p,baud_rate,resp);
@@ -181,12 +181,12 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLPowerMeter::callSet_average (
-      OpcUa_UInt16 target_value,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLPowerMeter::callSet_average (
+    OpcUa_UInt16 target_value,
+    UaString& response
+)
+{
     json resp;
     set_average(target_value,resp);
     // complete the structure of the response object
@@ -200,12 +200,12 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLPowerMeter::callSet_range (
-      OpcUa_Int16 target_value,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLPowerMeter::callSet_range (
+    OpcUa_Int16 target_value,
+    UaString& response
+)
+{
     json resp;
     set_average(target_value,resp);
     // complete the structure of the response object
@@ -219,12 +219,12 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLPowerMeter::callSet_pulse_width (
-      OpcUa_UInt16 target_value,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLPowerMeter::callSet_pulse_width (
+    OpcUa_UInt16 target_value,
+    UaString& response
+)
+{
     json resp;
     set_pwidth(target_value,resp);
     // complete the structure of the response object
@@ -238,12 +238,12 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLPowerMeter::callSet_threshold (
-      OpcUa_UInt16 target_value,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLPowerMeter::callSet_threshold (
+    OpcUa_UInt16 target_value,
+    UaString& response
+)
+{
     json resp;
     set_thresh(target_value,resp);
     // complete the structure of the response object
@@ -257,12 +257,12 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLPowerMeter::callSet_wavelength (
-      OpcUa_UInt16 target_value,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLPowerMeter::callSet_wavelength (
+    OpcUa_UInt16 target_value,
+    UaString& response
+)
+{
     json resp;
     set_lambda(target_value,resp);
     // complete the structure of the response object
@@ -276,12 +276,12 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLPowerMeter::callSet_measurement_mode (
-      OpcUa_UInt16 target_value,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLPowerMeter::callSet_measurement_mode (
+    OpcUa_UInt16 target_value,
+    UaString& response
+)
+{
     json resp;
     set_mmode(target_value,resp);
     // complete the structure of the response object
@@ -295,11 +295,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLPowerMeter::callReset (
+}
+UaStatus DIoLPowerMeter::callReset (
 
-  )
-  {
+)
+{
     json resp;
     UaStatus st = reset(resp);
 //    std::ostringstream msg("");
@@ -321,12 +321,12 @@ namespace Device
 //    resp["statuscode"] = st;
 //    response = UaString(resp.dump().c_str());
     return st;
-  }
-  UaStatus DIoLPowerMeter::callConfig (
-      const UaString&  conf,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLPowerMeter::callConfig (
+    const UaString&  conf,
+    UaString& response
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     const std::string label = "config";
@@ -367,11 +367,11 @@ namespace Device
 
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLPowerMeter::callStop_measurements (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLPowerMeter::callStop_measurements (
+    UaString& response
+)
+{
     json resp;
     const std::string label = "stop_measurements";
 
@@ -396,11 +396,11 @@ namespace Device
     response = UaString(resp.dump().c_str());
     //
     return OpcUa_Good;
-  }
-  UaStatus DIoLPowerMeter::callStart_measurements (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLPowerMeter::callStart_measurements (
+    UaString& response
+)
+{
 
     json resp;
     const std::string label = "start_measurements";
@@ -426,11 +426,11 @@ namespace Device
     response = UaString(resp.dump().c_str());
 
     return OpcUa_Good;
-  }
-  UaStatus DIoLPowerMeter::callTerminate (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLPowerMeter::callTerminate (
+    UaString& response
+)
+{
     json resp;
     const std::string label = "terminate";
 
@@ -455,13 +455,13 @@ namespace Device
     response = UaString(resp.dump().c_str());
 
     return OpcUa_Good;
-  }
+}
 
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
-  // 3     FULLY CUSTOM CODE STARTS HERE                                     3
-  // 3     Below you put bodies for custom methods defined for this class.   3
-  // 3     You can do whatever you want, but please be decent.               3
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3     FULLY CUSTOM CODE STARTS HERE                                     3
+// 3     Below you put bodies for custom methods defined for this class.   3
+// 3     You can do whatever you want, but please be decent.               3
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
 
   UaStatus DIoLPowerMeter::set_conn(const std::string port, const uint16_t baud, json &resp)
   {
@@ -475,7 +475,7 @@ namespace Device
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
       return OpcUa_BadInvalidState;
-    }
+}
     // if the port is already set and the connection is
     // established, do nothing.
     // in this case one should first terminate and then reset the parameters

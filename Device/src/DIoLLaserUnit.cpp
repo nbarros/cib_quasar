@@ -53,35 +53,35 @@ using std::string;
 //
 namespace Device
 {
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
-  // 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
-  // 1     Users don't modify this code!!!!                                  1
-  // 1     If you modify this code you may start a fire or a flood somewhere,1
-  // 1     and some human being may possible cease to exist. You don't want  1
-  // 1     to be charged with that!                                          1
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
+// 1     Users don't modify this code!!!!                                  1
+// 1     If you modify this code you may start a fire or a flood somewhere,1
+// 1     and some human being may possible cease to exist. You don't want  1
+// 1     to be charged with that!                                          1
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
 
 
 
 
 
 
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
-  // 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
-  // 2     (code for which only stubs were generated automatically)          2
-  // 2     You should add the implementation but dont alter the headers      2
-  // 2     (apart from constructor, in which you should complete initializati2
-  // 2     on list)                                                          2
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
+// 2     (code for which only stubs were generated automatically)          2
+// 2     You should add the implementation but dont alter the headers      2
+// 2     (apart from constructor, in which you should complete initializati2
+// 2     on list)                                                          2
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
 
-  /* sample ctr */
-  DIoLLaserUnit::DIoLLaserUnit (
-      const Configuration::IoLLaserUnit& config,
-      Parent_DIoLLaserUnit* parent
-  ):
-            Base_DIoLLaserUnit( config, parent)
+/* sample ctr */
+DIoLLaserUnit::DIoLLaserUnit (
+    const Configuration::IoLLaserUnit& config,
+    Parent_DIoLLaserUnit* parent
+):
+    Base_DIoLLaserUnit( config, parent)
 
-            /* fill up constructor initialization list here */
+    /* fill up constructor initialization list here */
             ,m_is_ready(false)
             ,m_status(sOffline)
             ,m_laser(nullptr)
@@ -104,12 +104,12 @@ namespace Device
             ,m_fire_width(10)
             ,m_serial_number("")
             ,m_warmup_timer(30) // 30 min
-            {
+{
     /* fill up constructor body here */
     m_name = config.id();
     LOG(Log::INF) << "DIoLLaserUnit::DIoLLaserUnit : Building instance of  [" << m_name << "]";
     LOG(Log::INF) << "DIoLLaserUnit::DIoLLaserUnit : Using ID   [" << config.id() << "]";
-    m_serial_number = serial_number();
+    m_serial_number = "";
     LOG(Log::INF) << "DIoLLaserUnit::DIoLLaserUnit : Port set to [" << m_comport << "]";
 
     //m_part_state = laser_state_u(0x2);
@@ -176,11 +176,11 @@ namespace Device
 
       m_status = sError;
     }
-            }
+}
 
-  /* sample dtr */
-  DIoLLaserUnit::~DIoLLaserUnit ()
-  {
+/* sample dtr */
+DIoLLaserUnit::~DIoLLaserUnit ()
+{
     // clear up the memory for the CIB
     LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map oneor more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
 
@@ -190,14 +190,14 @@ namespace Device
       cib::util::unmap_mem(entry.second.vaddr,entry.second.size);
     }
     close(m_mmap_fd);
-  }
+}
 
-  /* delegates for cachevariables */
+/* delegates for cachevariables */
 
-  /* Note: never directly call this function. */
+/* Note: never directly call this function. */
 
-  UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Double& v)
-  {
+UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Double& v)
+{
     LOG(Log::INF) << "Setting discharge voltage to " << v;
     std::ostringstream msg;
     // we need the system to be at least in unconfigured state
@@ -217,11 +217,11 @@ namespace Device
     json resp;
     return write_hv(v,resp);
 
-  }
-  /* Note: never directly call this function. */
+}
+/* Note: never directly call this function. */
 
-  UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
-  {
+UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
+{
     LOG(Log::INF) << "Setting Repetition rate";
     std::ostringstream msg;
     // we need the system to be at least in unconfigured state
@@ -240,11 +240,11 @@ namespace Device
     }
     json resp;
     return write_rate(v,resp);
-  }
-  /* Note: never directly call this function. */
+}
+/* Note: never directly call this function. */
 
-  UaStatus DIoLLaserUnit::writeRep_rate_divider ( const OpcUa_UInt32& v)
-  {
+UaStatus DIoLLaserUnit::writeRep_rate_divider ( const OpcUa_UInt32& v)
+{
     LOG(Log::INF) << "Setting Rate Divider / Prescale to " << v;
     // we need the system to be at least in unconfigured state
     // as we need the device connection to be established
@@ -264,16 +264,16 @@ namespace Device
     return write_divider(v,resp);
     // we don't really care for the responses in this case
     // just whether it went well or not
-  }
+}
 
 
-  /* delegators for methods */
-  UaStatus DIoLLaserUnit::callSet_connection (
-      const UaString&  device_port,
-      OpcUa_UInt16 baud_rate,
-      UaString& response
-  )
-  {
+/* delegators for methods */
+UaStatus DIoLLaserUnit::callSet_connection (
+    const UaString&  device_port,
+    OpcUa_UInt16 baud_rate,
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     std::string port = device_port.toUtf8();
@@ -311,12 +311,12 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callConfig (
-      const UaString&  conf,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callConfig (
+    const UaString&  conf,
+    UaString& response
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     const std::string lbl = "config";
@@ -386,11 +386,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callInit (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callInit (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     const std::string lbl = "init";
@@ -458,11 +458,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callStop (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callStop (
+    UaString& response
+)
+{
     // stop can be called in sError state. No harm in making sure that everything is shut down
     std::ostringstream msg("");
     json resp;
@@ -489,12 +489,12 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callCheck_laser_status (
-      OpcUa_UInt16& status,
-      UaString& description
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callCheck_laser_status (
+    OpcUa_UInt16& status,
+    UaString& description
+)
+{
     json resp;
     std::ostringstream msg("");
     const std::string lbl = "check_status";
@@ -526,32 +526,32 @@ namespace Device
     //
     return OpcUa_Good;
     //
-  }
-  UaStatus DIoLLaserUnit::callSingle_shot (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callSingle_shot (
+    UaString& response
+)
+{
     json resp;
     (void) single_shot(resp);
     response = UaString(resp.dump().c_str());
 
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callStart_standalone (
-      OpcUa_Boolean fire,
-      OpcUa_UInt32 num_shots,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callStart_standalone (
+    OpcUa_Boolean fire,
+    OpcUa_UInt32 num_shots,
+    UaString& response
+)
+{
     // this calls the fire command without input from the CIB
     // it is meant to be used without CIB access
     // for now do not implement it
     return OpcUa_BadNotImplemented;
-  }
-  UaStatus DIoLLaserUnit::callStart_cib (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callStart_cib (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     UaStatus st = OpcUa_Good;
@@ -562,7 +562,7 @@ namespace Device
     {
       response = UaString(resp.dump().c_str());
       return OpcUa_Good;
-    }
+}
     //
     st = start_cib(resp);
     if (st != OpcUa_Good)
@@ -587,11 +587,11 @@ namespace Device
     return OpcUa_Good;
   }
 
-  UaStatus DIoLLaserUnit::callSwitch_laser_shutter (
-      OpcUa_Boolean close,
-      UaString& response
-  )
-  {
+UaStatus DIoLLaserUnit::callSwitch_laser_shutter (
+    OpcUa_Boolean close,
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     UaStatus st = OpcUa_Good;
@@ -625,12 +625,12 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callForce_ext_shutter (
-      OpcUa_Boolean close,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callForce_ext_shutter (
+    OpcUa_Boolean close,
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     UaStatus st = OpcUa_Good;
@@ -671,11 +671,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callTerminate (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callTerminate (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     const std::string lbl = "terminate";
@@ -700,11 +700,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callStop_cib (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callStop_cib (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     const std::string lbl = "stop_cib";
@@ -732,11 +732,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callPause (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callPause (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     const std::string lbl = "pause";
@@ -763,11 +763,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callStandby (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callStandby (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     const std::string lbl = "standby";
     json resp;
@@ -795,11 +795,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLLaserUnit::callResume (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLLaserUnit::callResume (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     json resp;
     const std::string lbl = "resume";
@@ -824,13 +824,13 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
+}
 
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
-  // 3     FULLY CUSTOM CODE STARTS HERE                                     3
-  // 3     Below you put bodies for custom methods defined for this class.   3
-  // 3     You can do whatever you want, but please be decent.               3
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3     FULLY CUSTOM CODE STARTS HERE                                     3
+// 3     Below you put bodies for custom methods defined for this class.   3
+// 3     You can do whatever you want, but please be decent.               3
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
 
   UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &resp)
   {
@@ -845,7 +845,7 @@ namespace Device
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
       return OpcUa_BadInvalidState;
-    }
+}
     //
     // it only reaches here if it is also *not* in the sError state
     if (m_status != sOffline)

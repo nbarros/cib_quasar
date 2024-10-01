@@ -24,6 +24,8 @@
 #include <Base_DIoLCIB.h>
 #include <json.hpp>
 using json = nlohmann::json;
+#include <atomic>
+#include <AD5339.h>
 
 namespace Device
 {
@@ -44,9 +46,18 @@ public:
 
     /* delegators for
     cachevariables and sourcevariables */
+    /* Note: never directly call this function. */
+    UaStatus writeDac_threshold ( const OpcUa_UInt16& v);
 
 
     /* delegators for methods */
+    UaStatus callSet_dac_threshold (
+        OpcUa_UInt16 dac_level,
+        UaString& response
+    ) ;
+    UaStatus callReset_pdts (
+        UaString& response
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */
@@ -65,10 +76,13 @@ public:
     UaStatus terminate(json &resp);
     UaStatus set_id(const std::string &id);
     const std::string get_id() {return m_id;}
-
+    void refresh_dac();
+    int init_dac();
+    UaStatus config(json &conf, json &resp);
 private:
     void poll_cpu();
     void poll_mem();
+    UaStatus set_dac_threshold(uint16_t &val,json &resp);
 
     bool m_is_ready;
     float m_cpu_load;
@@ -82,6 +96,9 @@ private:
     long long unsigned int m_prev_tot_idle;
     long long unsigned int m_total;
     std::string m_id;
+
+    cib::i2c::AD5339 m_dac;
+
 };
 
 }
