@@ -445,7 +445,7 @@
 
   <d:class name="IoLCIB">
     <d:devicelogic/>
-    <d:configentry dataType="OpcUa_UInt16" name="id" isKey="true"
+    <d:configentry dataType="UaString" name="id" isKey="true"
     	storedInDeviceObject="true" />
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="mem_load" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
     </d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="cpu_load" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="-1.0">
