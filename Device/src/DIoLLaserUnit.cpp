@@ -2933,7 +2933,7 @@ UaStatus DIoLLaserUnit::callResume (
           tmp.offset = jt.value().at(1);
           tmp.bit_high = jt.value().at(2);
           tmp.bit_low = jt.value().at(3);
-          tmp.addr = (m_reg_map.at(tmp.reg_id).vaddr+(tmp.offset*sizeof(uint32_t)));
+          tmp.addr = (m_reg_map.at(tmp.reg_id).vaddr+(tmp.offset*GPIO_CH_OFFSET));
           tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
 #ifdef DEBUG
           LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg_id
