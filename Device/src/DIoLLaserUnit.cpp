@@ -17,17 +17,13 @@
 
  */
 
-
+#define DEBUG 1
 #include <Configuration.hxx> // TODO; should go away, is already in Base class for ages
 
 #include <DIoLLaserUnit.h>
 #include <ASIoLLaserUnit.h>
 #include <utilities.hh>
-#ifdef SIMULATION
-#include <LaserSim.hh>
-#else
 #include <Laser.hh>
-#endif
 #include <string>
 #include <sstream>
 #include <thread>
@@ -146,7 +142,9 @@ DIoLLaserUnit::DIoLLaserUnit (
       LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map LASER CIB memory region. This is going to fail spectacularly!!!\n\n";
     }
     m_reg_map[LASER_REG] = tmpreg;
-
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : LASER_REG mapped to " << std::hex << m_reg_map.at(LASER_REG).vaddr << std::dec;
+#endif
     tmpreg.id= MISC_REG;
     tmpreg.paddr = GPIO_MISC_MEM_LOW;
     tmpreg.size = 0xFFF;
@@ -156,7 +154,9 @@ DIoLLaserUnit::DIoLLaserUnit (
       LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
     }
     m_reg_map[MISC_REG] = tmpreg;
-
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : MISC_REG mapped to " << std::hex << m_reg_map.at(MISC_REG).vaddr << std::dec;
+#endif
     tmpreg.id= ALIGN_REG;
     tmpreg.paddr = GPIO_ALIGN_MEM_LOW;
     tmpreg.size = 0xFFF;
@@ -166,6 +166,9 @@ DIoLLaserUnit::DIoLLaserUnit (
       LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
     }
     m_reg_map[ALIGN_REG] = tmpreg;
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : ALIGN_REG mapped to " << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
+#endif
 
     //#endif
 
@@ -182,11 +185,13 @@ DIoLLaserUnit::DIoLLaserUnit (
 DIoLLaserUnit::~DIoLLaserUnit ()
 {
     // clear up the memory for the CIB
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map oneor more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Unammping CIB memory regions.";
 
     for (auto entry: m_reg_map)
     {
-      LOG(Log::INF  ) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Clearing CIB memory [" << entry.first << "\n";
+#ifdef DEBUG
+      LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Clearing CIB memory [" << entry.first << "\n";
+#endif
       cib::util::unmap_mem(entry.second.vaddr,entry.second.size);
     }
     close(m_mmap_fd);
@@ -198,7 +203,9 @@ DIoLLaserUnit::~DIoLLaserUnit ()
 
 UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Double& v)
 {
+#ifdef DEBUG
     LOG(Log::INF) << "Setting discharge voltage to " << v;
+#endif
     std::ostringstream msg;
     // we need the system to be at least in unconfigured state
     // as we need the device connection to be established
@@ -222,7 +229,9 @@ UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Double& v)
 
 UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
 {
+#ifdef DEBUG
     LOG(Log::INF) << "Setting Repetition rate";
+#endif
     std::ostringstream msg;
     // we need the system to be at least in unconfigured state
     // as we need the device connection to be established
@@ -245,8 +254,10 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
 
 UaStatus DIoLLaserUnit::writeRep_rate_divider ( const OpcUa_UInt32& v)
 {
-    LOG(Log::INF) << "Setting Rate Divider / Prescale to " << v;
-    // we need the system to be at least in unconfigured state
+#ifdef DEBUG
+  LOG(Log::INF) << "Setting Rate Divider / Prescale to " << v;
+#endif
+  // we need the system to be at least in unconfigured state
     // as we need the device connection to be established
     if (m_status == sError)
     {
@@ -2262,14 +2273,22 @@ UaStatus DIoLLaserUnit::callResume (
       // this means that the code below is completely agnostic
       // set the value both at CIB and laser level
       // -- otherwise, set the memory region in the register, and the local cache variable too
-      LOG(Log::WRN) << "Writing delay " << v_clock;
+#ifdef DEBUG
+      LOG(Log::WRN) << "Writing qs_delay " << v_clock << " with \n"
+          << "addr " << m_regs.at("qs_delay").addr << "\n"
+          << "mask" << std::hex << m_regs.at("qs_delay").mask << std::dec << "\n"
+          << "offset" << m_regs.at("qs_delay").bit_low;
+#endif
 
       cib::util::reg_write_mask_offset(m_regs.at("qs_delay").addr,
                                        v_clock,
                                        m_regs.at("qs_delay").mask,
                                        m_regs.at("qs_delay").bit_low);
 
-      //      m_laser->set_qswitch(nv);
+#ifdef DEBUG
+      LOG(Log::WRN) << "Done writing qs_delay ";
+#endif
+          //      m_laser->set_qswitch(nv);
       m_qswitch_delay = nv;
       // update the address space as well
       getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Good);
@@ -2773,10 +2792,16 @@ UaStatus DIoLLaserUnit::callResume (
     // this method is specific for each device
     // -- first obtain a map to all the memory
     std::ostringstream msg("");
-    UaStatus st = check_cib_mem(resp);
     const std::string lbl = "map_registers";
+#ifdef DEBUG
+    LOG(Log::INF) << log_i(lbl.c_str(),"Mapping registers");
+#endif
+    UaStatus st = check_cib_mem(resp);
     if(st != OpcUa_Good)
     {
+#ifdef DEBUG
+    LOG(Log::ERR) << log_e(lbl.c_str(),"CIB memory not mapped");
+#endif
       return st;
     }
     else
@@ -2789,7 +2814,7 @@ UaStatus DIoLLaserUnit::callResume (
       // now grab the entries
       try
       {
-        for (auto jt = reginfo.begin(); jt != reginfo .end(); ++jt)
+        for (auto jt = reginfo.begin(); jt != reginfo.end(); ++jt)
         {
           if (jt.value().at(0) == -1)
           {
@@ -2806,6 +2831,12 @@ UaStatus DIoLLaserUnit::callResume (
           tmp.bit_low = jt.value().at(3);
           tmp.addr = (m_reg_map.at(tmp.reg_id).vaddr+(tmp.offset*sizeof(uint32_t)));
           tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
+#ifdef DEBUG
+          LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg_id
+              << " offset " << tmp.offset << " bh " << tmp.bit_high << " bl " << tmp.bit_low
+              << " addr " << std::hex << tmp.addr << std::dec << " mask " << std::hex << tmp.mask
+              << std::dec << " ";
+#endif
           m_regs.insert(std::pair<std::string,laser_regs_t>(jt.key(),tmp));
         }
       }

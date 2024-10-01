@@ -9,7 +9,7 @@
 	"pause_timeout_min": 10,
 	"standby_timeout_min": 60,
 	"warmup_timer_min": 30,
-	"qswitch_delay_us": 195,
+	"qswitch_delay_us": 190,
 	"qswitch_width_us": 10,
 	"fire_width_us": 10,
 	"mmap": {
