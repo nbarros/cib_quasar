@@ -852,6 +852,9 @@ UaStatus DIoLLaserUnit::callResume (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Laser Unit in sError state. System on lockdown. Check for error messages.");
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -863,6 +866,9 @@ UaStatus DIoLLaserUnit::callResume (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Laser is online. You must first shut it down.");
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -874,6 +880,9 @@ UaStatus DIoLLaserUnit::callResume (
     {
       msg.clear(); msg.str("");
       msg << log_w(lbl.c_str(),"Laser instance found. This is unexpected and therefore a termination will be forced first.");
+#ifdef DEBUG
+      LOG(Log::WRN) << msg.str();
+#endif
       resp["status"] = "WARNING";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -886,6 +895,9 @@ UaStatus DIoLLaserUnit::callResume (
       automatic_port_search();
       msg.clear(); msg.str("");
       msg << log_i(lbl.c_str(),"Automatic search found port [") << m_comport << "]";
+#ifdef DEBUG
+      LOG(Log::INF) << msg.str();
+#endif
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -899,6 +911,9 @@ UaStatus DIoLLaserUnit::callResume (
       // the port is invalid. Something failed.
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Port is invalid [") << m_comport << "]";
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidArgument;
@@ -914,6 +929,9 @@ UaStatus DIoLLaserUnit::callResume (
       // just leave what it is presently set
       msg.clear(); msg.str("");
       msg << log_i(lbl.c_str(),"Baud rate kept to current value[") << m_baud_rate << "]";
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -2181,10 +2199,14 @@ UaStatus DIoLLaserUnit::callResume (
     // check range
     static ostringstream msg("");
     bool got_exception = false;
+    const std::string lbl = "write_hv";
     if (m_status != sReady)
     {
       msg.clear(); msg.str("");
-      msg << log_e("prescale"," ") << "Laser is not in ready state. Current state :" << m_status_map.at(m_status);
+      msg << log_e(lbl.c_str()," ") << "Laser is not in ready state. Current state :" << m_status_map.at(m_status);
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
       resp["messages"].push_back(msg.str());
       LOG(Log::ERR) << msg.str();
       return OpcUa_BadInvalidState;
@@ -2194,7 +2216,9 @@ UaStatus DIoLLaserUnit::callResume (
     {
       msg.clear(); msg.str("");
       msg << log_e("rate","Value out of bounds: ") << v << "<> [0.0,20.0]";
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadOutOfRange;
@@ -2209,6 +2233,9 @@ UaStatus DIoLLaserUnit::callResume (
       m_serial_busy.store(true);
       m_laser->set_pump_voltage(v);
       m_serial_busy.store(false);
+#ifdef DEBUG
+      LOG(Log::INF) << log_i(lbl.c_str(),"Voltage set");
+#endif
       m_pump_hv = v;
       getAddressSpaceLink()->setDischarge_voltage_kV(m_pump_hv, OpcUa_Good);
     }
@@ -2240,7 +2267,9 @@ UaStatus DIoLLaserUnit::callResume (
     {
       m_serial_busy.store(false);
       getAddressSpaceLink()->setDischarge_voltage_kV(m_pump_hv, OpcUa_BadCommunicationError);
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -2651,10 +2680,22 @@ UaStatus DIoLLaserUnit::callResume (
       if ( st != OpcUa_Good)
       {
         // just fail
+#ifdef DEBUG
+        LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to establish connection to device");
+#endif
         return st;
       }
       // all good so far, so lets initiate the connection by creating an instance of the laser system
       m_laser = new device::Laser(m_comport.c_str(),static_cast<uint32_t>(m_baud_rate));
+      st = check_laser_instance(resp);
+      if (st != OpcUa_Good)
+      {
+#ifdef DEBUG
+      LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to create a laser instance");
+#endif
+        terminate(resp);
+        return st;
+      }
       update_status(sReady);
       // if the ids match, lets set the parameters
       // special iterator member functions for objects
@@ -2666,6 +2707,9 @@ UaStatus DIoLLaserUnit::callResume (
       {
         msg.clear();msg.str("");
         msg << log_e(lbl.c_str(),"Failed to map configuration registers");
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
         resp["messages"].push_back(msg.str());
         resp["status"] = "ERROR";
         resp["statuscode"] = OpcUa_Bad;
