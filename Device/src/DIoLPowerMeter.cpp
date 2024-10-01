@@ -698,8 +698,6 @@ namespace Device
     bool power,energy,freq;
     // actually query the device for the
     bool got_exception = false;
-    bool success = false;
-
     if (m_status == sOffline)
     {
       std::string s = util::serialize_map(m_measurement_modes);
@@ -707,7 +705,7 @@ namespace Device
       getAddressSpaceLink()->setMeasurement_options(ss,s.size(), OpcUa_BadInvalidState);
       return;
     }
-
+    //
     try
     {
       if (m_serial_busy.load())
@@ -758,9 +756,8 @@ namespace Device
       // do nothing...we are offline
       return;
     }
-
+    //
     bool got_exception = false;
-    bool success = false;
     try
     {
       if (m_serial_busy.load())
@@ -798,7 +795,6 @@ namespace Device
     //
     int16_t v;
     bool got_exception = false;
-    bool success = false;
     if (m_status == sOffline)
     {
       // do nothing...we are offline
@@ -807,7 +803,7 @@ namespace Device
       getAddressSpaceLink()->setRange_options(ss,s.size(), OpcUa_BadInvalidState);
       return;
     }
-
+    //
     try
     {
       if (m_serial_busy.load())
@@ -853,7 +849,6 @@ namespace Device
   {
     uint16_t a;
     bool got_exception = false;
-    bool success = false;
     if (m_status == sOffline)
     {
       std::string s = util::serialize_map(m_pulse_widths);
@@ -861,7 +856,7 @@ namespace Device
       getAddressSpaceLink()->setPulse_length_options(ss,s.size(), OpcUa_BadInvalidState);
       return;
     }
-
+    //
     try
     {
       if (m_serial_busy.load())
@@ -898,7 +893,6 @@ namespace Device
     // -- check the average window options
     uint16_t a;
     bool got_exception = false;
-    bool success = false;
     if (m_status == sOffline)
     {
       std::string s = util::serialize_map(m_ave_windows);
@@ -916,7 +910,7 @@ namespace Device
       m_pm->average_query(0, a); // this guarantees that the map is filled
       m_pm->get_averages_map(m_ave_windows);
       m_serial_busy.store(false);
-
+      //
       // force address space update
       std::string s = util::serialize_map(m_ave_windows);
       UaString ss(s.c_str());

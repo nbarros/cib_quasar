@@ -120,6 +120,7 @@ namespace Device
     m_status_map.insert({sLasing,"lasing"});
     m_status_map.insert({sPause,"pause"});
     m_status_map.insert({sStandby,"standby"});
+    m_status_map.insert({sError,"error"});
 
     // try to initialize the system with the defaults
     //m_config.word.init(0x0);
@@ -298,7 +299,7 @@ namespace Device
     }
     else
     {
-      if (!resp.contains("status"))
+      if (!resp.contains("init"))
       {
         resp["status"] = "SUCCESS";
       }
@@ -318,6 +319,7 @@ namespace Device
   {
     std::ostringstream msg("");
     bool got_exception = false;
+    const std::string lbl = "config";
     json resp;
     json cfrag;
     UaStatus st = OpcUa_Good;
@@ -337,19 +339,19 @@ namespace Device
     catch(json::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Caught JSON exception : ") << e.what();
+      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Caught JSON exception : ") << e.what();
+      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Caught an unknown exception");
+      msg << log_e(lbl.c_str(),"Caught an unknown exception");
       got_exception = true;
     }
     if (got_exception)
@@ -365,7 +367,7 @@ namespace Device
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Configuration failed.");
+      msg << log_e(lbl.c_str(),"Configuration failed.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       if (!resp.contains("statuscode"))
@@ -377,7 +379,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("config","Configuration successful.");
+      msg << log_i(lbl.c_str(),"Configuration successful.");
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -391,6 +393,7 @@ namespace Device
   {
     std::ostringstream msg("");
     bool got_exception = false;
+    const std::string lbl = "init";
     json resp;
     json cfrag;
     UaStatus st = OpcUa_Good;
@@ -409,19 +412,19 @@ namespace Device
     catch(json::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("init","Caught JSON exception : ") << e.what();
+      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("init","Caught JSON exception : ") << e.what();
+      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("init","Caught an unknown exception");
+      msg << log_e(lbl.c_str(),"Caught an unknown exception");
       got_exception = true;
     }
     if (got_exception)
@@ -436,7 +439,7 @@ namespace Device
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("init","Initialization failed.");
+      msg << log_e(lbl.c_str(),"Initialization failed.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       if (!resp.contains("statuscode"))
@@ -448,7 +451,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("init","Initialization successful.");
+      msg << log_i(lbl.c_str(),"Initialization successful.");
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -463,11 +466,12 @@ namespace Device
     // stop can be called in sError state. No harm in making sure that everything is shut down
     std::ostringstream msg("");
     json resp;
+    const std::string lbl = "stop";
     UaStatus st = stop(resp);
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("stop","Failed to stop. See previous messages");
+      msg << log_e(lbl.c_str(),"Failed to stop. See previous messages");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -477,7 +481,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_e("stop","Stopped successfully.");
+      msg << log_e(lbl.c_str(),"Stopped successfully.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
@@ -491,13 +495,15 @@ namespace Device
       UaString& description
   )
   {
+    json resp;
     std::ostringstream msg("");
-    bool got_exception = false;
+    const std::string lbl = "check_status";
+    UaStatus st = OpcUa_Good;
     //
-    if (m_status == sError)
+    st = check_error_state(resp);
+    if (st != OpcUa_Good)
     {
       status = 98;
-      msg << log_e("status","Laser in sError state. System in lockdown.");
       description = UaString(msg.str().c_str());
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadInvalidState);
       return OpcUa_Good;
@@ -507,60 +513,16 @@ namespace Device
     // start by closing hte shutter, and
     // since this is a usually kind of critical method, do not even care to check whether the
     // laser is firing or not, just stop and close the shutter
-    if (!m_laser)
+    st = check_laser_instance(resp);
+    if (st != OpcUa_Good)
     {
       status = 99;
-      msg << log_e("status","There is no connection to the laser.");
       description = UaString(msg.str().c_str());
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadInvalidState);
       return OpcUa_Good;
     }
     //
-    try
-    {
-      std::string desc;
-      if (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
-      m_laser->security(status, desc);
-      m_serial_busy.store(false);
-      description = UaString(desc.c_str());
-      getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
-    }
-    catch(serial::PortNotOpenedException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("status"," ") << "Port not open [" << e.what() << "]";
-      got_exception = true;
-    }
-    catch(serial::SerialException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("status","Failed with a Serial exception :") << e.what();
-      got_exception = true;
-    }
-    catch(std::exception &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("status","Failed with an STL exception :") << e.what();
-      got_exception = true;
-    }
-    catch(...)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("status","Failed with an unknown exception.");
-      got_exception = true;
-    }
-    if (got_exception)
-    {
-      status = 98;
-      LOG(Log::ERR) << msg.str();
-      description = UaString(msg.str().c_str());
-      getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadCommunicationError);
-      return OpcUa_Good;
-    }
+    refresh_status(resp);
     //
     return OpcUa_Good;
     //
@@ -593,6 +555,7 @@ namespace Device
     std::ostringstream msg("");
     json resp;
     UaStatus st = OpcUa_Good;
+    const std::string lbl = "start_cib";
     //
     st = check_error_state(resp);
     if (st != OpcUa_Good)
@@ -605,7 +568,7 @@ namespace Device
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("start_cib","Failed to start laser. See previous messages");
+      msg << log_e(lbl.c_str(),"Failed to start laser. See previous messages");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -614,7 +577,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("start_cib","Laser started operating");
+      msg << log_i(lbl.c_str(),"Laser started operating");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
@@ -632,6 +595,7 @@ namespace Device
     std::ostringstream msg("");
     json resp;
     UaStatus st = OpcUa_Good;
+    const std::string lbl = "switch_shutter";
     //
     st = check_error_state(resp);
     if (st != OpcUa_Good)
@@ -640,11 +604,11 @@ namespace Device
       return OpcUa_Good;
     }
     ShutterState shst = (close)?ShutterState::sClose:ShutterState::sOpen;
-    UaStatus st = switch_laser_shutter(shst,resp);
+    st = switch_laser_shutter(shst,resp);
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("laser_shutter","Failed to switch laser. See previous messages");
+      msg << log_e(lbl.c_str(),"Failed to switch laser. See previous messages");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -653,7 +617,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("laser_shutter","Shutter switched to ") << close;
+      msg << log_i(lbl.c_str(),"Shutter switched to ") << close;
       LOG(Log::ERR) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
@@ -670,6 +634,7 @@ namespace Device
     std::ostringstream msg("");
     json resp;
     UaStatus st = OpcUa_Good;
+    const std::string lbl = "ext_shutter";
     //
     st = check_error_state(resp);
     if (st != OpcUa_Good)
@@ -685,11 +650,11 @@ namespace Device
       return OpcUa_Good;
     }
     ShutterState shst = (close)?ShutterState::sClose:ShutterState::sOpen;
-    UaStatus st = force_ext_shutter(shst,resp);
+    st = force_ext_shutter(shst,resp);
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("ext_shutter","Failed to set ext shutter. See previous messages");
+      msg << log_e(lbl.c_str(),"Failed to set ext shutter. See previous messages");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -698,7 +663,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_e("ext_shutter","ext shutter changed state successfully.");
+      msg << log_e(lbl.c_str(),"ext shutter changed state successfully.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
@@ -713,11 +678,12 @@ namespace Device
   {
     std::ostringstream msg("");
     json resp;
+    const std::string lbl = "terminate";
     UaStatus st = terminate(resp);
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("terminate","Failed to terminate laser. See previous messages");
+      msg << log_e(lbl.c_str(),"Failed to terminate laser. See previous messages");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -726,7 +692,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("terminate","Laser unit connection terminated");
+      msg << log_i(lbl.c_str(),"Laser unit connection terminated");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
@@ -741,6 +707,7 @@ namespace Device
   {
     std::ostringstream msg("");
     json resp;
+    const std::string lbl = "stop_cib";
     // there is only one stop operation.
     // it stops everything and in principle should never fail (even if memory is not mapped)
     // also, should not be subject to the sError state
@@ -748,7 +715,7 @@ namespace Device
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("stop","Failed to stop laser. See previous messages");
+      msg << log_e(lbl.c_str(),"Failed to stop laser. See previous messages");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -757,7 +724,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("stop","Laser unit stopped. Back into a sReady state.");
+      msg << log_i(lbl.c_str(),"Laser unit stopped. Back into a sReady state.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
@@ -772,14 +739,14 @@ namespace Device
   {
     std::ostringstream msg("");
     json resp;
-
+    const std::string lbl = "pause";
     // pause does not change anything in the laser itself.
     // just forces shut the external shutter
     UaStatus st = pause(resp);
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("pause","Failed to pause laser. See previous messages");
+      msg << log_e(lbl.c_str(),"Failed to pause laser. See previous messages");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -788,7 +755,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("pause","Laser unit paused. Beware of pause timer.");
+      msg << log_i(lbl.c_str(),"Laser unit paused. Beware of pause timer.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
@@ -802,6 +769,7 @@ namespace Device
   )
   {
     std::ostringstream msg("");
+    const std::string lbl = "standby";
     json resp;
     // there is only one stop operation.
     // it stops everything and in principle should never fail (even if memory is not mapped)
@@ -810,7 +778,7 @@ namespace Device
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("standby","Failed to put laser in standby. See previous messages");
+      msg << log_e(lbl.c_str(),"Failed to put laser in standby. See previous messages");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -819,7 +787,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("standby","Laser unit in standby. Beware of standby timer.");
+      msg << log_i(lbl.c_str(),"Laser unit in standby. Beware of standby timer.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
@@ -834,11 +802,12 @@ namespace Device
   {
     std::ostringstream msg("");
     json resp;
+    const std::string lbl = "resume";
     UaStatus st = resume(resp);
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("resume","Failed to resume laser operation. See previous messages");
+      msg << log_e(lbl.c_str(),"Failed to resume laser operation. See previous messages");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -847,7 +816,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("resume","Laser operation resumed.");
+      msg << log_i(lbl.c_str(),"Laser operation resumed.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
@@ -866,11 +835,12 @@ namespace Device
   UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &resp)
   {
     std::ostringstream msg("");
+    const std::string lbl = "set_conn";
     //FIXME: how do we get out of the error state?
     if (m_status == sError)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_conn","Laser Unit in sError state. System on lockdown. Check for error messages.");
+      msg << log_e(lbl.c_str(),"Laser Unit in sError state. System on lockdown. Check for error messages.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -881,7 +851,7 @@ namespace Device
     if (m_status != sOffline)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_conn","Laser is online. You must first shut it down.");
+      msg << log_e(lbl.c_str(),"Laser is online. You must first shut it down.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -892,7 +862,7 @@ namespace Device
     if (m_laser)
     {
       msg.clear(); msg.str("");
-      msg << log_w("set_conn","Laser instance found. This is unexpected and therefore a termination will be forced first.");
+      msg << log_w(lbl.c_str(),"Laser instance found. This is unexpected and therefore a termination will be forced first.");
       resp["status"] = "WARNING";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -904,7 +874,7 @@ namespace Device
     {
       automatic_port_search();
       msg.clear(); msg.str("");
-      msg << log_i("set_conn","Automatic search found port [") << m_comport << "]";
+      msg << log_i(lbl.c_str(),"Automatic search found port [") << m_comport << "]";
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -917,7 +887,7 @@ namespace Device
     {
       // the port is invalid. Something failed.
       msg.clear(); msg.str("");
-      msg << log_e("set_conn","Port is invalid [") << m_comport << "]";
+      msg << log_e(lbl.c_str(),"Port is invalid [") << m_comport << "]";
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidArgument;
@@ -932,7 +902,7 @@ namespace Device
     {
       // just leave what it is presently set
       msg.clear(); msg.str("");
-      msg << log_i("set_conn","Baud rate kept to current value[") << m_baud_rate << "]";
+      msg << log_i(lbl.c_str(),"Baud rate kept to current value[") << m_baud_rate << "]";
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -947,6 +917,7 @@ namespace Device
   }
   UaStatus DIoLLaserUnit::switch_laser_shutter(const ShutterState nstate, json &resp)
   {
+    const std::string lbl = "switch_shutter";
     std::ostringstream msg("");
     bool got_exception = false;
     UaStatus st = OpcUa_Good;
@@ -956,7 +927,7 @@ namespace Device
     {
       if (m_laser)
       {
-        close_shutter();
+        st = close_shutter(resp);
         m_part_state.state.laser_shutter_closed = true;
       }
       return st;
@@ -982,7 +953,7 @@ namespace Device
         // -- if we close the shutter, we should disable qswitch
         // disable qs_en
         disable_qswitch();
-        close_shutter();
+        close_shutter(resp);
         m_part_state.state.laser_shutter_closed = true;
 
         if (m_status != sStandby)
@@ -998,7 +969,7 @@ namespace Device
           force_ext_shutter(ShutterState::sOpen,resp);
         }
         msg.clear(); msg.str("");
-        msg << log_i("shutter","Laser shutter closed.");
+        msg << log_i(lbl.c_str(),"Laser shutter closed.");
       }
       else
       {
@@ -1041,13 +1012,13 @@ namespace Device
           newstate = sReady;
         }
         // in both cases we first open the shutter and then activate qswitch
-        m_laser->shutter_open();
+        open_shutter(resp);
         enable_qswitch();
         getAddressSpaceLink()->setLaser_shutter_open(true,OpcUa_Good);
         m_part_state.state.laser_shutter_closed = false;
         update_status(newstate);
         msg.clear(); msg.str("");
-        msg << log_i("shutter","Laser shutter open.");
+        msg << log_i(lbl.c_str(),"Laser shutter open.");
 
       }
       resp["status"] = "SUCCESS";
@@ -1062,25 +1033,25 @@ namespace Device
     catch(serial::PortNotOpenedException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("stop"," ") << "Port not open [" << e.what() << "]";
+      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("stop","Failed with a Serial exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("stop","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("stop","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       got_exception = true;
     }
     if (got_exception)
@@ -1095,7 +1066,7 @@ namespace Device
   }
   UaStatus DIoLLaserUnit::force_ext_shutter(const ShutterState nstate, json &resp)
   {
-
+    const std::string lbl = "ext_shutter";
     // if we are in some sort of error state and trying to open
     // refuse to do it, unless the internal shutter is already closed
     if ((m_status == sError) and (nstate == ShutterState::sOpen))
@@ -1105,7 +1076,7 @@ namespace Device
         // the internal shutter is closed, so we can authorize opening this one
         std::ostringstream msg("");
         msg.clear(); msg.str("");
-        msg << log_w("force_ext_shutter","Laser Unit in sError state and trying to open the shutter. allowing because internal shutter is closed.");
+        msg << log_w(lbl.c_str(),"Laser Unit in sError state and trying to open the shutter. allowing because internal shutter is closed.");
         resp["status"] = "SUCCESS";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_Uncertain;
@@ -1116,7 +1087,7 @@ namespace Device
         // internal shutter is also open, so refuse to open this one
         std::ostringstream msg("");
         msg.clear(); msg.str("");
-        msg << log_e("force_ext_shutter","Laser Unit in sError state and trying to open the shutter. System on lockdown. Check for error messages.");
+        msg << log_e(lbl.c_str(),"Laser Unit in sError state and trying to open the shutter. System on lockdown. Check for error messages.");
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1266,6 +1237,7 @@ namespace Device
     // it attempts to do a peaceful shutdown, regardless of the overall state
     //    UaStatus st = OpcUa_Good;
     std::ostringstream msg("");
+    const std::string lbl = "terminate";
     // this is meant to do a smooth temrination of the device
     if (m_status == sOffline)
     {
@@ -1276,7 +1248,7 @@ namespace Device
         // being already offline but with a live pointer
         // this should *NEVER* happen, but if it does, we're in trouble.
         msg.clear(); msg.str("");
-        msg << log_w("terminate","There is live pointer but state is offline. This should NEVER happen. Attempting to clear object.");
+        msg << log_w(lbl.c_str(),"There is live pointer but state is offline. This should NEVER happen. Attempting to clear object.");
         resp["messages"].push_back(msg.str());
         delete m_laser;
         m_laser = nullptr;
@@ -1304,7 +1276,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_e("terminate","CIB memory not mappedCan't control the laser driver.");
+      msg << log_e(lbl.c_str(),"CIB memory not mappedCan't control the laser driver.");
       resp["messages"].push_back(msg.str());
     }
     // close the internal shutter
@@ -1326,32 +1298,16 @@ namespace Device
     // laser is firing or not, just stop and close the shutter
     std::ostringstream msg("");
     bool got_exception = false;
+    const std::string lbl = "stop";
     // first thing. close the ext shutter. Not in pause mode, since that requires a laser connection
-    if (m_reg_map.size() == 0x0)
+    UaStatus st = check_cib_mem(resp);
+    if (st != OpcUa_Good)
     {
-      // we should already be in sError state
-      // cannot operate the external shutter
-      // make sure to close the internal shutter
-      msg.clear(); msg.str("");
-      msg << log_e("stop","CIB memory not mapped. Terminating since we are in sError state");
-      LOG(Log::ERR) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      update_status(sError);
-      return terminate(resp);
+      terminate(resp);
+      return st;
     }
     // if we have an external shutter, close it...at least until we stop everything else
     (void)force_ext_shutter(ShutterState::sClose,resp);
-    if (!m_laser)
-    {
-      msg.clear(); msg.str("");
-      msg << log_w("stop","There is no connection to the laser. Just stopping CIB driver.");
-      LOG(Log::WRN) << msg.str();
-      resp["status"] = "SUCCESS";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_Good;
-    }
     try
     {
       // stop qs
@@ -1368,9 +1324,8 @@ namespace Device
       // it does not hurt
       if (m_laser)
       {
-        m_laser->fire_stop();
-        m_laser->shutter_close();
-        m_part_state.state.laser_shutter_closed = true;
+        st = stop_fire(resp);
+        st = close_shutter(resp);
       }
       //  now open the external one
       force_ext_shutter(ShutterState::sOpen,resp);
@@ -1382,28 +1337,16 @@ namespace Device
       // requery the laser system for its present status, in case there are issues to report
       refresh_status();
     }
-    catch(serial::PortNotOpenedException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("stop"," ") << "Port not open [" << e.what() << "]";
-      got_exception = true;
-    }
-    catch(serial::SerialException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("stop","Failed with a Serial exception :") << e.what();
-      got_exception = true;
-    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("stop","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("stop","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       got_exception = true;
     }
     if (got_exception)
@@ -1416,7 +1359,7 @@ namespace Device
     }
     resp["status"] = "SUCCESS";
     msg.clear(); msg.str("");
-    msg << log_i("stop","Laser stopped.");
+    msg << log_i(lbl.c_str(),"Laser stopped.");
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
@@ -1431,35 +1374,24 @@ namespace Device
     // however it does not have the stop timer turned on
     // once warmup is done, it automatically switches to sPause
     std::ostringstream msg("");
+    const std::string lbl = lbl.c_str();
     bool got_exception = false;
-    if (m_reg_map.size() == 0x0)
+    UaStatus st = OpcUa_Good;
+    st = check_cib_mem(resp);
+    if (st != OpcUa_Good)
     {
-      // we should already be in sError state
-      // cannot operate the external shutter
-      // just call terminate
-      msg.clear(); msg.str("");
-      msg << log_e("start_cib","CIB memory not mapped. Terminating since we are in sError state");
-      LOG(Log::ERR) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      update_status(sError);
-      return terminate(resp);
+      terminate(resp);
+      return st;
     }
-    if (!m_laser)
+    st = check_laser_instance(resp);
+    if (st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_w("start_cib","There is no connection to the laser. Doing nothing.");
-      LOG(Log::WRN) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_BadInvalidState;
+      return st;
     }
     if (m_status != sReady)
     {
       msg.clear(); msg.str("");
-      msg << log_w("start_cib","System is not in the sReady state, as it should.");
+      msg << log_w(lbl.c_str(),"System is not in the sReady state, as it should.");
       LOG(Log::WRN) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -1472,15 +1404,26 @@ namespace Device
       disable_qswitch();
 
       // close the internal shutter
-      m_laser->shutter_close();
-      m_laser->fire_start();
-
+      st = close_shutter(resp);
+      if (st != OpcUa_Good)
+      {
+        // something went wrong
+        //
+        return st;
+      }
+      st = start_fire(resp);
+      if (st != OpcUa_Good)
+      {
+        // something went wrong
+        //
+        return st;
+      }
       m_part_state.state.laser_shutter_closed = true;
 
       // if the external shutter is closed, open it
       force_ext_shutter(ShutterState::sOpen,resp);
 
-      // start the laser firing
+      // start the laser firing on the CIB
       enable_fire();
 
       // downgrade anything above ready to ready to operate
@@ -1492,28 +1435,16 @@ namespace Device
       start_lasing_timer();
       refresh_status();
     }
-    catch(serial::PortNotOpenedException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("start_cib"," ") << "Port not open [" << e.what() << "]";
-      got_exception = true;
-    }
-    catch(serial::SerialException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("start_cib","Failed with a Serial exception :") << e.what();
-      got_exception = true;
-    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("start_cib","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("start_cib","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       got_exception = true;
     }
     if (got_exception)
@@ -1526,7 +1457,7 @@ namespace Device
     }
     resp["status"] = "SUCCESS";
     msg.clear(); msg.str("");
-    msg << log_i("start_cib","Laser started.");
+    msg << log_i(lbl.c_str(),"Laser started.");
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
@@ -1545,7 +1476,6 @@ namespace Device
     std::thread([this]()
                 {
       std::this_thread::sleep_for(std::chrono::minutes(m_warmup_timer));
-
       // once the sleep is done do the following:
       // close external shutter
       // open internal shutter
@@ -1590,44 +1520,20 @@ namespace Device
     // in principle it can be called from almost any state
     // but the resulting state is a little different
     std::ostringstream msg("");
+    const std::string lbl = lbl.c_str();
     bool got_exception = false;
-    if (m_reg_map.size() == 0x0)
+    UaStatus st = OpcUa_Good;
+    st = check_cib_mem(resp);
+    if (st != OpcUa_Good)
     {
-      // we should already be in sError state
-      // cannot operate the external shutter
-      // just call terminate
-      msg.clear(); msg.str("");
-      msg << log_e("pause","CIB memory not mapped. Terminating since we are in sError state");
-      LOG(Log::ERR) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      update_status(sError);
-      return terminate(resp);
+      terminate(resp);
+      return st;
     }
-    if (!m_laser)
+    st = check_laser_instance(resp);
+    if (st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_w("pause","There is no connection to the laser. Doing nothing.");
-      LOG(Log::WRN) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_BadInvalidState;
+      return st;
     }
-    //    // pause can be called from either sWarmup or sLasing
-    //    // one could potentially call it from sReady, but that would be kind of silly
-    //    // we can simply force the shutter closed in that case
-    //    if ((m_status != sWarmup) && (m_status != sLasing) && (m_status != sStandby))
-    //    {
-    //      msg.clear(); msg.str("");
-    //      msg << log_w("pause","System is not operating. Pause does not make sense.");
-    //      LOG(Log::WRN) << msg.str();
-    //      resp["status"] = "ERROR";
-    //      resp["messages"].push_back(msg.str());
-    //      resp["statuscode"] = OpcUa_BadInvalidState;
-    //      return OpcUa_BadInvalidState;
-    //    }
     try
     {
       // if it is in one of the previous stages redo the whole procedure
@@ -1638,13 +1544,12 @@ namespace Device
       // this in itself will also trigger a timer
       // that will be checked e very second for the state of the shutter
       enable_qswitch();
-
       // downgrade anything above ready to ready to operate
       // can wereally be considered to be in pause?
       if (!m_part_state.state.fire_enable)
       {
         msg.clear(); msg.str("");
-        msg << log_w("pause","Pased called before laser was started. The shutter will close, but the laser will remain off.");
+        msg << log_w(lbl.c_str(),"Pased called before laser was started. The shutter will close, but the laser will remain off.");
         LOG(Log::WRN) << msg.str();
         resp["status"] = "SUCCESS";
         resp["messages"].push_back(msg.str());
@@ -1658,28 +1563,16 @@ namespace Device
       // requery the laser system for its present status, in case there are issues to report
       refresh_status();
     }
-    catch(serial::PortNotOpenedException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("pause"," ") << "Port not open [" << e.what() << "]";
-      got_exception = true;
-    }
-    catch(serial::SerialException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("pause","Failed with a Serial exception :") << e.what();
-      got_exception = true;
-    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("pause","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("pause","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       got_exception = true;
     }
     if (got_exception)
@@ -1692,7 +1585,7 @@ namespace Device
     }
     resp["status"] = "SUCCESS";
     msg.clear(); msg.str("");
-    msg << log_i("pause","Laser operation paused.");
+    msg << log_i(lbl.c_str(),"Laser operation paused.");
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
@@ -1704,35 +1597,24 @@ namespace Device
     // can be called from sLasing and sPause
     std::ostringstream msg("");
     bool got_exception = false;
-    if (m_reg_map.size() == 0x0)
+    const std::string lbl = lbl.c_str();
+    UaStatus st = OpcUa_Good;
+    st = check_cib_mem(resp);
+    if (st != OpcUa_Good)
     {
-      // we should already be in sError state
-      // cannot operate the external shutter
-      // just call terminate
-      msg.clear(); msg.str("");
-      msg << log_e("standby","CIB memory not mapped. Terminating since we are in sError state");
-      LOG(Log::ERR) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      update_status(sError);
-      return terminate(resp);
+      terminate(resp);
+      return st;
     }
-    if (!m_laser)
+    st = check_laser_instance(resp);
+    if (st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_w("standby","There is no connection to the laser. Doing nothing.");
-      LOG(Log::WRN) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_BadInvalidState;
+      return st;
     }
     // if it is either in warmup or standby do nothing
     if ((m_status == sWarmup) or (m_status == sStandby))
     {
       msg.clear(); msg.str("");
-      msg << log_w("standby","Laser in warmup or standby state. Nothing to be done.");
+      msg << log_w(lbl.c_str(),"Laser in warmup or standby state. Nothing to be done.");
       LOG(Log::WRN) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -1741,10 +1623,8 @@ namespace Device
     }
     try
     {
-
       // disable qswitch
       disable_qswitch();
-
       // close the shutter
       switch_laser_shutter(ShutterState::sClose,resp);
       // if the external shutter is closed, open it
@@ -1761,28 +1641,16 @@ namespace Device
       // requery the laser system for its present status, in case there are issues to report
       refresh_status();
     }
-    catch(serial::PortNotOpenedException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("standby"," ") << "Port not open [" << e.what() << "]";
-      got_exception = true;
-    }
-    catch(serial::SerialException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("standby","Failed with a Serial exception :") << e.what();
-      got_exception = true;
-    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("standby","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("standby","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       got_exception = true;
     }
     if (got_exception)
@@ -1795,7 +1663,7 @@ namespace Device
     }
     resp["status"] = "SUCCESS";
     msg.clear(); msg.str("");
-    msg << log_i("standby","Laser operation on standby.");
+    msg << log_i(lbl.c_str(),"Laser operation on standby.");
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
@@ -1814,7 +1682,7 @@ namespace Device
       {
         LOG(Log::ERR) << "DIoLLaserUnit::automatic_port_search : Couldn't find device port";
       }
-      m_status = sOffline;
+      update_status(sOffline);
     }
     catch(...)
     {
@@ -1834,51 +1702,56 @@ namespace Device
     uint16_t status = 99;
     std::string desc;
     bool got_exception = false;
-    if (!m_laser)
+    const std::string lbl = lbl.c_str();
+    UaStatus st = OpcUa_Good;
+    st = check_laser_instance(resp);
+    if (st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_e("status","There is no connection to the laser. Doing nothing.");
-      LOG(Log::ERR) << msg.str();
-      resp["messages"].push_back(msg.str());
-      resp["status"] = "ERROR";
-      resp["statuscode"] = OpcUa_BadInvalidState;
       return;
     }
     try
     {
+      if (m_serial_busy.load())
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      m_serial_busy.store(true);
       m_laser->security(status, desc);
+      m_serial_busy.store(false);
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
+      // FIXME: What is this doing here?
       UaString ss(m_status_map.at(m_status).c_str());
       getAddressSpaceLink()->setState(ss,OpcUa_Good);
     }
     catch(serial::PortNotOpenedException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status"," ") << "Port not open [" << e.what() << "]";
+      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status","Failed with a Serial exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       LOG(Log::ERR) << msg.str();
       got_exception = true;
     }
     if (got_exception)
     {
+      m_serial_busy.store(false);
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadDataUnavailable);
     }
   }
@@ -1907,30 +1780,31 @@ namespace Device
   UaStatus DIoLLaserUnit::refresh_shot_count()
   {
     std::ostringstream msg("");
+    json resp;
     bool caught_exception = false;
-    if (m_status == sOffline)
+    UaStatus st = OpcUa_Good;
+    st = check_offline_state(resp);
+    if (st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_w("count","Trying to refresh shot count without a serial connection.");
-      LOG(Log::WRN) << msg.str();
-      getAddressSpaceLink()->setFlash_count(0, OpcUa_BadDataUnavailable);
-      return OpcUa_BadInvalidState;
+      return st;
     }
-    // this should never happen
-    if (!m_laser)
+    st = check_laser_instance(resp);
+    if (st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_w("count","Trying to refresh shot count without a serial connection.");
-      LOG(Log::WRN) << msg.str();
       getAddressSpaceLink()->setFlash_count(0, OpcUa_BadDataUnavailable);
-      return OpcUa_BadInvalidState;
+      return st;
     }
     static uint32_t count = 0;
     // everything seems ready. Get counter
     try
     {
-
+      if (m_serial_busy.load())
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      m_serial_busy.store(true);
       m_laser->get_shot_count(count);
+      m_serial_busy.store(false);
       // set the local cache
       m_shot_count = count;
       getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_Good);
@@ -1961,6 +1835,7 @@ namespace Device
     }
     if (caught_exception)
     {
+      m_serial_busy.store(false);
       LOG(Log::ERR) << msg.str();
       getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_BadDataUnavailable);
     }
@@ -1971,29 +1846,23 @@ namespace Device
     // if the system is already initialized do nothing and give back a warning
     bool got_exception = false;
     ostringstream msg("");
+    const std::string lbl = "init";
     UaStatus ret = OpcUa_Good;
-    if (m_status == sError)
+    ret = check_error_state(resp);
+    if (ret != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_e("init","System in error state. Nothing can be done.");
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_BadInvalidState;
+      return ret;
     }
-    if (m_status != sOffline)
+    ret = check_not_offline_state(resp);
+    if (ret != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_w("init","System already initialized.Skipping.");
-      resp["status"] = "SUCCESS";
-      resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Uncertain;
-      // in this case do not return, we may just want to reconfigure
+      return OpcUa_BadInvalidState;
     }
     if (m_comport.size() == 0)
     {
       msg.clear(); msg.str("");
-      msg << log_e("init","Unkonwn port.");
+      msg << log_e(lbl.c_str(),"Unkonwn port.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidArgument;
@@ -2002,7 +1871,7 @@ namespace Device
     if (m_comport == std::string("auto"))
     {
       msg.clear(); msg.str("");
-      msg << log_w("init","Port set to auto. Probing ports.");
+      msg << log_w(lbl.c_str(),"Port set to auto. Probing ports.");
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -2014,14 +1883,29 @@ namespace Device
       if (m_laser)
       {
         msg.clear(); msg.str("");
-        msg << log_w("init","System already initialized. Just reconfiguring.");
+        msg << log_w(lbl.c_str(),"System already initialized. Just reconfiguring.");
         resp["messages"].push_back(msg.str());
         bool clean_and_rebuild = false;
-        if (m_laser->get_port() != m_comport)
+        if (m_serial_busy.load())
+        {
+          std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        m_serial_busy.store(true);
+        std::string lport = m_laser->get_port();
+        m_serial_busy.store(false);
+        if (lport != m_comport)
         {
           clean_and_rebuild = true;
         }
-        if (m_laser->get_baud() != m_baud_rate)
+        if (m_serial_busy.load())
+        {
+          std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        m_serial_busy.store(true);
+        uint16_t lbaud = m_laser->get_baud();
+        m_serial_busy.store(false);
+
+        if (lbaud != m_baud_rate)
         {
           clean_and_rebuild = true;
         }
@@ -2030,20 +1914,20 @@ namespace Device
           // that means that we should terminate and recreate
           delete m_laser;
           m_laser = nullptr;
-#ifdef SIMULATION
-          m_laser = new device::LaserSim();
-#else
+//#ifdef SIMULATION
+//          m_laser = new device::LaserSim();
+//#else
           m_laser = new device::Laser(m_comport.c_str(),m_baud_rate);
-#endif
+//#endif
         }
       }
       else
       {
-#ifdef SIMULATION
-        m_laser = new device::LaserSim();
-#else
+//#ifdef SIMULATION
+//        m_laser = new device::LaserSim();
+//#else
         m_laser = new device::Laser(m_comport.c_str(),m_baud_rate);
-#endif
+//#endif
       }
       // -- now that we have the system, let's update the settings in
       // the local cache
@@ -2063,49 +1947,52 @@ namespace Device
         // something failed. Whatever it was, should already be in the
         // response string
         msg.clear(); msg.str("");
-        msg << log_w("init","Some parameters failed to be set. Check previous messages.");
+        msg << log_w(lbl.c_str(),"Some parameters failed to be set. Check previous messages.");
         return OpcUa_Bad;
       }
       else {
         msg.clear(); msg.str("");
-        msg << log_i("init","System reconfigured sucessfully.");
+        msg << log_i(lbl.c_str(),"System reconfigured sucessfully.");
       }
     }
     catch(serial::PortNotOpenedException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("init"," ") << "Port not open [" << e.what() << "]";
+      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("init","Failed with a Serial exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("init","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("init","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       got_exception = true;
     }
     if (got_exception)
     {
+      m_serial_busy.store(false);
+      terminate(resp);
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
       return OpcUa_Bad;
-    } else
+    }
+    else
     {
       msg.clear(); msg.str("");
-      msg << log_i("init","System initialized.");
+      msg << log_i(lbl.c_str(),"System initialized.");
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -2138,7 +2025,13 @@ namespace Device
     }
     try
     {
+      if (m_serial_busy.load())
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      m_serial_busy.store(true);
       m_laser->set_prescale(nv);
+      m_serial_busy.store(false);
       m_divider = nv;
       // update the address space as well
       getAddressSpaceLink()->setRep_rate_divider(m_divider, OpcUa_Good);
@@ -2169,6 +2062,8 @@ namespace Device
     }
     if (got_exception)
     {
+      m_serial_busy.store(false);
+      getAddressSpaceLink()->setRep_rate_divider(m_divider, OpcUa_BadCommunicationError);
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -2207,7 +2102,13 @@ namespace Device
     }
     try
     {
+      if (m_serial_busy.load())
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      m_serial_busy.store(true);
       m_laser->set_repetition_rate(v);
+      m_serial_busy.store(false);
       m_rate_hz = v;
       getAddressSpaceLink()->setRep_rate_hz(m_rate_hz, OpcUa_Good);
     }
@@ -2237,6 +2138,8 @@ namespace Device
     }
     if (got_exception)
     {
+      m_serial_busy.store(false);
+      getAddressSpaceLink()->setRep_rate_hz(m_rate_hz, OpcUa_BadCommunicationError);
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -2273,7 +2176,13 @@ namespace Device
     }
     try
     {
+      if (m_serial_busy.load())
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      m_serial_busy.store(true);
       m_laser->set_pump_voltage(v);
+      m_serial_busy.store(false);
       m_pump_hv = v;
       getAddressSpaceLink()->setDischarge_voltage_kV(m_pump_hv, OpcUa_Good);
     }
@@ -2303,6 +2212,8 @@ namespace Device
     }
     if (got_exception)
     {
+      m_serial_busy.store(false);
+      getAddressSpaceLink()->setDischarge_voltage_kV(m_pump_hv, OpcUa_BadCommunicationError);
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -2313,8 +2224,8 @@ namespace Device
   }
   UaStatus DIoLLaserUnit::set_qswitch_delay(const uint32_t v,json &resp)
   {
-    // NOTE: This method does not check whether the system is ready to execute
-    // that is the job of the original method
+    // this method does not check that the conditions are met...
+    // that is the job of the original method. This one just does the job at hand
     // check range
     uint32_t nv = v;
     static ostringstream msg("");
@@ -2330,7 +2241,7 @@ namespace Device
     if (m_status != sReady)
     {
       msg.clear(); msg.str("");
-      msg << log_e("prescale"," ") << "Laser is not in ready state. Current state :" << m_status_map.at(m_status);
+      msg << log_e("qswitch_delay"," ") << "Laser is not in ready state. Current state :" << m_status_map.at(m_status);
       resp["messages"].push_back(msg.str());
       LOG(Log::ERR) << msg.str();
       return OpcUa_BadInvalidState;
@@ -2387,6 +2298,7 @@ namespace Device
     }
     if (got_exception)
     {
+      getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Bad);
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -2401,16 +2313,21 @@ namespace Device
   {
     // do just periodic checks, that are meant to happen less often than usual
     // for example, check the laser unit status
+    json resp;
     if (m_laser)
     {
-      json resp;
       refresh_status(resp);
+    }
+    UaStatus st = check_error_state(resp);
+    if (st != OpcUa_Good)
+    {
+      LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an sError status. Terminating.";
+      terminate(resp);
     }
     if (m_status == sError)
     {
       // an error state was found. Shut down everything
       json resp;
-      LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an sError status. Terminating.";
       terminate(resp);
     }
   }
@@ -2442,7 +2359,7 @@ namespace Device
     if (!m_part_state.state.fire_enable)
     {
       msg.clear(); msg.str("");
-      msg << log_e("single_shot","The laser is not operating") << " (current state " << m_status_map.at(m_status) << ")";
+      msg << log_e("fire_discrete_shots","The laser is operating") << " (current state " << m_status_map.at(m_status) << ")";
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -2467,7 +2384,7 @@ namespace Device
       std::this_thread::sleep_for(std::chrono::milliseconds(80));
     }
     // we are done. Close the shutter.
-    st = pause(resp);
+    st = standby(resp);
     return st;
   }
 
@@ -2475,24 +2392,16 @@ namespace Device
   {
     std::ostringstream msg("");
     bool caught_exception = false;
-    if (m_status == sError)
+    UaStatus st = OpcUa_Good;
+    st = check_error_state(resp);
+    if(st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_e("single_shot","System in error state. Nothing can be done.");
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_BadInvalidState;
+      return st;
     }
-    if (!m_laser)
+    st = check_laser_instance(resp);
+    if (st!=OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_e("single_shot","There is no connection to the laser. Doing nothing.");
-      LOG(Log::ERR) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_Good;
+      return st;
     }
     // if the laser is not in the sReady state, also do nothing
     // likely some parameter is not set yet
@@ -2505,7 +2414,7 @@ namespace Device
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_Good;
+      return OpcUa_BadInvalidState;
     }
     // if the shutter is not open, there is no point in firing
     //
@@ -2538,7 +2447,13 @@ namespace Device
       // once the external shutter is in place, one should actually stop using this command and instead
       // drive a single shot from the CIB (so that the external shutter is also timely opened)
       update_status(sLasing);
+      if (m_serial_busy.load())
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      m_serial_busy.store(true);
       m_laser->single_shot(); // ensure that the prescale is rescaled
+      m_serial_busy.store(false);
       update_status(sReady);
     }
     catch(serial::PortNotOpenedException &e)
@@ -2567,10 +2482,14 @@ namespace Device
     }
     if (caught_exception)
     {
+      m_serial_busy.store(false);
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      standby(resp);
+
+      return OpcUa_Bad;
     }
     else {
       // all was good
@@ -2587,6 +2506,7 @@ namespace Device
   {
     // this is just a validation check for the available keys.
     // it will only check the mandatory keys.
+    const std::string lbl = "validate_config";
     std::vector<std::string> mandatory_keys = {
         "name","port","serial_number","baud_rate",
         "pause_timeout_min","standby_timeout_min","qswitch_delay_us","qswitch_width_us",
@@ -2595,10 +2515,10 @@ namespace Device
     std::vector<std::string> optional_keys = {
         "repetition_rate_divider", "discharge_voltage", "repetition_rate"
     };
-
+    //
     // actually, check for all entries and report all missing ones
     std::vector<std::string> missing;
-
+    //
     for (auto entry: mandatory_keys)
     {
       if (!conf.contains(entry))
@@ -2610,7 +2530,7 @@ namespace Device
     {
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_e("config","Missing mandatory entries in LaserUnit config fragment [");
+      msg << log_e(lbl.c_str(),"Missing mandatory entries in LaserUnit config fragment [");
       for (auto e : missing)
       {
         msg << "(" <<  e << "),";
@@ -2621,7 +2541,7 @@ namespace Device
       resp["statuscode"] = OpcUa_BadInvalidArgument;
       return false;
     }
-
+    //
     missing.clear();
     // check the optional keys
     for (auto entry: optional_keys)
@@ -2635,7 +2555,7 @@ namespace Device
     {
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_w("config","Missing optional entries in LaserUnit config fragment [");
+      msg << log_w(lbl.c_str(),"Missing optional entries in LaserUnit config fragment [");
       for (auto e : missing)
       {
         msg << "(" <<  e << "),";
@@ -2646,11 +2566,11 @@ namespace Device
     // all good, return true
     return true;
   }
-
   UaStatus DIoLLaserUnit::config(json & config, json &resp)
   {
     std::ostringstream msg("");
     bool got_exception = false;
+    const std::string lbl = "config";
     UaStatus st;
     try
     {
@@ -2671,7 +2591,7 @@ namespace Device
       if (conf.at("id").get<std::string>() != m_name)
       {
         msg.clear(); msg.str("");
-        msg << log_e("config","Mismatch between name in object and configuration fragment :")
+        msg << log_e(lbl.c_str(),"Mismatch between name in object and configuration fragment :")
                                           << " (" << conf.at("id").get<std::string>() <<" <> " << m_name << ")";
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
@@ -2709,7 +2629,7 @@ namespace Device
       if (st != OpcUa_Good)
       {
         msg.clear();msg.str("");
-        msg << log_e("config","Failed to map configuration registers");
+        msg << log_e(lbl.c_str(),"Failed to map configuration registers");
         resp["messages"].push_back(msg.str());
         resp["status"] = "ERROR";
         resp["statuscode"] = OpcUa_Bad;
@@ -2806,19 +2726,19 @@ namespace Device
     catch(json::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Caught JSON exception : ") << e.what();
+      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Caught JSON exception : ") << e.what();
+      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("config","Caught an unknown exception");
+      msg << log_e(lbl.c_str(),"Caught an unknown exception");
       got_exception = true;
     }
     if (got_exception)
@@ -2832,7 +2752,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("config","System configured");
+      msg << log_i(lbl.c_str(),"System configured");
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -2851,11 +2771,11 @@ namespace Device
     // this method is specific for each device
     // -- first obtain a map to all the memory
     std::ostringstream msg("");
-    if (m_reg_map.size() == 0x0)
+    UaStatus st = check_cib_mem(resp);
+    const std::string lbl = "map_registers";
+    if(st != OpcUa_Good)
     {
-      msg << log_e("map_registers"," ") << "CIB memory register not mapped. Inconsistent state.";
-      LOG(Log::WRN) << msg.str();
-      return OpcUa_Bad;
+      return st;
     }
     else
     {
@@ -2890,14 +2810,14 @@ namespace Device
       catch(json::exception &e)
       {
         msg.clear();msg.str("");
-        msg << log_e("config"," ") << "Incomplete config fragment [mmap] : " << e.what();
+        msg << log_e(lbl.c_str()," ") << "Incomplete config fragment [mmap] : " << e.what();
         resp["messages"].push_back(msg.str());
         return OpcUa_Bad;
       }
       catch(std::exception &e)
       {
         msg.clear();msg.str("");
-        msg << log_e("config"," ") << "Problem parsing config fragment [mmap] : " << e.what();
+        msg << log_e(lbl.c_str()," ") << "Problem parsing config fragment [mmap] : " << e.what();
         resp["messages"].push_back(msg.str());
         return OpcUa_Bad;
       }
@@ -2923,7 +2843,6 @@ namespace Device
     m_qswitch_width = v;
     return OpcUa_Good;
   }
-
   UaStatus DIoLLaserUnit::set_fire_width(const uint32_t v,json &resp)
   {
     // this method should *NEVER* be called before the connection to the CIB is established
@@ -2949,6 +2868,7 @@ namespace Device
     // anything else should use a different method
     // also, check that the memory is mapped on the CIB
     std::ostringstream msg("");
+    const std::string lbl = "resume";
     UaStatus st = OpcUa_Good;
     st = check_cib_mem(resp);
     if (st != OpcUa_Good)
@@ -2959,7 +2879,7 @@ namespace Device
     if ((m_status != sPause) && (m_status != sStandby))
     {
       msg.clear(); msg.str("");
-      msg << log_e("resume","Laser Unit not in a valid state. Resume should only be called in sPause or sStandby state.");
+      msg << log_e(lbl.c_str(),"Laser Unit not in a valid state. Resume should only be called in sPause or sStandby state.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -2970,7 +2890,7 @@ namespace Device
     if (!m_part_state.state.fire_enable)
     {
       msg.clear(); msg.str("");
-      msg << log_e("resume","Inconsistent state. Laser Unit is not firing.");
+      msg << log_e(lbl.c_str(),"Inconsistent state. Laser Unit is not firing.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -2994,7 +2914,7 @@ namespace Device
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e("resume","Failed to resume laser. See previous messages");
+      msg << log_e(lbl.c_str(),"Failed to resume laser. See previous messages");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -3003,7 +2923,7 @@ namespace Device
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("resume","Laser unit resumed operation.");
+      msg << log_i(lbl.c_str(),"Laser unit resumed operation.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
@@ -3073,6 +2993,7 @@ namespace Device
   //
   UaStatus DIoLLaserUnit::close_shutter(json &resp)
   {
+    const std::string lbl = "close_shutter";
     std::ostringstream msg("");
     bool got_exception = false;
     try
@@ -3088,25 +3009,25 @@ namespace Device
     catch(serial::PortNotOpenedException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status"," ") << "Port not open [" << e.what() << "]";
+      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status","Failed with a Serial exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       got_exception = true;
     }
     if (got_exception)
@@ -3118,11 +3039,13 @@ namespace Device
       resp["statuscode"]= OpcUa_BadCommunicationError;
       return OpcUa_BadCommunicationError;
     }
+    m_part_state.state.laser_shutter_closed = true;
     getAddressSpaceLink()->setLaser_shutter_open(false,OpcUa_Good);
     return OpcUa_Good;
   }
   UaStatus DIoLLaserUnit::open_shutter(json &resp)
   {
+    const std::string lbl = "open_shutter";
     std::ostringstream msg("");
     bool got_exception = false;
     try
@@ -3138,25 +3061,25 @@ namespace Device
     catch(serial::PortNotOpenedException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status"," ") << "Port not open [" << e.what() << "]";
+      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status","Failed with a Serial exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("status","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       got_exception = true;
     }
     if (got_exception)
@@ -3168,6 +3091,7 @@ namespace Device
       resp["statuscode"]= OpcUa_BadCommunicationError;
       return OpcUa_BadCommunicationError;
     }
+    m_part_state.state.laser_shutter_closed = false;
     getAddressSpaceLink()->setLaser_shutter_open(true,OpcUa_Good);
     return OpcUa_Good;
   }
@@ -3224,7 +3148,7 @@ namespace Device
   }
   UaStatus DIoLLaserUnit::stop_fire(json &resp)
   {
-    const std::string desc = "start_fire";
+    const std::string desc = "stop_fire";
     std::ostringstream msg("");
     bool got_exception = false;
     try
@@ -3275,11 +3199,12 @@ namespace Device
   }
   UaStatus DIoLLaserUnit::check_error_state(json &resp)
   {
+    const std::string lbl = "check_error";
     if (m_status == sError)
     {
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_e("check_error","System in error state. Nothing can be done.");
+      msg << log_e(lbl.c_str(),"System in error state. Nothing can be done.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -3292,11 +3217,12 @@ namespace Device
   }
   UaStatus DIoLLaserUnit::check_not_offline_state(json &resp)
   {
+    const std::string lbl = "check_offline";
     if (m_status != sOffline)
     {
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_e("check_offline","Unit is not offline. Before configuring, you should shut it down (call terminate).");
+      msg << log_e(lbl.c_str(),"Unit is not offline. Before configuring, you should shut it down (call terminate).");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -3309,11 +3235,12 @@ namespace Device
   }
   UaStatus DIoLLaserUnit::check_offline_state(json &resp)
   {
+    const std::string lbl = "check_offline";
     if (m_status == sOffline)
     {
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_e("shutter","Laser is offline. No operation possible.");
+      msg << log_e(lbl.c_str(),"Laser is offline. No operation possible.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -3327,11 +3254,12 @@ namespace Device
   }
   UaStatus DIoLLaserUnit::check_cib_mem(json &resp)
   {
+    const std::string lbl = "check_cib";
     if (m_reg_map.size() == 0x0)
     {
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_e("check_cib_mem","CIB memory not mapped. System on lockdown.");
+      msg << log_e(lbl.c_str(),"CIB memory not mapped. System on lockdown.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -3346,11 +3274,12 @@ namespace Device
   }
   UaStatus DIoLLaserUnit::check_laser_instance(json &resp)
   {
+    const std::string lbl = "check_laser";
     if (!m_laser)
     {
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_e("shutter","There is no connection to the laser. Doing nothing.");
+      msg << log_e(lbl.c_str(),"There is no connection to the laser. Doing nothing.");
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
