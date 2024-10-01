@@ -1,0 +1,59 @@
+{
+	"id": "L1",
+	"serial_number": "A9L5Y58Y",
+	"port": "auto",
+	"baud_rate": 9600,
+	"repetition_rate": 10.0,
+	"repetition_rate_divider": 0,
+	"discharge_voltage": 1.1,
+	"pause_timeout_min": 10,
+	"standby_timeout_min": 60,
+	"warmup_timer_min": 30,
+	"qswitch_delay_us": 195,
+	"qswitch_width_us": 10,
+	"fire_width_us": 10,
+	"mmap": {
+		"fire_width": [
+			4,
+			0,
+			11,
+			0
+		],
+		"qs_width": [
+			4,
+			0,
+			11,
+			0
+		],
+		"qs_delay": [
+			4,
+			1,
+			14,
+			0
+		],
+		"fire_state": [
+			4,
+			0,
+			31,
+			31
+		],
+		"force_shutter": [
+			5,
+			0,
+			28,
+			28
+		],
+		"qs_state": [
+			4,
+			1,
+			31,
+			31
+		],
+		"shot_count": [
+			-1,
+			-1,
+			-1,
+			-1
+		]
+	}
+}
