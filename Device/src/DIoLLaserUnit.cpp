@@ -2262,6 +2262,8 @@ UaStatus DIoLLaserUnit::callResume (
       // this means that the code below is completely agnostic
       // set the value both at CIB and laser level
       // -- otherwise, set the memory region in the register, and the local cache variable too
+      LOG(Log::WRN) << "Writing delay " << v_clock;
+
       cib::util::reg_write_mask_offset(m_regs.at("qs_delay").addr,
                                        v_clock,
                                        m_regs.at("qs_delay").mask,
