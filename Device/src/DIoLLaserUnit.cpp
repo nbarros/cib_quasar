@@ -2378,6 +2378,9 @@ UaStatus DIoLLaserUnit::callResume (
   {
     // do just periodic checks, that are meant to happen less often than usual
     // for example, check the laser unit status
+#ifdef DEBUG
+    LOG(Log::INF) << log_i("update","Updating...");
+#endif
     json resp;
     if (m_laser)
     {
@@ -2773,6 +2776,9 @@ UaStatus DIoLLaserUnit::callResume (
             terminate(resp);
             return st;
           }
+#ifdef DEBUG
+            LOG(Log::INF) << log_i(lbl.c_str(),"Voltage set");
+#endif
         }
         if (it.key() == "pause_timeout_min")
         {
