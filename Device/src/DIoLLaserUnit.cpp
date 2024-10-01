@@ -515,7 +515,7 @@ UaStatus DIoLLaserUnit::callCheck_laser_status (
     if (st != OpcUa_Good)
     {
       status = 98;
-      description = UaString(msg.str().c_str());
+      description = UaString(resp.dump().c_str());
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadInvalidState);
       return OpcUa_Good;
     }
@@ -528,7 +528,7 @@ UaStatus DIoLLaserUnit::callCheck_laser_status (
     if (st != OpcUa_Good)
     {
       status = 99;
-      description = UaString(msg.str().c_str());
+      description = UaString(resp.dump().c_str());
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadInvalidState);
       return OpcUa_Good;
     }
@@ -1763,8 +1763,7 @@ UaStatus DIoLLaserUnit::callResume (
       m_laser->security(status, desc);
       m_serial_busy.store(false);
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
-      // FIXME: What is this doing here?
-      UaString ss(m_status_map.at(m_status).c_str());
+      UaString ss(m_status_map.at(status).c_str());
       getAddressSpaceLink()->setState(ss,OpcUa_Good);
     }
     catch(serial::PortNotOpenedException &e)
@@ -2383,9 +2382,9 @@ UaStatus DIoLLaserUnit::callResume (
   {
     // do just periodic checks, that are meant to happen less often than usual
     // for example, check the laser unit status
-#ifdef DEBUG
-    LOG(Log::INF) << log_i("update","Updating...");
-#endif
+//#ifdef DEBUG
+//    LOG(Log::INF) << log_i("update","Updating...");
+//#endif
     json resp;
     if (m_laser)
     {
@@ -2935,12 +2934,12 @@ UaStatus DIoLLaserUnit::callResume (
           tmp.bit_low = jt.value().at(3);
           tmp.addr = (m_reg_map.at(tmp.reg_id).vaddr+(tmp.offset*GPIO_CH_OFFSET));
           tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
-#ifdef DEBUG
-          LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg_id
-              << " offset " << tmp.offset << " bh " << tmp.bit_high << " bl " << tmp.bit_low
-              << " addr " << std::hex << tmp.addr << std::dec << " mask " << std::hex << tmp.mask
-              << std::dec << " ";
-#endif
+//#ifdef DEBUG
+//          LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg_id
+//              << " offset " << tmp.offset << " bh " << tmp.bit_high << " bl " << tmp.bit_low
+//              << " addr " << std::hex << tmp.addr << std::dec << " mask " << std::hex << tmp.mask
+//              << std::dec << " ";
+//#endif
           m_regs.insert(std::pair<std::string,laser_regs_t>(jt.key(),tmp));
         }
       }
