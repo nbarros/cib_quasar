@@ -2319,10 +2319,15 @@ UaStatus DIoLLaserUnit::callResume (
       // -- otherwise, set the memory region in the register, and the local cache variable too
 #ifdef DEBUG
       LOG(Log::WRN) << "Writing qs_delay " << v_clock << " with \n"
-          << "addr " << m_regs.at("qs_delay").addr << "\n"
-          << "mask" << std::hex << m_regs.at("qs_delay").mask << std::dec << "\n"
-          << "offset" << m_regs.at("qs_delay").bit_low;
+          << "addr " << std::hex << m_regs.at("qs_delay").addr << std::dec << "\n"
+          << "mask " << std::hex << m_regs.at("qs_delay").mask << std::dec << "\n"
+          << "offset " << m_regs.at("qs_delay").bit_low;
+
+      LOG(Log::INF) << "Original value :";
+      LOG(Log::INF) << std::hex << cib::util::reg_read(m_regs.at("qs_delay").addr);
 #endif
+
+
 
       cib::util::reg_write_mask_offset(m_regs.at("qs_delay").addr,
                                        v_clock,
@@ -2390,12 +2395,6 @@ UaStatus DIoLLaserUnit::callResume (
     if (st != OpcUa_Good)
     {
       LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an sError status. Terminating.";
-      terminate(resp);
-    }
-    if (m_status == sError)
-    {
-      // an error state was found. Shut down everything
-      json resp;
       terminate(resp);
     }
   }
