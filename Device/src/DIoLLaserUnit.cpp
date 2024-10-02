@@ -2160,6 +2160,9 @@ UaStatus DIoLLaserUnit::callResume (
       }
       m_serial_busy.store(true);
       m_laser->set_repetition_rate(v);
+#ifdef DEBUG
+      LOG(Log::INF) << log_i(lbl.c_str(),"Repetition rate set 1");
+#endif
       m_serial_busy.store(false);
 #ifdef DEBUG
       LOG(Log::INF) << log_i(lbl.c_str(),"Repetition rate set");
