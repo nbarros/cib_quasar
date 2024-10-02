@@ -2127,6 +2127,8 @@ UaStatus DIoLLaserUnit::callResume (
     // check range
     static ostringstream msg("");
     bool got_exception = false;
+    const std::string lbl = "write_rate";
+    UaStatus st = OpcUa_Good;
     if (m_status != sReady)
     {
       msg.clear(); msg.str("");
@@ -2139,8 +2141,10 @@ UaStatus DIoLLaserUnit::callResume (
     if (v <= 0.0 || v > 20.0)
     {
       msg.clear(); msg.str("");
-      msg << log_e("rate","Value out of bounds: ") << v << "<> [0.0,20.0]";
+      msg << log_e(lbl.c_str(),"Value out of bounds: ") << v << "<> [0.0,20.0]";
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadOutOfRange;
@@ -2161,32 +2165,34 @@ UaStatus DIoLLaserUnit::callResume (
     catch(serial::PortNotOpenedException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("rate"," ") << "Port not open [" << e.what() << "]";
+      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("rate","Failed with a Serial exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("rate","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("rate","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       got_exception = true;
     }
     if (got_exception)
     {
       m_serial_busy.store(false);
       getAddressSpaceLink()->setRep_rate_hz(m_rate_hz, OpcUa_BadCommunicationError);
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -2217,7 +2223,7 @@ UaStatus DIoLLaserUnit::callResume (
     if ((v < 0) || (v > 1.3))
     {
       msg.clear(); msg.str("");
-      msg << log_e("rate","Value out of bounds: ") << v << "<> [0.0,20.0]";
+      msg << log_e(lbl.c_str(),"Value out of bounds: ") << v << "<> [0.0,20.0]";
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
 #endif
@@ -2244,25 +2250,25 @@ UaStatus DIoLLaserUnit::callResume (
     catch(serial::PortNotOpenedException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("voltage"," ") << "Port not open [" << e.what() << "]";
+      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("voltage","Failed with a Serial exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("voltage","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("voltage","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       got_exception = true;
     }
     if (got_exception)
@@ -2738,6 +2744,7 @@ UaStatus DIoLLaserUnit::callResume (
             terminate(resp);
             return st;
           }
+
         }
         if (it.key() == "repetition_rate_divider")
         {
@@ -2845,6 +2852,9 @@ UaStatus DIoLLaserUnit::callResume (
           }
         }
       }
+#ifdef DEBUG
+      LOG(Log::INF) << log_i(lbl.c_str(),"Done with config");
+#endif
       // if we reached this point we don't have an exception, so things should be good
       // if we reached this point, things seem to be good
       // now it is time to map the registers
