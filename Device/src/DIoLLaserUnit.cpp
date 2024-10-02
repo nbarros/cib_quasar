@@ -1758,7 +1758,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     try
     {
-      if (m_serial_busy.load())
+      while (m_serial_busy.load())
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
@@ -1800,6 +1800,55 @@ UaStatus DIoLLaserUnit::callResume (
       m_serial_busy.store(false);
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadDataUnavailable);
     }
+  }
+  UaStatus DIoLLaserUnit::refresh_registers(json &resp)
+  {
+    const std::string lbl = "refresh_registers";
+    UaStatus st = check_cib_mem(resp);
+    bool has_error = false;
+    if (st != OpcUa_Good)
+    {
+      has_error = true;
+    }
+    // refresh the fire width
+    uint32_t fw;
+    st = get_fire_width(fw,resp);
+    if (st != OpcUa_Good)
+    {
+      has_error = true;
+    }
+    uint32_t qw;
+    st = get_qswitch_width(qw,resp);
+    if (st != OpcUa_Good)
+    {
+      has_error = true;
+    }
+    uint32_t qd;
+    st = get_qswitch_delay(qd,resp);
+    if (st != OpcUa_Good)
+    {
+      has_error = true;
+    }
+    //FIXME: Implement the CIB number of shots
+    // external shutter
+    bool eso = false;
+    st = get_ext_shutter_state(eso,resp);
+    if (st != OpcUa_Good)
+    {
+      has_error = true;
+    }
+    if (has_error)
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str()," ") << "Errors found refreshing registers";
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
+      resp["messages"].push_back(msg.str());
+      return OpcUa_Bad;
+    }
+    return OpcUa_Good;
   }
   void DIoLLaserUnit::start_lasing_timer()
   {
@@ -1844,7 +1893,7 @@ UaStatus DIoLLaserUnit::callResume (
     // everything seems ready. Get counter
     try
     {
-      if (m_serial_busy.load())
+      while (m_serial_busy.load())
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
@@ -1932,7 +1981,7 @@ UaStatus DIoLLaserUnit::callResume (
         msg << log_w(lbl.c_str(),"System already initialized. Just reconfiguring.");
         resp["messages"].push_back(msg.str());
         bool clean_and_rebuild = false;
-        if (m_serial_busy.load())
+        while (m_serial_busy.load())
         {
           std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
@@ -1943,7 +1992,7 @@ UaStatus DIoLLaserUnit::callResume (
         {
           clean_and_rebuild = true;
         }
-        if (m_serial_busy.load())
+        while (m_serial_busy.load())
         {
           std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
@@ -2071,7 +2120,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     try
     {
-      if (m_serial_busy.load())
+      while (m_serial_busy.load())
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
@@ -2154,7 +2203,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     try
     {
-      if (m_serial_busy.load())
+      while (m_serial_busy.load())
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
@@ -2247,7 +2296,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     try
     {
-      if (m_serial_busy.load())
+      while (m_serial_busy.load())
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
@@ -2298,106 +2347,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     return OpcUa_Good;
   }
-  UaStatus DIoLLaserUnit::set_qswitch_delay(const uint32_t v,json &resp)
-  {
-    // this method does not check that the conditions are met...
-    // that is the job of the original method. This one just does the job at hand
-    // check range
-    uint32_t nv = v;
-    static ostringstream msg("");
-    UaStatus st = OpcUa_Good;
-    bool got_exception = false;
-    // this method should *NEVER* be called before the connection to the CIB is established
-    st = check_cib_mem(resp);
-    if (st !=OpcUa_Good)
-    {
-      return st;
-    }
-    // qswitch should only be set at the sReady state
-    if (m_status != sReady)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("qswitch_delay"," ") << "Laser is not in ready state. Current state :" << m_status_map.at(m_status);
-      resp["messages"].push_back(msg.str());
-      LOG(Log::ERR) << msg.str();
-      return OpcUa_BadInvalidState;
-    }
-    if ( v > 999)
-    {
-      nv = 999;
-      msg.clear(); msg.str("");
-      msg << log_w("qswitch_delay"," ") << "Value out of bounds. Truncating to max [ " << v << " --> " << nv << "]";
-      resp["messages"].push_back(msg.str());
-      LOG(Log::WRN) << msg.str();
-    }
-    try
-    {
-      // convert the value into 16 ns clocks
-      uint32_t v_clock= nv*1000/16;
-      // when reading out the configuration from JSON
-      // this means that the code below is completely agnostic
-      // set the value both at CIB and laser level
-      // -- otherwise, set the memory region in the register, and the local cache variable too
-#ifdef DEBUG
-      LOG(Log::WRN) << "Writing qs_delay " << v_clock << " with \n"
-          << "addr " << std::hex << m_regs.at("qs_delay").addr << std::dec << "\n"
-          << "mask " << std::hex << m_regs.at("qs_delay").mask << std::dec << "\n"
-          << "offset " << m_regs.at("qs_delay").bit_low;
-
-      LOG(Log::INF) << "Original value :";
-      LOG(Log::INF) << std::hex << cib::util::reg_read(m_regs.at("qs_delay").addr);
-#endif
-
-
-
-      cib::util::reg_write_mask_offset(m_regs.at("qs_delay").addr,
-                                       v_clock,
-                                       m_regs.at("qs_delay").mask,
-                                       m_regs.at("qs_delay").bit_low);
-
-#ifdef DEBUG
-      LOG(Log::WRN) << "Done writing qs_delay ";
-#endif
-          //      m_laser->set_qswitch(nv);
-      m_qswitch_delay = nv;
-      // update the address space as well
-      getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Good);
-    }
-    catch(serial::PortNotOpenedException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("qswitch"," ") << "Port not open [" << e.what() << "]";
-      got_exception = true;
-    }
-    catch(serial::SerialException &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("qswitch","Failed with a Serial exception :") << e.what();
-      got_exception = true;
-    }
-    catch(std::exception &e)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("qswitch","Failed with an STL exception :") << e.what();
-      got_exception = true;
-    }
-    catch(...)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e("qswitch","Failed with an unknown exception.");
-      got_exception = true;
-    }
-    if (got_exception)
-    {
-      getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Bad);
-      LOG(Log::ERR) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_Bad;
-      return OpcUa_Bad;
-    }
-    return OpcUa_Good;
-  }
 
 
   void DIoLLaserUnit::update()
@@ -2412,11 +2361,18 @@ UaStatus DIoLLaserUnit::callResume (
     {
       refresh_status(resp);
     }
+
     UaStatus st = check_error_state(resp);
     if (st != OpcUa_Good)
     {
       LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an sError status. Terminating.";
       terminate(resp);
+    }
+    // do also a refresh of the relevant registers
+    st = refresh_registers(resp);
+    if (st != OpcUa_Good)
+    {
+      LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an error reading registers.";
     }
   }
   UaStatus DIoLLaserUnit::fire_standalone(uint32_t num_pulses,json &resp)
@@ -2535,7 +2491,7 @@ UaStatus DIoLLaserUnit::callResume (
       // once the external shutter is in place, one should actually stop using this command and instead
       // drive a single shot from the CIB (so that the external shutter is also timely opened)
       update_status(sLasing);
-      if (m_serial_busy.load())
+      while (m_serial_busy.load())
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
@@ -2991,6 +2947,126 @@ UaStatus DIoLLaserUnit::callResume (
       return OpcUa_Good;
     }
   }
+  UaStatus DIoLLaserUnit::set_qswitch_delay(const uint32_t v,json &resp)
+  {
+    // this method does not check that the conditions are met...
+    // that is the job of the original method. This one just does the job at hand
+    // check range
+    uint32_t nv = v;
+    static ostringstream msg("");
+    const std::string lbl = "set_qswitch_delay";
+    UaStatus st = OpcUa_Good;
+    bool got_exception = false;
+    // this method should *NEVER* be called before the connection to the CIB is established
+    st = check_cib_mem(resp);
+    if (st !=OpcUa_Good)
+    {
+      return st;
+    }
+    // qswitch should only be set at the sReady state
+    st = check_ready_state(resp);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
+    if ( v > 999)
+    {
+      nv = 999;
+      msg.clear(); msg.str("");
+      msg << log_w(lbl.c_str()," ") << "Value out of bounds. Truncating to max [ " << v << " --> " << nv << "]";
+      resp["messages"].push_back(msg.str());
+      LOG(Log::WRN) << msg.str();
+    }
+    try
+    {
+      // convert the value into 16 ns clocks
+      uint32_t v_clock= nv*1000/16;
+      // when reading out the configuration from JSON
+      // this means that the code below is completely agnostic
+      // set the value both at CIB and laser level
+      // -- otherwise, set the memory region in the register, and the local cache variable too
+#ifdef DEBUG
+      LOG(Log::WRN) << "Writing qs_delay " << v_clock << " with \n"
+          << "addr " << std::hex << m_regs.at("qs_delay").addr << std::dec << "\n"
+          << "mask " << std::hex << m_regs.at("qs_delay").mask << std::dec << "\n"
+          << "offset " << m_regs.at("qs_delay").bit_low;
+
+      LOG(Log::INF) << "Original value :";
+      LOG(Log::INF) << std::hex << cib::util::reg_read(m_regs.at("qs_delay").addr);
+#endif
+      cib::util::reg_write_mask_offset(m_regs.at("qs_delay").addr,
+                                       v_clock,
+                                       m_regs.at("qs_delay").mask,
+                                       m_regs.at("qs_delay").bit_low);
+
+#ifdef DEBUG
+      LOG(Log::WRN) << "Done writing qs_delay ";
+#endif
+          //      m_laser->set_qswitch(nv);
+      m_qswitch_delay = nv;
+      // update the address space as well
+      getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Good);
+    }
+    catch(serial::PortNotOpenedException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("qswitch"," ") << "Port not open [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch(serial::SerialException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("qswitch","Failed with a Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("qswitch","Failed with an STL exception :") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("qswitch","Failed with an unknown exception.");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Bad);
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_Bad;
+      return OpcUa_Bad;
+    }
+    return OpcUa_Good;
+  }
+  UaStatus DIoLLaserUnit::get_qswitch_delay(uint32_t &v,json &resp)
+  {
+    UaStatus st = check_cib_mem(resp);
+    const std::string lbl = "get_qswitch_delay";
+    if (st != OpcUa_Good)
+    {
+      getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_BadCommunicationError);
+      return st;
+    }
+    // get the value from the register
+    uint32_t rval = cib::util::reg_read(m_regs.at("qswitch_delay").addr);
+    // now extract the delay from the register value
+    uint32_t delay = ((rval & m_regs.at("qswitch_delay").mask) >> m_regs.at("qswitch_delay").bit_low);
+#ifdef DEBUG
+    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch delay (clocks) :") << delay;
+#endif;
+    m_qswitch_delay = delay;
+    // convert to floating point
+    uint32_t width_us = delay*16/1000.;
+#ifdef DEBUG
+    LOG(Log::INF) << log_i(lbl.c_str()," QSwitch delay (us) :") << width_us;
+#endif;
+    getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Good);
+    return OpcUa_Good;
+  }
   UaStatus DIoLLaserUnit::set_qswitch_width(const uint32_t v,json &resp)
   {
     // this method should *NEVER* be called before the connection to the CIB is established
@@ -3008,6 +3084,32 @@ UaStatus DIoLLaserUnit::callResume (
                                      m_regs.at("qs_width").mask,
                                      m_regs.at("qs_width").bit_low);
     m_qswitch_width = v;
+    getAddressSpaceLink()->setQswitch_width_us(m_qswitch_width, OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLLaserUnit::get_qswitch_width(uint32_t &v,json &resp)
+  {
+    UaStatus st = check_cib_mem(resp);
+    const std::string lbl = "get_qswitch_width";
+    if (st != OpcUa_Good)
+    {
+      getAddressSpaceLink()->setQswitch_width_us(m_qswitch_width, OpcUa_BadCommunicationError);
+      return st;
+    }
+    // get the value from the register
+    uint32_t rval = cib::util::reg_read(m_regs.at("qswitch_width").addr);
+    // now extract the width from the register value
+    uint32_t width = ((rval & m_regs.at("qswitch_width").mask) >> m_regs.at("qswitch_width").bit_low);
+#ifdef DEBUG
+    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch width (clocks) :") << width;
+#endif;
+    m_qswitch_width = width;
+    // convert to floating point
+    uint32_t width_us = width*16/1000.;
+#ifdef DEBUG
+    LOG(Log::INF) << log_i(lbl.c_str()," QSwitch width (us) :") << width_us;
+#endif;
+    getAddressSpaceLink()->setQswitch_width_us(m_qswitch_width, OpcUa_Good);
     return OpcUa_Good;
   }
   UaStatus DIoLLaserUnit::set_fire_width(const uint32_t v,json &resp)
@@ -3027,8 +3129,36 @@ UaStatus DIoLLaserUnit::callResume (
                                      m_regs.at("fire_width").mask,
                                      m_regs.at("fire_width").bit_low);
     m_fire_width = v;
+    getAddressSpaceLink()->setFire_width_us(m_fire_width, OpcUa_Good);
     return OpcUa_Good;
   }
+  UaStatus DIoLLaserUnit::get_fire_width(uint32_t &v,json &resp)
+  {
+    UaStatus st = check_cib_mem(resp);
+    const std::string lbl = "get_fire_width";
+    if (st != OpcUa_Good)
+    {
+      getAddressSpaceLink()->setFire_width_us(m_fire_width, OpcUa_BadCommunicationError);
+      return st;
+    }
+    // get the value from the register
+    uint32_t rval = cib::util::reg_read(m_regs.at("fire_width").addr);
+    // now extract the width from the register value
+    uint32_t width = ((rval & m_regs.at("fire_width").mask) >> m_regs.at("fire_width").bit_low);
+#ifdef DEBUG
+    LOG(Log::INF) << log_i(lbl.c_str()," Fire width (clocks) :") << width;
+#endif;
+    m_fire_width = width;
+    // convert to floating point
+    uint32_t width_us = width*16/1000.;
+#ifdef DEBUG
+    LOG(Log::INF) << log_i(lbl.c_str()," Fire width (us) :") << width_us;
+#endif;
+    getAddressSpaceLink()->setFire_width_us(m_fire_width, OpcUa_Good);
+    return OpcUa_Good;
+  }
+
+
   UaStatus DIoLLaserUnit::resume(json &resp)
   {
     // resume should only be called if we are in either sPause or sStandby states
@@ -3165,7 +3295,7 @@ UaStatus DIoLLaserUnit::callResume (
     bool got_exception = false;
     try
     {
-      if (m_serial_busy.load())
+      while (m_serial_busy.load())
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
@@ -3217,7 +3347,7 @@ UaStatus DIoLLaserUnit::callResume (
     bool got_exception = false;
     try
     {
-      if (m_serial_busy.load())
+      while (m_serial_busy.load())
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
@@ -3269,7 +3399,7 @@ UaStatus DIoLLaserUnit::callResume (
     bool got_exception = false;
     try
     {
-      if (m_serial_busy.load())
+      while (m_serial_busy.load())
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
@@ -3320,7 +3450,7 @@ UaStatus DIoLLaserUnit::callResume (
     bool got_exception = false;
     try
     {
-      if (m_serial_busy.load())
+      while (m_serial_busy.load())
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
@@ -3371,7 +3501,7 @@ UaStatus DIoLLaserUnit::callResume (
     bool got_exception = false;
     try
     {
-      if (m_serial_busy.load())
+      while (m_serial_busy.load())
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
@@ -3505,6 +3635,25 @@ UaStatus DIoLLaserUnit::callResume (
       resp["statuscode"] = OpcUa_BadInvalidState;
       return OpcUa_Bad;
     }
+    else
+    {
+      return OpcUa_Good;
+    }
+  }
+  UaStatus DIoLLaserUnit::check_ready_state(json &resp)
+  {
+    const std::string lbl = "check_ready";
+    if (m_status != sReady)
+     {
+      std::ostringstream msg("");
+       msg.clear(); msg.str("");
+       msg << log_e(lbl.c_str()," ") << "Laser is not in ready state. Current state :" << m_status_map.at(m_status);
+       resp["messages"].push_back(msg.str());
+#ifdef DEBUG
+       LOG(Log::ERR) << msg.str();
+#endif
+       return OpcUa_BadInvalidState;
+     }
     else
     {
       return OpcUa_Good;

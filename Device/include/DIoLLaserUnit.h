@@ -240,7 +240,6 @@ config -> init -> start_cib -> [pause, standby, resume, force_ext_shutter] -> st
     //
     bool get_counting_flashes() {return m_count_flashes;}
     void set_counting_flashes(bool s) {m_count_flashes = s;}
-    UaStatus refresh_shot_count();
     bool is_ready() {return (m_status == sReady);}
     //
 private:
@@ -251,17 +250,18 @@ private:
     void refresh_status(json &resp);
     void refresh_status(void);
     bool validate_config_fragment(json &conf, json &resp);
-    // methods that internally deal with the device writing logic
-    UaStatus write_divider(const uint16_t v,json &resp);
-    UaStatus write_rate(const double v,json &resp);
-    UaStatus write_hv(const double v,json &resp);
     //UaStatus write_qswitch(const uint16_t v,json &resp);
     // to be implemented
     void set_pause_timeout(const uint32_t v,json &resp) {m_pause_timeout = v;}
     void set_standby_timeout(const uint32_t v,json &resp){m_standby_timeout = v;}
     UaStatus set_qswitch_delay(const uint32_t v,json &resp);
+    UaStatus get_qswitch_delay(uint32_t &v, json &resp);
     UaStatus set_qswitch_width(const uint32_t v,json &resp);
+    UaStatus get_qswitch_width(uint32_t &v,json &resp);
     UaStatus set_fire_width(const uint32_t v,json &resp);
+    UaStatus get_fire_width(uint32_t &v, json &resp);
+    UaStatus get_ext_shutter_state(bool &open,json &resp);
+    //
     // methods that are called  often
     void enable_fire();
     void enable_qswitch();
@@ -269,11 +269,20 @@ private:
     void disable_qswitch();
     void close_ext_shutter();
     void open_ext_shutter();
+    // -- low level laser functions
+    // these need wrappers to catch any exceptions
+    // methods that internally deal with the device writing logic
+    // all of these have exception catchers
+    UaStatus refresh_shot_count();
+    UaStatus write_divider(const uint16_t v,json &resp);
+    UaStatus write_rate(const double v,json &resp);
+    UaStatus write_hv(const double v,json &resp);
     UaStatus close_shutter(json &resp);
     UaStatus open_shutter(json &resp);
     UaStatus start_fire(json &resp);
     UaStatus stop_fire(json &resp);
     UaStatus laser_security(uint16_t &code, std::string &desc,json &resp);
+    // CIB memory setters
     void set_fire(const uint32_t s);
     void set_qswitch(const uint32_t s);
     void set_ext_shutter(const uint32_t s);
@@ -283,7 +292,8 @@ private:
     UaStatus check_offline_state(json &resp);
     UaStatus check_not_offline_state(json &resp);
     UaStatus check_cib_mem(json &resp);
-
+    UaStatus check_ready_state(json &resp);
+    UaStatus refresh_registers(json &resp);
     //
     void start_lasing_timer();
     void start_warmup_timer();
