@@ -1749,7 +1749,7 @@ UaStatus DIoLLaserUnit::callResume (
     uint16_t status = 99;
     std::string desc;
     bool got_exception = false;
-    const std::string lbl = lbl.c_str();
+    const std::string lbl = "refresh_status";
     UaStatus st = OpcUa_Good;
     st = check_laser_instance(resp);
     if (st != OpcUa_Good)
