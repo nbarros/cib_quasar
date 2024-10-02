@@ -2240,6 +2240,11 @@ UaStatus DIoLLaserUnit::callResume (
       resp["statuscode"] = OpcUa_BadOutOfRange;
       return OpcUa_BadOutOfRange; // avoid overflow
     }
+    UaStatus st = check_laser_instance(resp);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
     try
     {
       if (m_serial_busy.load())
@@ -2784,6 +2789,9 @@ UaStatus DIoLLaserUnit::callResume (
         //        }
         if (it.key() == "discharge_voltage")
         {
+#ifdef DEBUG
+            LOG(Log::INF) << log_i(lbl.c_str(),"Setting voltage");
+#endif
           st = write_hv(it.value(), resp);
           if (st != OpcUa_Good)
           {
