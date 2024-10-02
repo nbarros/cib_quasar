@@ -2128,13 +2128,15 @@ UaStatus DIoLLaserUnit::callResume (
     static ostringstream msg("");
     bool got_exception = false;
     const std::string lbl = "write_rate";
-    UaStatus st = OpcUa_Good;
+//    UaStatus st = OpcUa_Good;
     if (m_status != sReady)
     {
       msg.clear(); msg.str("");
       msg << log_e("prescale"," ") << "Laser is not in ready state. Current state :" << m_status_map.at(m_status);
       resp["messages"].push_back(msg.str());
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       return OpcUa_BadInvalidState;
     }
     // check range
@@ -2159,6 +2161,9 @@ UaStatus DIoLLaserUnit::callResume (
       m_serial_busy.store(true);
       m_laser->set_repetition_rate(v);
       m_serial_busy.store(false);
+#ifdef DEBUG
+      LOG(Log::INF) << log_i(lbl.c_str(),"Repetition rate set");
+#endif
       m_rate_hz = v;
       getAddressSpaceLink()->setRep_rate_hz(m_rate_hz, OpcUa_Good);
     }
@@ -2744,7 +2749,9 @@ UaStatus DIoLLaserUnit::callResume (
             terminate(resp);
             return st;
           }
-
+#ifdef DEBUG
+            LOG(Log::INF) << log_i(lbl.c_str(),"Repetition rate set ");
+#endif
         }
         if (it.key() == "repetition_rate_divider")
         {
