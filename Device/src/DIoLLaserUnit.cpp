@@ -2096,27 +2096,25 @@ UaStatus DIoLLaserUnit::callResume (
   }
   UaStatus DIoLLaserUnit::write_divider(const uint16_t v,json &resp)
   {
-    // NOTE: This method does not check whether the system is ready to execute
-    // TODO: Implement a prescale also at the CIB level
     // that is the job of the original method
     uint16_t nv = v;
     static ostringstream msg("");
     bool got_exception = false;
-    if (m_status != sReady)
+    const std::string lbl = "write_divider";
+    UaStatus st = check_ready_state(resp);
+    if (st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_e("prescale"," ") << "Laser is not in ready state. Crrent state :" << m_status_map.at(m_status);
-      resp["messages"].push_back(msg.str());
-      LOG(Log::ERR) << msg.str();
-      return OpcUa_BadInvalidState;
+      return st;
     }
     if ( v > 99)
     {
       nv = 99;
       msg.clear(); msg.str("");
-      msg << log_w("prescale"," ") << "Value out of bounds. Truncating to max [ " << v << " --> " << nv << "]";
+      msg << log_w(lbl.c_str()," ") << "Value out of bounds. Truncating to max [ " << v << " --> " << nv << "]";
       resp["messages"].push_back(msg.str());
+#ifdef DEBUG
       LOG(Log::WRN) << msg.str();
+#endif
     }
     try
     {
@@ -2134,32 +2132,34 @@ UaStatus DIoLLaserUnit::callResume (
     catch(serial::PortNotOpenedException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("prescale"," ") << "Port not open [" << e.what() << "]";
+      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("prescale","Failed with a Serial exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("prescale","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("prescale","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       got_exception = true;
     }
     if (got_exception)
     {
       m_serial_busy.store(false);
       getAddressSpaceLink()->setRep_rate_divider(m_divider, OpcUa_BadCommunicationError);
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -3057,13 +3057,13 @@ UaStatus DIoLLaserUnit::callResume (
     uint32_t delay = ((rval & m_regs.at("qswitch_delay").mask) >> m_regs.at("qswitch_delay").bit_low);
 #ifdef DEBUG
     LOG(Log::INF) << log_i(lbl.c_str()," Qswitch delay (clocks) :") << delay;
-#endif;
+#endif
     m_qswitch_delay = delay;
     // convert to floating point
     uint32_t width_us = delay*16/1000.;
 #ifdef DEBUG
     LOG(Log::INF) << log_i(lbl.c_str()," QSwitch delay (us) :") << width_us;
-#endif;
+#endif
     getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Good);
     return OpcUa_Good;
   }
@@ -3102,13 +3102,13 @@ UaStatus DIoLLaserUnit::callResume (
     uint32_t width = ((rval & m_regs.at("qswitch_width").mask) >> m_regs.at("qswitch_width").bit_low);
 #ifdef DEBUG
     LOG(Log::INF) << log_i(lbl.c_str()," Qswitch width (clocks) :") << width;
-#endif;
+#endif
     m_qswitch_width = width;
     // convert to floating point
     uint32_t width_us = width*16/1000.;
 #ifdef DEBUG
     LOG(Log::INF) << log_i(lbl.c_str()," QSwitch width (us) :") << width_us;
-#endif;
+#endif
     getAddressSpaceLink()->setQswitch_width_us(m_qswitch_width, OpcUa_Good);
     return OpcUa_Good;
   }
@@ -3147,18 +3147,33 @@ UaStatus DIoLLaserUnit::callResume (
     uint32_t width = ((rval & m_regs.at("fire_width").mask) >> m_regs.at("fire_width").bit_low);
 #ifdef DEBUG
     LOG(Log::INF) << log_i(lbl.c_str()," Fire width (clocks) :") << width;
-#endif;
+#endif
     m_fire_width = width;
     // convert to floating point
     uint32_t width_us = width*16/1000.;
 #ifdef DEBUG
     LOG(Log::INF) << log_i(lbl.c_str()," Fire width (us) :") << width_us;
-#endif;
+#endif
     getAddressSpaceLink()->setFire_width_us(m_fire_width, OpcUa_Good);
     return OpcUa_Good;
   }
-
-
+  UaStatus DIoLLaserUnit::get_ext_shutter_state(bool &open,json &resp)
+  {
+    UaStatus st = check_cib_mem(resp);
+    const std::string lbl = "get_ext_shutter_state";
+    if (st != OpcUa_Good)
+    {
+      getAddressSpaceLink()->setExt_shutter_open(!m_part_state.state.ext_shutter_closed, OpcUa_BadCommunicationError);
+      return st;
+    }
+    // refresh the state that is in the register
+    bool sopen;
+    get_ext_shutter(sopen);
+    open = sopen;
+    m_part_state.state.ext_shutter_closed = !sopen;
+    getAddressSpaceLink()->setExt_shutter_open(sopen, OpcUa_Good);
+    return OpcUa_Good;
+  }
   UaStatus DIoLLaserUnit::resume(json &resp)
   {
     // resume should only be called if we are in either sPause or sStandby states
@@ -3261,8 +3276,14 @@ UaStatus DIoLLaserUnit::callResume (
                                      m_regs.at("force_shutter").bit_low);
     m_part_state.state.ext_shutter_closed = (s!=0x0);
     getAddressSpaceLink()->setExt_shutter_open((s==0x0),OpcUa_Good);
-
   }
+  void DIoLLaserUnit::get_ext_shutter(bool &open)
+  {
+    uint32_t rval = cib::util::reg_read(m_regs.at("force_shutter").addr);
+    uint32_t state = ((rval & m_regs.at("force_shutter").mask) >> m_regs.at("force_shutter").bit_low);
+    open = (state == 0);
+  }
+
   void DIoLLaserUnit::enable_fire()
   {
     set_fire(0x1);
