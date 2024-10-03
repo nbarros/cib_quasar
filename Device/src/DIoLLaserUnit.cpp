@@ -2366,14 +2366,15 @@ UaStatus DIoLLaserUnit::callResume (
   {
     // do just periodic checks, that are meant to happen less often than usual
     // for example, check the laser unit status
-//#ifdef DEBUG
+    //return;
+    //#ifdef DEBUG
 //    LOG(Log::INF) << log_i("update","Updating...");
 //#endif
     json resp;
-//    if (m_laser)
-//    {
-//      refresh_status(resp);
-//    }
+    if (m_laser)
+    {
+      refresh_status(resp);
+    }
 
     UaStatus st = check_error_state(resp);
     if (st != OpcUa_Good)
@@ -2711,6 +2712,12 @@ UaStatus DIoLLaserUnit::callResume (
         update_status(sOffline);
         return st;
       }
+#ifdef DEBUG
+      else
+      {
+        LOG(Log::INF) << log_i(lbl.c_str(),"Registers mapped");
+      }
+#endif
       for (json::iterator it = conf.begin(); it != conf.end(); ++it)
       {
         LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
