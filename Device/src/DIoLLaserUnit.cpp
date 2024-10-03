@@ -3327,6 +3327,11 @@ UaStatus DIoLLaserUnit::callResume (
   }
   void DIoLLaserUnit::set_fire(const uint32_t s)
   {
+#ifdef DEBUG
+    LOG(Log::INF) << log_i("set_fire","Setting to ") << s << "(addr,mask,offset)=[0x"
+        << std::hex << m_regs.at("fire_state").addr << " " << m_regs.at("fire_state").mask << std::dec
+        << " " << m_regs.at("fire_state").offset;
+#endif
     cib::util::reg_write_mask_offset(m_regs.at("fire_state").addr,
                                      s,
                                      m_regs.at("fire_state").mask,
@@ -3337,6 +3342,11 @@ UaStatus DIoLLaserUnit::callResume (
   void DIoLLaserUnit::set_qswitch(const uint32_t s)
   {
 
+#ifdef DEBUG
+    LOG(Log::INF) << log_i("set_qswitch","Setting to ") << s << "(addr,mask,offset)=[0x"
+        << std::hex << m_regs.at("fire_state").addr << " " << m_regs.at("fire_state").mask << std::dec
+        << " " << m_regs.at("fire_state").offset;
+#endif
     cib::util::reg_write_mask_offset(m_regs.at("qs_state").addr,
                                      s,
                                      m_regs.at("qs_state").mask,
@@ -3345,6 +3355,11 @@ UaStatus DIoLLaserUnit::callResume (
   }
   void DIoLLaserUnit::set_ext_shutter(const uint32_t s)
   {
+#ifdef DEBUG
+    LOG(Log::INF) << log_i("set_ext_shutter","Setting to ") << s << "(addr,mask,offset)=[0x"
+        << std::hex << m_regs.at("fire_state").addr << " " << m_regs.at("fire_state").mask << std::dec
+        << " " << m_regs.at("fire_state").offset;
+#endif
     // we want to close and it wasn't yet
     cib::util::reg_write_mask_offset(m_regs.at("force_shutter").addr,
                                      s,
