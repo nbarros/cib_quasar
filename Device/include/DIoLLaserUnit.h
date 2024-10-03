@@ -302,6 +302,11 @@ private:
     void start_warmup_timer();
     void start_pause_timer();
     void start_standby_timer();
+    double clock_to_us() {return 16.0/1000.0;}
+    uint32_t conv_to_us(const uint32_t clocks) {return static_cast<uint32_t>(static_cast<double>(clocks)*clock_to_us());}
+    double us_to_clock() {return 1000.0/16.0;}
+    uint32_t conv_to_clock(const uint32_t us) {return static_cast<uint32_t>(static_cast<double>(us)*us_to_clock());}
+
 
     UaStatus map_registers(json &reginfo, json &resp);
 //    UaStatus unmap_registers();

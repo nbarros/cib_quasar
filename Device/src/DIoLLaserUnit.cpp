@@ -3011,12 +3011,15 @@ UaStatus DIoLLaserUnit::callResume (
       msg.clear(); msg.str("");
       msg << log_w(lbl.c_str()," ") << "Value out of bounds. Truncating to max [ " << v << " --> " << nv << "]";
       resp["messages"].push_back(msg.str());
+#ifdef DEBUG
       LOG(Log::WRN) << msg.str();
-    }
+#endif
+      }
     try
     {
       // convert the value into 16 ns clocks
-      uint32_t v_clock= nv*1000/16;
+      uint32_t v_clock = conv_to_clock(nv);
+//      uint32_t v_clock= nv*1000/16;
       // when reading out the configuration from JSON
       // this means that the code below is completely agnostic
       // set the value both at CIB and laser level
@@ -3039,9 +3042,9 @@ UaStatus DIoLLaserUnit::callResume (
       LOG(Log::WRN) << "Done writing qs_delay ";
 #endif
           //      m_laser->set_qswitch(nv);
-      m_qswitch_delay = nv;
+      m_qswitch_delay = v_clock;
       // update the address space as well
-      getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Good);
+      getAddressSpaceLink()->setQswitch_delay_us(nv, OpcUa_Good);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3069,7 +3072,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Bad);
+      getAddressSpaceLink()->setQswitch_delay_us(conv_to_us(m_qswitch_delay), OpcUa_Bad);
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -3084,7 +3087,8 @@ UaStatus DIoLLaserUnit::callResume (
     const std::string lbl = "get_qswitch_delay";
     if (st != OpcUa_Good)
     {
-      getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_BadCommunicationError);
+      uint32_t delay_us = conv_to_us(m_qswitch_delay);
+      getAddressSpaceLink()->setQswitch_delay_us(delay_us, OpcUa_BadCommunicationError);
       return st;
     }
     // get the value from the register
@@ -3096,11 +3100,11 @@ UaStatus DIoLLaserUnit::callResume (
 #endif
     m_qswitch_delay = delay;
     // convert to floating point
-    uint32_t width_us = delay*16/1000.;
+    uint32_t delay_us = conv_to_us(delay);
 #ifdef DEBUG
-    LOG(Log::INF) << log_i(lbl.c_str()," QSwitch delay (us) :") << width_us;
+    LOG(Log::INF) << log_i(lbl.c_str()," QSwitch delay (us) :") << delay_us;
 #endif
-    getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, OpcUa_Good);
+    getAddressSpaceLink()->setQswitch_delay_us(delay_us, OpcUa_Good);
     return OpcUa_Good;
   }
   UaStatus DIoLLaserUnit::set_qswitch_width(const uint32_t v,json &resp)
@@ -3113,14 +3117,14 @@ UaStatus DIoLLaserUnit::callResume (
     }
     // convert the value into a 16 ns clock number
     // the set unit is us
-    uint32_t v_clock= v*1000/16;
+    uint32_t v_clock= conv_to_clock(v);
     // -- otherwise, set the memory region in the register, and the local cache variable too
     cib::util::reg_write_mask_offset(m_regs.at("qs_width").addr,
                                      v_clock,
                                      m_regs.at("qs_width").mask,
                                      m_regs.at("qs_width").bit_low);
-    m_qswitch_width = v;
-    getAddressSpaceLink()->setQswitch_width_us(m_qswitch_width, OpcUa_Good);
+    m_qswitch_width = v_clock;
+    getAddressSpaceLink()->setQswitch_width_us(conv_to_us(m_qswitch_width), OpcUa_Good);
     return OpcUa_Good;
   }
   UaStatus DIoLLaserUnit::get_qswitch_width(uint32_t &v,json &resp)
@@ -3129,7 +3133,7 @@ UaStatus DIoLLaserUnit::callResume (
     const std::string lbl = "get_qswitch_width";
     if (st != OpcUa_Good)
     {
-      getAddressSpaceLink()->setQswitch_width_us(m_qswitch_width, OpcUa_BadCommunicationError);
+      getAddressSpaceLink()->setQswitch_width_us(conv_to_us(m_qswitch_width), OpcUa_BadCommunicationError);
       return st;
     }
     // get the value from the register
@@ -3141,11 +3145,11 @@ UaStatus DIoLLaserUnit::callResume (
 #endif
     m_qswitch_width = width;
     // convert to floating point
-    uint32_t width_us = width*16/1000.;
+    uint32_t width_us = conv_to_us(width);
 #ifdef DEBUG
     LOG(Log::INF) << log_i(lbl.c_str()," QSwitch width (us) :") << width_us;
 #endif
-    getAddressSpaceLink()->setQswitch_width_us(m_qswitch_width, OpcUa_Good);
+    getAddressSpaceLink()->setQswitch_width_us(width_us, OpcUa_Good);
     return OpcUa_Good;
   }
   UaStatus DIoLLaserUnit::set_fire_width(const uint32_t v,json &resp)
@@ -3158,14 +3162,14 @@ UaStatus DIoLLaserUnit::callResume (
     }
     // convert the value into a 16 ns clock number
     // the set unit is us
-    uint32_t v_clock= v*1000/16;
+    uint32_t v_clock= conv_to_clock(v);
     // -- otherwise, set the memory region in the register, and the local cache variable too
     cib::util::reg_write_mask_offset(m_regs.at("fire_width").addr,
                                      v_clock,
                                      m_regs.at("fire_width").mask,
                                      m_regs.at("fire_width").bit_low);
-    m_fire_width = v;
-    getAddressSpaceLink()->setFire_width_us(m_fire_width, OpcUa_Good);
+    m_fire_width = v_clock;
+    getAddressSpaceLink()->setFire_width_us(conv_to_us(m_fire_width), OpcUa_Good);
     return OpcUa_Good;
   }
   UaStatus DIoLLaserUnit::get_fire_width(uint32_t &v,json &resp)
@@ -3186,7 +3190,7 @@ UaStatus DIoLLaserUnit::callResume (
 #endif
     m_fire_width = width;
     // convert to floating point
-    uint32_t width_us = width*16/1000.;
+    uint32_t width_us = conv_to_us(width);
 #ifdef DEBUG
     LOG(Log::INF) << log_i(lbl.c_str()," Fire width (us) :") << width_us;
 #endif
