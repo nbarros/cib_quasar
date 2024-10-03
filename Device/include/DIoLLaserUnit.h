@@ -273,7 +273,7 @@ private:
     // these need wrappers to catch any exceptions
     // methods that internally deal with the device writing logic
     // all of these have exception catchers
-    UaStatus refresh_shot_count();
+    UaStatus refresh_shot_count(json &resp);
     UaStatus write_divider(const uint16_t v,json &resp);
     UaStatus write_rate(const double v,json &resp);
     UaStatus write_hv(const double v,json &resp);
@@ -287,6 +287,7 @@ private:
     void set_qswitch(const uint32_t s);
     void set_ext_shutter(const uint32_t s);
     void get_ext_shutter(bool &open);
+    void get_laser_shutter();
     //
     UaStatus check_laser_instance(json &resp);
     UaStatus check_error_state(json &resp);

@@ -1885,11 +1885,12 @@ UaStatus DIoLLaserUnit::callResume (
       }
                 }).detach();
   }
-  UaStatus DIoLLaserUnit::refresh_shot_count()
+  UaStatus DIoLLaserUnit::refresh_shot_count(json &resp)
   {
     std::ostringstream msg("");
     json resp;
     bool caught_exception = false;
+    const std::string lbl = "get_shot_count";
     UaStatus st = OpcUa_Good;
     st = check_offline_state(resp);
     if (st != OpcUa_Good)
@@ -1920,32 +1921,32 @@ UaStatus DIoLLaserUnit::callResume (
     catch(serial::PortNotOpenedException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("single_shot"," ") << "Port not open [" << e.what() << "]";
+      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
       caught_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("single_shot","Failed with a Serial exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       caught_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("single_shot","Failed with an STL exception :") << e.what();
+      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
       caught_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("single_shot","Failed with an unknown exception.");
+      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
       caught_exception = true;
     }
     if (caught_exception)
     {
       m_serial_busy.store(false);
       LOG(Log::ERR) << msg.str();
-      getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_BadDataUnavailable);
+      getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_BadCommunicationError);
     }
     return OpcUa_Good;
   }
@@ -2360,7 +2361,11 @@ UaStatus DIoLLaserUnit::callResume (
     }
     return OpcUa_Good;
   }
-
+  void DIoLLaserUnit::get_laser_shutter()
+  {
+    // this method just pushes the internal state, since we cannot query the laser itself
+    getAddressSpaceLink()->setLaser_shutter_open(!m_part_state.state.laser_shutter_closed,OpcUa_Good);
+  }
 
   void DIoLLaserUnit::update()
   {
@@ -2374,6 +2379,8 @@ UaStatus DIoLLaserUnit::callResume (
     if (m_laser)
     {
       refresh_status(resp);
+      refresh_shot_count(resp);
+      get_laser_shutter();
     }
 
     UaStatus st = check_error_state(resp);
