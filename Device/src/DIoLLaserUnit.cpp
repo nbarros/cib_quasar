@@ -1444,7 +1444,7 @@ UaStatus DIoLLaserUnit::callResume (
     // however it does not have the stop timer turned on
     // once warmup is done, it automatically switches to sPause
     std::ostringstream msg("");
-    const std::string lbl = lbl.c_str();
+    const std::string lbl = "start_cib";
     bool got_exception = false;
     UaStatus st = OpcUa_Good;
     st = check_cib_mem(resp);
@@ -1481,7 +1481,8 @@ UaStatus DIoLLaserUnit::callResume (
       if (st != OpcUa_Good)
       {
         // something went wrong
-        //
+        // stop
+        stop(resp);
         return st;
       }
       m_part_state.state.laser_shutter_closed = true;
@@ -1499,7 +1500,6 @@ UaStatus DIoLLaserUnit::callResume (
       start_warmup_timer();
       // requery the laser system for its present status, in case there are issues to report
       start_lasing_timer();
-      refresh_status();
     }
     catch(std::exception &e)
     {
@@ -1589,7 +1589,7 @@ UaStatus DIoLLaserUnit::callResume (
     // in principle it can be called from almost any state
     // but the resulting state is a little different
     std::ostringstream msg("");
-    const std::string lbl = lbl.c_str();
+    const std::string lbl = "pause;
     bool got_exception = false;
     UaStatus st = OpcUa_Good;
     st = check_cib_mem(resp);
@@ -1666,7 +1666,7 @@ UaStatus DIoLLaserUnit::callResume (
     // can be called from sLasing and sPause
     std::ostringstream msg("");
     bool got_exception = false;
-    const std::string lbl = lbl.c_str();
+    const std::string lbl = "standby";
     UaStatus st = OpcUa_Good;
     st = check_cib_mem(resp);
     if (st != OpcUa_Good)
@@ -3322,6 +3322,7 @@ UaStatus DIoLLaserUnit::callResume (
   }
   void DIoLLaserUnit::set_qswitch(const uint32_t s)
   {
+
     cib::util::reg_write_mask_offset(m_regs.at("qs_state").addr,
                                      s,
                                      m_regs.at("qs_state").mask,
