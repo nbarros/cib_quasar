@@ -1589,7 +1589,7 @@ UaStatus DIoLLaserUnit::callResume (
     // in principle it can be called from almost any state
     // but the resulting state is a little different
     std::ostringstream msg("");
-    const std::string lbl = "pause;
+    const std::string lbl = "pause";
     bool got_exception = false;
     UaStatus st = OpcUa_Good;
     st = check_cib_mem(resp);
@@ -1619,7 +1619,9 @@ UaStatus DIoLLaserUnit::callResume (
       {
         msg.clear(); msg.str("");
         msg << log_w(lbl.c_str(),"Pased called before laser was started. The shutter will close, but the laser will remain off.");
+#ifdef DEBUG
         LOG(Log::WRN) << msg.str();
+#endif
         resp["status"] = "SUCCESS";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_Uncertain;
@@ -1646,7 +1648,9 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      LOG(Log::ERR) << msg.str();
+#ifdef DEBUG
+    LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1655,6 +1659,9 @@ UaStatus DIoLLaserUnit::callResume (
     resp["status"] = "SUCCESS";
     msg.clear(); msg.str("");
     msg << log_i(lbl.c_str(),"Laser operation paused.");
+#ifdef DEBUG
+    LOG(Log::INF) << msg.str();
+#endif
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
@@ -1684,7 +1691,9 @@ UaStatus DIoLLaserUnit::callResume (
     {
       msg.clear(); msg.str("");
       msg << log_w(lbl.c_str(),"Laser in warmup or standby state. Nothing to be done.");
+#ifdef DEBUG
       LOG(Log::WRN) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1724,7 +1733,9 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1733,6 +1744,9 @@ UaStatus DIoLLaserUnit::callResume (
     resp["status"] = "SUCCESS";
     msg.clear(); msg.str("");
     msg << log_i(lbl.c_str(),"Laser operation on standby.");
+#ifdef DEBUG
+      LOG(Log::INF) << msg.str();
+#endif
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
@@ -1755,7 +1769,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     catch(...)
     {
-      m_status = sOffline;
+      update_status(sOffline);
       LOG(Log::ERR) << "DIoLLaserUnit::automatic_port_search : Caught an exception searching for the port";
       m_comport = "";
     }
