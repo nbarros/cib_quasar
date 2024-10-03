@@ -700,7 +700,9 @@ UaStatus DIoLLaserUnit::callTerminate (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to terminate laser. See previous messages");
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -709,7 +711,9 @@ UaStatus DIoLLaserUnit::callTerminate (
     {
       msg.clear(); msg.str("");
       msg << log_i(lbl.c_str(),"Laser unit connection terminated");
-      LOG(Log::ERR) << msg.str();
+#ifdef DEBUG
+      LOG(Log::INF) << msg.str();
+#endif
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -1285,7 +1289,7 @@ UaStatus DIoLLaserUnit::callResume (
         // being already offline but with a live pointer
         // this should *NEVER* happen, but if it does, we're in trouble.
         msg.clear(); msg.str("");
-        msg << log_w(lbl.c_str(),"There is live pointer but state is offline. This should NEVER happen. Attempting to clear object.");
+        msg << log_w(lbl.c_str(),"There is a live pointer but state is offline. This should NEVER happen. Attempting to clear object.");
 #ifdef DEBUG
         LOG(Log::WRN) << msg.str();
 #endif
@@ -1330,12 +1334,19 @@ UaStatus DIoLLaserUnit::callResume (
     // at this stage, nothing else to be done.
     // just delete the device and go into offline mode
     // -- now just delete the device
+    // FIXME: There is a potential rate condition here... if while we are terminating, other requests sit on a queue
+    update_status(sOffline);
+    while (m_serial_busy.load())
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    m_serial_busy.store(true);
     if (m_laser)
     {
       delete m_laser;
     }
     m_laser = nullptr;
-    update_status(sOffline);
+    m_serial_busy.store(false);
     m_config_completed = false;
     return OpcUa_Good;
   }
