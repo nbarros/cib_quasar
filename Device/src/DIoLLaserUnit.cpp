@@ -2369,10 +2369,13 @@ UaStatus DIoLLaserUnit::callResume (
       terminate(resp);
     }
     // do also a refresh of the relevant registers
-    st = refresh_registers(resp);
-    if (st != OpcUa_Good)
+    if (m_status != sOffline)
     {
-      LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an error reading registers.";
+      st = refresh_registers(resp);
+      if (st != OpcUa_Good)
+      {
+        LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an error reading registers.";
+      }
     }
   }
   UaStatus DIoLLaserUnit::fire_standalone(uint32_t num_pulses,json &resp)
