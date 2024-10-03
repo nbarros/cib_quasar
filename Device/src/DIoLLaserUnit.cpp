@@ -3328,14 +3328,14 @@ UaStatus DIoLLaserUnit::callResume (
   void DIoLLaserUnit::set_fire(const uint32_t s)
   {
 #ifdef DEBUG
-    LOG(Log::INF) << log_i("set_fire","Setting to ") << s << "(addr,mask,offset)=[0x"
+    LOG(Log::INF) << log_i("set_fire","Setting to ") << s << " (addr,mask,offset)=[0x"
         << std::hex << m_regs.at("fire_state").addr << " " << m_regs.at("fire_state").mask << std::dec
-        << " " << m_regs.at("fire_state").offset;
+        << " " << m_regs.at("fire_state").bit_low;
 #endif
     cib::util::reg_write_mask_offset(m_regs.at("fire_state").addr,
                                      s,
                                      m_regs.at("fire_state").mask,
-                                     m_regs.at("fire_state").offset);
+                                     m_regs.at("fire_state").bit_low);
     m_part_state.state.fire_enable = (s!=0x0);
 
   }
@@ -3343,9 +3343,9 @@ UaStatus DIoLLaserUnit::callResume (
   {
 
 #ifdef DEBUG
-    LOG(Log::INF) << log_i("set_qswitch","Setting to ") << s << "(addr,mask,offset)=[0x"
+    LOG(Log::INF) << log_i("set_qswitch","Setting to ") << s << " (addr,mask,offset)=[0x"
         << std::hex << m_regs.at("fire_state").addr << " " << m_regs.at("fire_state").mask << std::dec
-        << " " << m_regs.at("fire_state").offset;
+        << " " << m_regs.at("fire_state").bit_low;
 #endif
     cib::util::reg_write_mask_offset(m_regs.at("qs_state").addr,
                                      s,
@@ -3356,9 +3356,9 @@ UaStatus DIoLLaserUnit::callResume (
   void DIoLLaserUnit::set_ext_shutter(const uint32_t s)
   {
 #ifdef DEBUG
-    LOG(Log::INF) << log_i("set_ext_shutter","Setting to ") << s << "(addr,mask,offset)=[0x"
+    LOG(Log::INF) << log_i("set_ext_shutter","Setting to ") << s << " (addr,mask,offset)=[0x"
         << std::hex << m_regs.at("fire_state").addr << " " << m_regs.at("fire_state").mask << std::dec
-        << " " << m_regs.at("fire_state").offset;
+        << " " << m_regs.at("fire_state").bit_low;
 #endif
     // we want to close and it wasn't yet
     cib::util::reg_write_mask_offset(m_regs.at("force_shutter").addr,
