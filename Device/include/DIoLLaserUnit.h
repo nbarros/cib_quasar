@@ -288,7 +288,7 @@ private:
     void set_fire(const uint32_t s);
     void get_fire(uint32_t s);
     void set_qswitch(const uint32_t s);
-    void get_qswitch(uint32_t &s)
+    void get_qswitch(uint32_t &s);
     void set_ext_shutter(const uint32_t s);
     void get_ext_shutter(bool &open);
     void get_laser_shutter();

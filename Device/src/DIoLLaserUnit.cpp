@@ -564,7 +564,7 @@ UaStatus DIoLLaserUnit::callStart_cib (
     {
       response = UaString(resp.dump().c_str());
       return OpcUa_Good;
-    }
+}
     //
     st = start_cib(resp);
     if (st != OpcUa_Good)
