@@ -2356,7 +2356,7 @@ UaStatus DIoLLaserUnit::callResume (
 //#ifdef DEBUG
 //    LOG(Log::INF) << log_i("update","Updating...");
 //#endif
-//    json resp;
+    json resp;
 //    if (m_laser)
 //    {
 //      refresh_status(resp);
