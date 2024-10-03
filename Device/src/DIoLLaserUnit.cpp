@@ -1222,7 +1222,7 @@ UaStatus DIoLLaserUnit::callResume (
       uint32_t nsecs = 0;
       while (nsecs < (m_standby_timeout*60*n_ticks_per_sec))
       {
-        if (!m_part_state.state.laser_shutter_closed)
+        if (m_status != sStandby)
         {
           // stop the timer
           getAddressSpaceLink()->setStandby_timer_s(0,OpcUa_Good);
