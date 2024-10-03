@@ -578,14 +578,16 @@ UaStatus DIoLLaserUnit::callStart_cib (
     {
       response = UaString(resp.dump().c_str());
       return OpcUa_Good;
-}
+    }
     //
     st = start_cib(resp);
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to start laser. See previous messages");
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -594,11 +596,16 @@ UaStatus DIoLLaserUnit::callStart_cib (
     {
       msg.clear(); msg.str("");
       msg << log_i(lbl.c_str(),"Laser started operating");
-      LOG(Log::ERR) << msg.str();
+#ifdef DEBUG
+      LOG(Log::INF) << msg.str();
+#endif
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
+#ifdef DEBUG
+    LOG(Log::INF) << "[" << resp.dump() << "]";
+#endif
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
   }
@@ -1451,16 +1458,12 @@ UaStatus DIoLLaserUnit::callResume (
     {
       return st;
     }
-    if (m_status != sReady)
+    st = check_ready_state(resp);
+    if (st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_w(lbl.c_str(),"System is not in the sReady state, as it should.");
-      LOG(Log::WRN) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_BadInvalidState;
+      return st;
     }
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     try
     {
       // deassert qswitch enable
@@ -1521,6 +1524,9 @@ UaStatus DIoLLaserUnit::callResume (
     resp["status"] = "SUCCESS";
     msg.clear(); msg.str("");
     msg << log_i(lbl.c_str(),"Laser started.");
+#ifdef DEBUG
+    LOG(Log::INF) << msg.str();
+#endif
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
