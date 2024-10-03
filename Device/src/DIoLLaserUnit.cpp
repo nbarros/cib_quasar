@@ -17,7 +17,7 @@
 
  */
 
-#define DEBUG 1
+//#define DEBUG 1
 #include <Configuration.hxx> // TODO; should go away, is already in Base class for ages
 
 #include <DIoLLaserUnit.h>
@@ -99,7 +99,7 @@ DIoLLaserUnit::DIoLLaserUnit (
             ,m_qswitch_width(10) // 10 us
             ,m_fire_width(10)
             ,m_serial_number("")
-            ,m_warmup_timer(30) // 30 min
+            ,m_warmup_timer(20) // 30 min
             ,m_serial_busy(false)
             ,m_config_completed(false)
 {
@@ -119,19 +119,6 @@ DIoLLaserUnit::DIoLLaserUnit (
     m_status_map.insert({sPause,"pause"});
     m_status_map.insert({sStandby,"standby"});
     m_status_map.insert({sError,"error"});
-
-    // try to initialize the system with the defaults
-    //m_config.word.init(0x0);
-    // No. Either config or init should be called explicitely
-    //    json resp;
-    //    init(resp);
-
-    // it could make sense to map the virtual memory immediately at constructor
-    // if this is not successful at this stage, it will not be successful later either
-    //#ifdef SIMULATION
-    //    m_mapped_mem = reinterpret_cast<uintptr_t>(new uint32_t[(CIB_CONFIG_ADDR_HIGH-CIB_CONFIG_ADDR_BASE)/sizeof(uint32_t)]);
-    //#else
-    //      m_mapped_mem = cib::util::map_phys_mem(m_mmap_fd,CIB_CONFIG_ADDR_BASE,CIB_CONFIG_ADDR_HIGH);
 
     // -- there are several registers to be mapped:
     cib_reg_t tmpreg;
@@ -178,7 +165,6 @@ DIoLLaserUnit::DIoLLaserUnit (
     {
       // sError is a special case of status, since this
       LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map oneor more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
-
       m_status = sError;
     }
 }
@@ -1005,7 +991,8 @@ UaStatus DIoLLaserUnit::callResume (
         {
           // if we are on standby, don't update, as we don't want to mess the timer
           update_status(sStandby);
-          start_standby_timer();
+          // this is now done on update_status
+          // start_standby_timer();
         }
         // if the external shutter is closed, open it
         // there is redundancy and there is no point
@@ -1156,7 +1143,8 @@ UaStatus DIoLLaserUnit::callResume (
         // here we *cannot* use pause, because that method relies on this one
         newstate = sPause;
         update_status(sPause);
-        start_pause_timer();
+        // now done in update_status
+        //start_pause_timer();
 
       }
       else
@@ -1229,16 +1217,24 @@ UaStatus DIoLLaserUnit::callResume (
     // if it reaches the total timeout, it shuts the laser down (for safeguarding)
     std::thread([this]()
                 {
+      uint32_t n_ticks = 0;
+      const uint32_t n_ticks_per_sec = 2;
       uint32_t nsecs = 0;
-      while (nsecs < (m_standby_timeout*60*5))
+      while (nsecs < (m_standby_timeout*60*n_ticks_per_sec))
       {
         if (!m_part_state.state.laser_shutter_closed)
         {
           // stop the timer
+          getAddressSpaceLink()->setStandby_timer_s(0,OpcUa_Good);
           return;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        nsecs++;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        n_ticks++;
+        if ((n_ticks%n_ticks_per_sec) == 0)
+        {
+          nsecs++;
+          getAddressSpaceLink()->setStandby_timer_s(nsecs,OpcUa_Good);
+        }
       }
       // reached the end of the loop and shutter is still closed
       // stop the system
@@ -1257,16 +1253,25 @@ UaStatus DIoLLaserUnit::callResume (
     // and then automatically switch to paused state
     std::thread([this]()
                 {
+      uint32_t n_ticks = 0;
+      const uint32_t n_ticks_per_sec = 10;
       uint32_t nsecs = 0;
-      while (nsecs < (m_pause_timeout*60*10))
+      while (nsecs < (m_pause_timeout*60*n_ticks_per_sec))
       {
         if (!m_part_state.state.ext_shutter_closed)
         {
           // stop the timer
+          getAddressSpaceLink()->setPause_timer_s(0,OpcUa_Good);
+
           return;
         }
         std::this_thread::sleep_for(std::chrono::seconds(100));
-        nsecs++;
+        n_ticks++;
+        if ((n_ticks%n_ticks_per_sec) == 0)
+        {
+          nsecs++;
+          getAddressSpaceLink()->setPause_timer_s(nsecs,OpcUa_Good);
+        }
       }
       // reached the end of the loop and shutter is still closed
       // switch to standby and open this
@@ -1275,6 +1280,89 @@ UaStatus DIoLLaserUnit::callResume (
       standby(r);
                 }
     ).detach();
+  }
+  void DIoLLaserUnit::start_warmup_timer()
+  {
+    // initate a timer that will check for the status of the internal shutter every second
+    // until it reaches the total timeout.
+    // if it reaches the total timeout, it shuts the laser down (for safeguarding)
+    std::thread([this]()
+                {
+      uint32_t n_ticks = 0;
+      const uint32_t n_ticks_per_sec = 1;
+      uint32_t nsecs = 0;
+      while (nsecs < (m_warmup_timer*60*n_ticks_per_sec))
+      {
+        // if we somehow left warmup status, stop the timer
+        if (m_status != sWarmup)
+        {
+          // stop the timer
+          getAddressSpaceLink()->setWarmup_timer_s(0,OpcUa_Good);
+          return;
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        n_ticks++;
+        if ((n_ticks%n_ticks_per_sec) == 0)
+        {
+          nsecs++;
+          getAddressSpaceLink()->setWarmup_timer_s(nsecs,OpcUa_Good);
+        }
+      }
+      // reached the end of the loop and shutter is still closed
+      // stop the system
+      LOG(Log::WRN) << "Reached the end of the warmup timer. ";
+      if (m_status != sWarmup)
+      {
+        // state charged for some reason. Do nothing.
+        // only stop and terminate can actually interfere with warmup
+        LOG(Log::WRN) << "Warmup timer reached end but state no longer in warmup. Doing nothing.";
+        return;
+      }
+      else
+      {
+        // -- reached the end of the warmup
+        // switch to standby...which is pretty much the same thing, just with a different name
+        update_status(sStandby);
+      }
+                }
+    ).detach();
+
+  //    // this only matters if we are in warmup state
+  //    if (m_status != sWarmup)
+  //    {
+  //      LOG(Log::WRN) << "Trying to start a warmup timer without being in warmup state. Doing nothing.";
+  //      return;
+  //    }
+  //    // initate a timer that will just sleep until the timer is over
+  //    // and then automatically switch to paused state
+  //    //    uint32_t n_secs= 0;
+  //    std::thread([this]()
+  //                {
+  //      std::this_thread::sleep_for(std::chrono::minutes(m_warmup_timer));
+  //      // once the sleep is done do the following:
+  //      // close external shutter
+  //      // open internal shutter
+  //      // enable qswitch
+  //      //
+  //      // actually, check that we are still in warmup state before doing anything
+  //      // this safeguards if someone hits stop or terminate while warming up
+  //      //
+  //      if (m_status != sWarmup)
+  //      {
+  //        // state charged for some reason. Do nothing.
+  //        // only stop and terminate can actually interfere with warmup
+  //        LOG(Log::WRN) << "Warmup timer reached end but state no longer in warmup. Doing nothing.";
+  //        return;
+  //      }
+  //      else
+  //      {
+  //        // -- reached the end of the warmup
+  //        // switch to standby...which is pretty much the same thing, just with a different name
+  //        update_status(sStandby);
+  //        start_standby_timer();
+  //      }
+  //                }
+  //    ).detach();
   }
   UaStatus DIoLLaserUnit::terminate(json &resp)
   {
@@ -1497,7 +1585,7 @@ UaStatus DIoLLaserUnit::callResume (
       update_status(sWarmup);
       // initiate the warmup timer.
       // !!! Nothing is supposed to happen during warmup
-      start_warmup_timer();
+      //start_warmup_timer();
       // requery the laser system for its present status, in case there are issues to report
       start_lasing_timer();
     }
@@ -1530,57 +1618,6 @@ UaStatus DIoLLaserUnit::callResume (
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
-  }
-  void DIoLLaserUnit::start_warmup_timer()
-  {
-    // this only matters if we are in warmup state
-    if (m_status != sWarmup)
-    {
-      LOG(Log::WRN) << "Trying to start a warmup timer without being in warmup state. Doing nothing.";
-      return;
-    }
-    // initate a timer that will just sleep until the timer is over
-    // and then automatically switch to paused state
-    //    uint32_t n_secs= 0;
-    std::thread([this]()
-                {
-      std::this_thread::sleep_for(std::chrono::minutes(m_warmup_timer));
-      // once the sleep is done do the following:
-      // close external shutter
-      // open internal shutter
-      // enable qswitch
-      //
-      // actually, check that we are still in warmup state before doing anything
-      // this safeguards if someone hits stop or terminate while warming up
-      //
-      if (m_status != sWarmup)
-      {
-        // state charged for some reason. Do nothing.
-        // only stop and terminate can actually interfere with warmup
-        LOG(Log::WRN) << "Warmup timer reached end but state no longer in warmup. Doing nothing.";
-        return;
-      }
-      else
-      {
-        // -- reached the end of the warmup
-        // switch to standby...which is pretty much the same thing, just with a different name
-        update_status(sStandby);
-      }
-
-      //      //
-      //      // 1. close external shutter
-      //      json r;
-      //      force_ext_shutter(ShutterState::sClose,r);
-      //      // 2. open internal shutter
-      //      switch_laser_shutter(ShutterState::sOpen,r);
-      //      // 3. enable qswitch
-      //      cib::util::reg_write_mask_offset(m_regs.at("qs_enable").addr, 0x1,m_regs.at("qs_enable").mask,m_regs.at("qs_enable").bit_low);
-      //      update_status(sLasing);
-      //      // call pause to make sure that all this is done
-      //      // also keep in mind that pause has an associated timer, after which switches to standby
-      //      pause(r);
-                }
-    ).detach();
   }
   UaStatus DIoLLaserUnit::pause(json &resp)
   {
@@ -1618,7 +1655,7 @@ UaStatus DIoLLaserUnit::callResume (
       if (!m_part_state.state.fire_enable)
       {
         msg.clear(); msg.str("");
-        msg << log_w(lbl.c_str(),"Pased called before laser was started. The shutter will close, but the laser will remain off.");
+        msg << log_w(lbl.c_str(),"Pause called before laser was started. The shutter will close, but the laser will remain off.");
 #ifdef DEBUG
         LOG(Log::WRN) << msg.str();
 #endif
@@ -1633,6 +1670,8 @@ UaStatus DIoLLaserUnit::callResume (
       }
       // requery the laser system for its present status, in case there are issues to report
       refresh_status();
+      // start the pause timer (on the shutter)
+      start_pause_timer();
     }
     catch(std::exception &e)
     {
@@ -1690,14 +1729,14 @@ UaStatus DIoLLaserUnit::callResume (
     if ((m_status == sWarmup) or (m_status == sStandby))
     {
       msg.clear(); msg.str("");
-      msg << log_w(lbl.c_str(),"Laser in warmup or standby state. Nothing to be done.");
+      msg << log_w(lbl.c_str(),"Laser already in warmup or standby state. Nothing to be done.");
 #ifdef DEBUG
       LOG(Log::WRN) << msg.str();
 #endif
-      resp["status"] = "ERROR";
+      resp["status"] = "WARN";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_BadInvalidState;
+      return OpcUa_Good;
     }
     try
     {
@@ -1847,7 +1886,7 @@ UaStatus DIoLLaserUnit::callResume (
       has_error = true;
     }
     // refresh the fire width
-    uint32_t fw;
+    static uint32_t fw;
     try
     {
       st = get_fire_width(fw,resp);
@@ -1855,13 +1894,13 @@ UaStatus DIoLLaserUnit::callResume (
       {
         has_error = true;
       }
-      uint32_t qw;
+      static uint32_t qw;
       st = get_qswitch_width(qw,resp);
       if (st != OpcUa_Good)
       {
         has_error = true;
       }
-      uint32_t qd;
+      static uint32_t qd;
       st = get_qswitch_delay(qd,resp);
       if (st != OpcUa_Good)
       {
@@ -1875,6 +1914,10 @@ UaStatus DIoLLaserUnit::callResume (
       {
         has_error = true;
       }
+      static uint32_t fs;
+      get_fire(fs);
+      static uint32_t qs;
+      get_qswitch(qs);
     }
     catch(std::exception &e)
     {
@@ -2947,6 +2990,19 @@ UaStatus DIoLLaserUnit::callResume (
     m_status = s;
     UaString ss(m_status_map.at(m_status).c_str());
     getAddressSpaceLink()->setState(ss,OpcUa_Good);
+    // check if we need to start any of the timers associated with specific statuses
+    if (s == sPause)
+    {
+      start_pause_timer();
+    }
+    if (s == sStandby)
+    {
+      start_standby_timer();
+    }
+    if (s == sWarmup)
+    {
+      start_warmup_timer();
+    }
   }
   UaStatus DIoLLaserUnit::map_registers(json &reginfo, json &resp)
   {
@@ -3337,7 +3393,14 @@ UaStatus DIoLLaserUnit::callResume (
                                      m_regs.at("fire_state").mask,
                                      m_regs.at("fire_state").bit_low);
     m_part_state.state.fire_enable = (s!=0x0);
-
+    getAddressSpaceLink()->setFire_active(m_part_state.state.fire_enable,OpcUa_Good);
+  }
+  void DIoLLaserUnit::get_fire(uint32_t &s)
+  {
+    uint32_t reg = cib::util::reg_read(m_regs.at("fire_state").addr);
+    s = ((reg & m_regs.at("fire_state").mask) >> m_regs.at("fire_state").bit_low);
+    m_part_state.state.fire_enable = (s!=0x0);
+    getAddressSpaceLink()->setFire_active(m_part_state.state.fire_enable,OpcUa_Good);
   }
   void DIoLLaserUnit::set_qswitch(const uint32_t s)
   {
@@ -3352,6 +3415,14 @@ UaStatus DIoLLaserUnit::callResume (
                                      m_regs.at("qs_state").mask,
                                      m_regs.at("qs_state").bit_low);
     m_part_state.state.qswitch_enable = (s!=0x0);
+    getAddressSpaceLink()->setQswitch_active(m_part_state.state.qswitch_enable,OpcUa_Good);
+  }
+  void DIoLLaserUnit::get_qswitch(uint32_t &s)
+  {
+    uint32_t reg = cib::util::reg_read(m_regs.at("qs_state").addr);
+    s = ((reg & m_regs.at("qs_state").mask) >> m_regs.at("qs_state").bit_low);
+    m_part_state.state.qswitch_enable = (s!=0x0);
+    getAddressSpaceLink()->setQswitch_active(m_part_state.state.qswitch_enable,OpcUa_Good);
   }
   void DIoLLaserUnit::set_ext_shutter(const uint32_t s)
   {
@@ -3373,6 +3444,8 @@ UaStatus DIoLLaserUnit::callResume (
     uint32_t rval = cib::util::reg_read(m_regs.at("force_shutter").addr);
     uint32_t state = ((rval & m_regs.at("force_shutter").mask) >> m_regs.at("force_shutter").bit_low);
     open = (state == 0);
+    m_part_state.state.ext_shutter_closed = (state!=0x0);
+
   }
 
   void DIoLLaserUnit::enable_fire()
