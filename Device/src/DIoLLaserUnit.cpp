@@ -100,6 +100,7 @@ DIoLLaserUnit::DIoLLaserUnit (
             ,m_fire_width(10)
             ,m_serial_number("")
             ,m_warmup_timer(30) // 30 min
+            ,m_serial_busy(false)
             ,m_config_completed(false)
 {
     /* fill up constructor body here */
@@ -1806,37 +1807,47 @@ UaStatus DIoLLaserUnit::callResume (
   UaStatus DIoLLaserUnit::refresh_registers(json &resp)
   {
     const std::string lbl = "refresh_registers";
-    UaStatus st = check_cib_mem(resp);
     bool has_error = false;
+    UaStatus st = check_cib_mem(resp);
     if (st != OpcUa_Good)
     {
       has_error = true;
     }
     // refresh the fire width
     uint32_t fw;
-    st = get_fire_width(fw,resp);
-    if (st != OpcUa_Good)
+    try
     {
-      has_error = true;
+      st = get_fire_width(fw,resp);
+      if (st != OpcUa_Good)
+      {
+        has_error = true;
+      }
+      uint32_t qw;
+      st = get_qswitch_width(qw,resp);
+      if (st != OpcUa_Good)
+      {
+        has_error = true;
+      }
+      uint32_t qd;
+      st = get_qswitch_delay(qd,resp);
+      if (st != OpcUa_Good)
+      {
+        has_error = true;
+      }
+      //FIXME: Implement the CIB number of shots
+      // external shutter
+      bool eso = false;
+      st = get_ext_shutter_state(eso,resp);
+      if (st != OpcUa_Good)
+      {
+        has_error = true;
+      }
     }
-    uint32_t qw;
-    st = get_qswitch_width(qw,resp);
-    if (st != OpcUa_Good)
+    catch(std::exception &e)
     {
-      has_error = true;
-    }
-    uint32_t qd;
-    st = get_qswitch_delay(qd,resp);
-    if (st != OpcUa_Good)
-    {
-      has_error = true;
-    }
-    //FIXME: Implement the CIB number of shots
-    // external shutter
-    bool eso = false;
-    st = get_ext_shutter_state(eso,resp);
-    if (st != OpcUa_Good)
-    {
+#ifdef DEBUG
+      LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to refresh the registers. Got exception : ") << e.what();
+#endif
       has_error = true;
     }
     if (has_error)
@@ -2927,12 +2938,12 @@ UaStatus DIoLLaserUnit::callResume (
           tmp.bit_low = jt.value().at(3);
           tmp.addr = (m_reg_map.at(tmp.reg_id).vaddr+(tmp.offset*GPIO_CH_OFFSET));
           tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
-//#ifdef DEBUG
-//          LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg_id
-//              << " offset " << tmp.offset << " bh " << tmp.bit_high << " bl " << tmp.bit_low
-//              << " addr " << std::hex << tmp.addr << std::dec << " mask " << std::hex << tmp.mask
-//              << std::dec << " ";
-//#endif
+#ifdef DEBUG
+          LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg_id
+              << " offset " << tmp.offset << " bh " << tmp.bit_high << " bl " << tmp.bit_low
+              << " addr " << std::hex << tmp.addr << std::dec << " mask " << std::hex << tmp.mask
+              << std::dec << " ";
+#endif
           m_regs.insert(std::pair<std::string,laser_regs_t>(jt.key(),tmp));
         }
       }
@@ -3058,9 +3069,9 @@ UaStatus DIoLLaserUnit::callResume (
       return st;
     }
     // get the value from the register
-    uint32_t rval = cib::util::reg_read(m_regs.at("qswitch_delay").addr);
+    uint32_t rval = cib::util::reg_read(m_regs.at("qs_delay").addr);
     // now extract the delay from the register value
-    uint32_t delay = ((rval & m_regs.at("qswitch_delay").mask) >> m_regs.at("qswitch_delay").bit_low);
+    uint32_t delay = ((rval & m_regs.at("qs_delay").mask) >> m_regs.at("qs_delay").bit_low);
 #ifdef DEBUG
     LOG(Log::INF) << log_i(lbl.c_str()," Qswitch delay (clocks) :") << delay;
 #endif
@@ -3103,9 +3114,9 @@ UaStatus DIoLLaserUnit::callResume (
       return st;
     }
     // get the value from the register
-    uint32_t rval = cib::util::reg_read(m_regs.at("qswitch_width").addr);
+    uint32_t rval = cib::util::reg_read(m_regs.at("qs_width").addr);
     // now extract the width from the register value
-    uint32_t width = ((rval & m_regs.at("qswitch_width").mask) >> m_regs.at("qswitch_width").bit_low);
+    uint32_t width = ((rval & m_regs.at("qs_width").mask) >> m_regs.at("qs_width").bit_low);
 #ifdef DEBUG
     LOG(Log::INF) << log_i(lbl.c_str()," Qswitch width (clocks) :") << width;
 #endif
@@ -3160,7 +3171,7 @@ UaStatus DIoLLaserUnit::callResume (
 #ifdef DEBUG
     LOG(Log::INF) << log_i(lbl.c_str()," Fire width (us) :") << width_us;
 #endif
-    getAddressSpaceLink()->setFire_width_us(m_fire_width, OpcUa_Good);
+    getAddressSpaceLink()->setFire_width_us(width_us, OpcUa_Good);
     return OpcUa_Good;
   }
   UaStatus DIoLLaserUnit::get_ext_shutter_state(bool &open,json &resp)
