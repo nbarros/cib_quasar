@@ -100,7 +100,8 @@ DIoLLaserUnit::DIoLLaserUnit (
             ,m_fire_width(10)
             ,m_serial_number("")
             ,m_warmup_timer(30) // 30 min
-            ,m_config_completed(false)
+	    ,m_serial_busy(false)
+	    ,m_config_completed(false)
 {
     /* fill up constructor body here */
     m_name = config.id();
@@ -2355,14 +2356,15 @@ UaStatus DIoLLaserUnit::callResume (
   {
     // do just periodic checks, that are meant to happen less often than usual
     // for example, check the laser unit status
-//#ifdef DEBUG
+    //return;
+    //#ifdef DEBUG
 //    LOG(Log::INF) << log_i("update","Updating...");
 //#endif
     json resp;
-//    if (m_laser)
-//    {
-//      refresh_status(resp);
-//    }
+    if (m_laser)
+    {
+      refresh_status(resp);
+    }
 
     UaStatus st = check_error_state(resp);
     if (st != OpcUa_Good)
@@ -2700,6 +2702,12 @@ UaStatus DIoLLaserUnit::callResume (
         update_status(sOffline);
         return st;
       }
+#ifdef DEBUG
+      else
+      {
+        LOG(Log::INF) << log_i(lbl.c_str(),"Registers mapped");
+      }
+#endif
       for (json::iterator it = conf.begin(); it != conf.end(); ++it)
       {
         LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
