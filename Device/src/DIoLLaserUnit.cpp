@@ -100,6 +100,7 @@ DIoLLaserUnit::DIoLLaserUnit (
             ,m_fire_width(10)
             ,m_serial_number("")
             ,m_warmup_timer(30) // 30 min
+            ,m_config_completed(false)
 {
     /* fill up constructor body here */
     m_name = config.id();
@@ -1334,6 +1335,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     m_laser = nullptr;
     update_status(sOffline);
+    m_config_completed = false;
     return OpcUa_Good;
   }
   UaStatus DIoLLaserUnit::stop(json &resp)
@@ -2369,7 +2371,7 @@ UaStatus DIoLLaserUnit::callResume (
       terminate(resp);
     }
     // do also a refresh of the relevant registers
-    if (m_status != sOffline)
+    if ((m_status != sOffline) && m_config_completed)
     {
       st = refresh_registers(resp);
       if (st != OpcUa_Good)
@@ -2832,6 +2834,7 @@ UaStatus DIoLLaserUnit::callResume (
 #ifdef DEBUG
       LOG(Log::INF) << log_i(lbl.c_str(),"Done with config");
 #endif
+      m_config_completed = true;
       // if we reached this point we don't have an exception, so things should be good
       // if we reached this point, things seem to be good
       // now it is time to map the registers

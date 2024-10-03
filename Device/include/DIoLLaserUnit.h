@@ -351,6 +351,7 @@ private:
 
     std::map<int,cib_reg_t> m_reg_map;
     std::atomic<bool> m_serial_busy;
+    bool m_config_completed;
 };
 
 }
