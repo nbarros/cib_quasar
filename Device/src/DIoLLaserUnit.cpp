@@ -1885,10 +1885,15 @@ UaStatus DIoLLaserUnit::callResume (
       }
                 }).detach();
   }
+
+  UaStatus DIoLLaserUnit::refresh_shot_count()
+  {
+    json resp;
+    return refresh_shot_count(resp);
+  }
   UaStatus DIoLLaserUnit::refresh_shot_count(json &resp)
   {
     std::ostringstream msg("");
-    json resp;
     bool caught_exception = false;
     const std::string lbl = "get_shot_count";
     UaStatus st = OpcUa_Good;
