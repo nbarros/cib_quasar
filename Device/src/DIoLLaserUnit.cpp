@@ -2356,11 +2356,11 @@ UaStatus DIoLLaserUnit::callResume (
 //#ifdef DEBUG
 //    LOG(Log::INF) << log_i("update","Updating...");
 //#endif
-    json resp;
-    if (m_laser)
-    {
-      refresh_status(resp);
-    }
+//    json resp;
+//    if (m_laser)
+//    {
+//      refresh_status(resp);
+//    }
 
     UaStatus st = check_error_state(resp);
     if (st != OpcUa_Good)
