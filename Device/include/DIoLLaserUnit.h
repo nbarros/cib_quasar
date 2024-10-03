@@ -25,6 +25,7 @@
 #include <json.hpp>
 using json = nlohmann::json;
 #include <atomic>
+#include <mutex>
 namespace device {
   class Laser;
 }
@@ -359,6 +360,7 @@ private:
     std::map<int,cib_reg_t> m_reg_map;
     std::atomic<bool> m_serial_busy;
     bool m_config_completed;
+    std::mutex m_serial_mutex;
 };
 
 }

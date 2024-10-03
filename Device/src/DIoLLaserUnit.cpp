@@ -1274,6 +1274,8 @@ UaStatus DIoLLaserUnit::callResume (
     // this call does not care for sError state.
     // it attempts to do a peaceful shutdown, regardless of the overall state
     //    UaStatus st = OpcUa_Good;
+    // we want terminate to take over the mutex
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     std::ostringstream msg("");
     const std::string lbl = "terminate";
 #ifdef DEBUG
@@ -2385,12 +2387,14 @@ UaStatus DIoLLaserUnit::callResume (
 
   void DIoLLaserUnit::update()
   {
-    // do just periodic checks, that are meant to happen less often than usual
-    // for example, check the laser unit status
+    // This is a problematic method, since it runs on a separate thread.
+    // Therefore it needs to do several checks to make sure it does not enter into race conditions with the normal operation
+    // the main issue here is when there is a race condition with the termination
     //return;
     //#ifdef DEBUG
-//    LOG(Log::INF) << log_i("update","Updating...");
-//#endif
+    //    LOG(Log::INF) << log_i("update","Updating...");
+    //#endif
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     json resp;
     if (m_laser)
     {
