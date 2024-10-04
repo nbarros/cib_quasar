@@ -1,7 +1,24 @@
 {
 "id":"LS1",
 "cib":{
-	"dac_threshold":3000
+	"dac_threshold":3000,
+	"lbls_width_clks":2,
+	"align_enabled" : false,
+	"align_width": 10,
+	"align_period" : 6250000,
+	"mmap" : 
+	{
+	"pdts_status": [0,0,3,0],
+	"pdts_reset" : [0,1,31,31],
+	"trigger_pulser" : [5,0,29,29],
+	"trigger_external" : [5,0,30,30],
+	"daq_queue_state"  : [5,0,26,26],
+	"lbls_queue_state" : [5,0,31,31],
+	"lbls_width"  : [5,0,7,0],
+	"align_width" : [3,1,15,0],
+	"align_period": [3,0,23,0],
+	"align_state" : [3,0,31,31]
+	}
 },
 "motors": [
 	{
@@ -34,7 +51,8 @@
 	"refresh_period_ms":50,
 	"refresh_movememt_ms":10,
 	"mmap": 
-		{"moving": [0,0,0],
+		{
+		"moving": [0,0,0],
 		 "direction" : [0,3,3],
 		 "init_pos" : [1,20,0],
 		 "cur_pos" : [4,20,0]
@@ -99,49 +117,15 @@
 		"qswitch_delay_us": 195,
 		"qswitch_width_us": 10,
 		"fire_width_us": 10,
-		"mmap": {
-			"fire_width": [
-				4,
-				0,
-				11,
-				0
-			],
-			"qs_width": [
-				4,
-				0,
-				11,
-				0
-			],
-			"qs_delay": [
-				4,
-				1,
-				14,
-				0
-			],
-			"fire_state": [
-				4,
-				0,
-				31,
-				31
-			],
-			"force_shutter": [
-				5,
-				0,
-				28,
-				28
-			],
-			"qs_state": [
-				4,
-				1,
-				31,
-				31
-			],
-			"shot_count": [
-				-1,
-				-1,
-				-1,
-				-1
-			]
+		"mmap": 
+		{
+			"fire_width": [4,0,11,0],
+			"qs_width": [4,0,11,0],
+			"qs_delay": [4,1,14,0],
+			"fire_state": [4,0,31,31],
+			"force_shutter": [5,0,28,28],
+			"qs_state": [4,1,31,31],
+			"shot_count": [-1,-1,-1,-1]
 		}
 	}
 }

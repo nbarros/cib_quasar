@@ -30,12 +30,18 @@ extern "C"
 #include <cstdint>
 #include <cinttypes>
 #include <cstdio>
+#include <cib_mem.h>
+#include <mem_utils.h>
+#include <json.hpp>
+using json = nlohmann::json;
+
 #define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
 
 #define log_e(m,s) log_msg("ERROR",m,s)
 #define log_w(m,s) log_msg("WARN",m,s)
 #define log_i(m,s) log_msg("INFO",m,s)
 
+#define DEBUG 1
 using std::ostringstream;
 
 namespace Device
@@ -84,6 +90,12 @@ namespace Device
     int ret = fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
     ret = fclose(file);
     (void)ret; // this is just to suppress the compilation warning
+        // initialize the CIB memory maps
+      UaStatus st = init_cib_mem();
+      if (st != OpcUa_Good)
+      {
+        LOG(Log::ERR) << log_e("constructor","Failed to map CIB memory. This is definitely not good.");
+      }
         }
 
   /* sample dtr */
@@ -97,7 +109,10 @@ namespace Device
 
   UaStatus DIoLCIB::writeDac_threshold ( const OpcUa_UInt16& v)
   {
-    return OpcUa_BadNotImplemented;
+    json resp;
+    uint16_t val = v;
+    UaStatus st = set_dac_threshold(val,resp);
+    return st;
   }
 
 
@@ -124,6 +139,58 @@ namespace Device
   // 3     Below you put bodies for custom methods defined for this class.   3
   // 3     You can do whatever you want, but please be decent.               3
   // 3333333333333333333333333333333333333333333333333333333333333333333333333
+
+  UaStatus DIoLCIB::init_cib_mem()
+  {
+    // -- there may be several registers to be mapped
+    cib_gpio_t tmpreg;
+    tmpreg.id = PDTS_REG;
+    tmpreg.paddr = GPIO_PDTS_MEM_LOW;
+    tmpreg.size = 0xFFF;
+    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_PDTS_MEM_LOW,GPIO_PDTS_MEM_HIGH);
+    if (tmpreg.vaddr == 0x0)
+    {
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map PDTS CIB memory region. This is going to fail spectacularly!!!\n\n";
+    }
+    m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : PDTS_REG mapped to "
+        << std::hex << m_reg_map.at(PDTS_REG).vaddr << std::dec;
+#endif
+    tmpreg.id= MISC_REG;
+    tmpreg.paddr = GPIO_MISC_MEM_LOW;
+    tmpreg.size = 0xFFF;
+    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MISC_MEM_LOW,GPIO_MISC_MEM_HIGH);
+    if (tmpreg.vaddr == 0x0)
+    {
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map MISC CIB memory region. This is going to fail spectacularly!!!\n\n";
+    }
+    m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : MISC_REG mapped to " << std::hex << m_reg_map.at(MISC_REG).vaddr << std::dec;
+#endif
+    tmpreg.id= ALIGN_REG;
+    tmpreg.paddr = GPIO_ALIGN_MEM_LOW;
+    tmpreg.size = 0xFFF;
+    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
+    if (tmpreg.vaddr == 0x0)
+    {
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
+    }
+    m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : ALIGN_REG mapped to " << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
+#endif
+
+    //#endif
+
+    if (m_reg_map.size() != 3)
+    {
+      // sError is a special case of status, since this
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regions. This is going to fail spectacularly!!!\n\n";
+    }
+    return OpcUa_Good;
+  }
 
   void DIoLCIB::poll_mem()
   {
@@ -158,7 +225,7 @@ namespace Device
       m_total = (tot_usr - m_prev_tot_usr) +
           (tot_usr_low - m_prev_tot_usr_low) +
           (tot_sys - m_prev_tot_sys);
-      m_cpu_load = m_total/(m_total + (tot_idle-m_prev_tot_idle));
+      m_cpu_load = static_cast<float>(static_cast<double>(m_total)/static_cast<double>((m_total + (tot_idle-m_prev_tot_idle))));
       getAddressSpaceLink()->setCpu_load(m_cpu_load,OpcUa_Good);
     }
     // update the previous to repoll
@@ -175,7 +242,8 @@ namespace Device
     poll_cpu();
     // update the reading of the DAC
     refresh_dac();
-
+    refresh_pdts();
+    refresh_registers();
   }
   UaStatus DIoLCIB::set_dac_threshold(uint16_t &val,json &resp)
   {
@@ -372,5 +440,257 @@ namespace Device
       }
     }
     return st;
+  }
+  void DIoLCIB::refresh_pdts()
+  {
+    UaStatus st = OpcUa_Good;
+    if (m_regs.find("pdts_status") != m_regs.end())
+    {
+      uint8_t pdts_stat,pdts_addr;
+      st = cib_pdts_status(m_regs.at("pdts_status").maddr,pdts_stat,pdts_addr);
+    }
+    else
+    {
+      getAddressSpaceLink()->setPdts_state(0xF,OpcUa_Uncertain);
+      getAddressSpaceLink()->setPdts_address(0xF,OpcUa_Uncertain);
+    }
+  }
+  void DIoLCIB::refresh_registers()
+  {
+    UaStatus st = OpcUa_Good;
+    uint32_t value;
+    bool enabled;
+    if (m_regs.find("trigger_pulser")!= m_regs.end())
+    {
+      st = get_cib_trigger_pulser_state(m_regs.at("trigger_pulser"),value);
+    }
+    else
+    {
+      getAddressSpaceLink()->setTrigger_pulser_enabled(m_trigger_pulser_enabled,OpcUa_BadWaitingForInitialData);
+    }
+    if (m_regs.find("trigger_external")!= m_regs.end())
+    {
+      st = get_cib_trigger_external_state(m_regs.at("trigger_external"),value);
+    }
+    else
+    {
+      getAddressSpaceLink()->setTrigger_external_enabled(m_trigger_external_enabled,OpcUa_BadWaitingForInitialData);
+    }
+    if (m_regs.find("daq_queue_state")!= m_regs.end())
+    {
+      st = get_cib_daq_queue_state(m_regs.at("daq_queue_state"),enabled);
+    }
+    else
+    {
+      getAddressSpaceLink()->setDaq_queue_enabled(m_daq_queue_enabled,OpcUa_BadWaitingForInitialData);
+    }
+    if (m_regs.find("lbls_queue_state")!= m_regs.end())
+    {
+      st = get_cib_lbls_queue_state(m_regs.at("lbls_queue_state"),enabled);
+    }
+    else
+    {
+      getAddressSpaceLink()->setLbls_queue_enabled(m_lbls_enabled,OpcUa_BadWaitingForInitialData);
+    }
+    if (m_regs.find("lbls_width")!= m_regs.end())
+    {
+      st = get_cib_lbls_queue_state(m_regs.at("lbls_width"),enabled);
+    }
+    else
+    {
+      getAddressSpaceLink()->setLbls_pulse_width_clocks(m_lbls_width,OpcUa_BadWaitingForInitialData);
+    }
+    if (m_regs.find("align_width")!= m_regs.end())
+    {
+      st = get_cib_align_width(m_regs.at("align_width"),value);
+    }
+    else
+    {
+      getAddressSpaceLink()->setAlign_laser_width(m_align_width,OpcUa_BadWaitingForInitialData);
+    }
+    if (m_regs.find("align_period")!= m_regs.end())
+    {
+      st = get_cib_align_period(m_regs.at("align_period"),value);
+    }
+    else
+    {
+      getAddressSpaceLink()->setAlign_laser_period(m_align_period,OpcUa_BadWaitingForInitialData);
+    }
+    if (m_regs.find("align_state")!= m_regs.end())
+    {
+      bool enabled;
+      st = get_cib_align_state(m_regs.at("align_state"),enabled);
+    }
+    else
+    {
+      getAddressSpaceLink()->setAlign_laser_enabled(m_align_enabled,OpcUa_BadWaitingForInitialData);
+    }
+  }
+
+
+  UaStatus DIoLCIB::cib_pdts_status(uintptr_t &addr, uint8_t &pdts_stat, uint8_t &pdts_addr)
+  {
+    // information in the pdts status register:
+    // [0:3]  : status
+    // [4:11] : ctrl
+    // [12:12]  : dna_addr_done
+    // [13:15]  : padding
+    // [16:31] : address
+
+    // first channel of the GPIO is the read one
+    uint32_t reg_val = cib::util::reg_read(addr);
+    uint32_t mask = cib::util::bitmask(3,0);
+    pdts_stat = (reg_val & mask);
+    getAddressSpaceLink()->setPdts_state((pdts_stat & 0xFF),OpcUa_Good);
+    // now remake the mask to get the current address
+    mask = cib::util::bitmask(31,16);
+    pdts_addr = ((reg_val & mask)>>16);
+    getAddressSpaceLink()->setPdts_address((pdts_addr & 0xFF),OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::reset_pdts(json &resp)
+  {
+    if (m_regs.find("pdts_reset") != m_regs.end())
+    {
+      return cib_pdts_reset(m_regs.at("pdts_reset"),resp);
+    }
+    else
+    {
+      return OpcUa_BadInvalidArgument;
+    }
+  }
+  UaStatus DIoLCIB::cib_pdts_reset(conf_param_t &reg, json&resp)
+  {
+    set_cib_value(reg,0x1);
+    std::this_thread::sleep_for(std::chrono::microseconds(10));
+    set_cib_value(reg,0x0);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::get_cib_trigger_pulser_state(conf_param_t &reg, uint32_t &state)
+  {
+    uint32_t val;
+    get_cib_value(reg,val);
+    state = (val & 0xFF);
+    m_trigger_pulser_enabled = (state == 0x1);
+    getAddressSpaceLink()->setTrigger_pulser_enabled(m_trigger_pulser_enabled,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::set_cib_trigger_pulser_state(conf_param_t &reg, uint32_t &state)
+  {
+    set_cib_value(reg,state);
+    m_trigger_pulser_enabled = (state == 0x1);
+    getAddressSpaceLink()->setTrigger_pulser_enabled(m_trigger_pulser_enabled,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::get_cib_trigger_external_state(conf_param_t &reg, uint32_t &state)
+  {
+    uint32_t reg_val;
+    get_cib_value(reg,reg_val);
+    state = reg_val & 0xFF;
+    m_trigger_external_enabled = (state == 0x1);
+    getAddressSpaceLink()->setTrigger_external_enabled(m_trigger_external_enabled,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::set_cib_trigger_external_state(conf_param_t &reg, uint32_t &state)
+  {
+    set_cib_value(reg,state);
+    m_trigger_external_enabled = (state == 0x1);
+    getAddressSpaceLink()->setTrigger_external_enabled(m_trigger_external_enabled,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::get_cib_daq_queue_state(conf_param_t &reg, bool &enabled)
+  {
+    uint32_t reg_val;
+    get_cib_value(reg,reg_val);
+    enabled = (reg_val == 0x1);
+    m_daq_queue_enabled = enabled;
+    getAddressSpaceLink()->setDaq_queue_enabled(enabled,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::get_cib_lbls_queue_state(conf_param_t &reg, bool &enabled)
+  {
+    uint32_t reg_val;
+    get_cib_value(reg,reg_val);
+    enabled = (reg_val == 0x1);
+    m_lbls_enabled = enabled;
+    getAddressSpaceLink()->setLbls_queue_enabled(enabled,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::get_cib_lbls_width(conf_param_t &reg, uint32_t &value)
+  {
+    get_cib_value(reg,value);
+    m_lbls_width = value;
+    getAddressSpaceLink()->setLbls_pulse_width_clocks(value,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::set_cib_lbls_width(conf_param_t &reg, const uint32_t value)
+  {
+    set_cib_value(reg,value);
+    m_lbls_width = value;
+    getAddressSpaceLink()->setLbls_pulse_width_clocks(value,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::get_cib_align_state(conf_param_t &reg, bool &enabled)
+  {
+    uint32_t value;
+    get_cib_value(reg,value);
+    enabled = (value == 0x1);
+    m_align_enabled = enabled;
+    getAddressSpaceLink()->setAlign_laser_enabled(enabled,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::set_cib_align_state(conf_param_t &reg, bool &enabled)
+  {
+    uint32_t value = (enabled)?0x1:0x0;
+    set_cib_value(reg,value);
+    m_align_enabled = enabled;
+    getAddressSpaceLink()->setAlign_laser_enabled(enabled,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::set_cib_align_width(conf_param_t &reg, uint32_t &width)
+  {
+    set_cib_value(reg,width);
+    m_align_width = width;
+    getAddressSpaceLink()->setAlign_laser_width(width,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::get_cib_align_width(conf_param_t &reg, uint32_t &width)
+  {
+    get_cib_value(reg,width);
+    m_align_width = width;
+    getAddressSpaceLink()->setAlign_laser_width(width,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::set_cib_align_period(conf_param_t &reg, uint32_t &value)
+  {
+    set_cib_value(reg,value);
+    m_align_period= value;
+    getAddressSpaceLink()->setAlign_laser_period(value,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::get_cib_align_period(conf_param_t &reg, uint32_t &value)
+  {
+    get_cib_value(reg,value);
+    m_align_period = value;
+    getAddressSpaceLink()->setAlign_laser_period(value,OpcUa_Good);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::get_cib_state(conf_param_t &reg, bool &enabled)
+  {
+    uint32_t reg_val = cib::util::reg_read(reg.maddr);
+    uint32_t state = ((reg_val & reg.mask) >> reg.bit_low);
+    enabled = (state == 0x1);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::get_cib_value(conf_param_t &reg, uint32_t &value)
+  {
+    uint32_t reg_val = cib::util::reg_read(reg.maddr);
+    value = ((reg_val & reg.mask) >> reg.bit_low);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::set_cib_value(conf_param_t &reg, const uint32_t value)
+  {
+    cib::util::reg_write_mask_offset(reg.maddr, value, reg.mask, reg.bit_low);
+    return OpcUa_Good;
   }
 }

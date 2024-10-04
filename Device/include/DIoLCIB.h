@@ -70,6 +70,25 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
+    // structure describing memory maps
+    typedef struct cib_gpio_t
+    {
+      uintptr_t paddr;
+      uintptr_t vaddr;
+      size_t size;
+      int id;
+    } cib_gpio_t;
+
+    typedef struct conf_param_t
+    {
+      cib_gpio_t reg;
+      uintptr_t offset;
+      uint16_t bit_low;
+      uint16_t bit_high;
+      uintptr_t maddr; // maddr is the memory mapped address of this particular register
+      uint32_t mask;
+      size_t n_bits;
+    } conf_param_t;
 
     bool is_ready() {return m_is_ready;}
     void update();
@@ -82,7 +101,42 @@ public:
 private:
     void poll_cpu();
     void poll_mem();
+    void refresh_pdts();
     UaStatus set_dac_threshold(uint16_t &val,json &resp);
+    UaStatus init_cib_mem();
+    UaStatus reset_pdts(json &resp);
+    // internal methods specific to the CIB
+    UaStatus cib_pdts_status(uintptr_t &addr,uint8_t &pdts_stat, uint8_t &pdts_addr);
+    UaStatus cib_pdts_reset(conf_param_t &reg, json&resp);
+    UaStatus get_cib_trigger_pulser_state(conf_param_t &reg, uint32_t &state);
+    UaStatus set_cib_trigger_pulser_state(conf_param_t &reg, uint32_t &state);
+    UaStatus get_cib_trigger_external_state(conf_param_t &reg, uint32_t &state);
+    UaStatus set_cib_trigger_external_state(conf_param_t &reg, uint32_t &state);
+    UaStatus get_cib_daq_queue_state(conf_param_t &reg, bool &enabled)  ;
+    UaStatus get_cib_lbls_queue_state(conf_param_t &reg, bool &enabled) ;
+    UaStatus get_cib_lbls_width(conf_param_t &reg, uint32_t &value)     ;
+    UaStatus set_cib_lbls_width(conf_param_t &reg, const uint32_t value);
+    UaStatus get_cib_align_state(conf_param_t &reg, bool &enabled)      ;
+    UaStatus set_cib_align_state(conf_param_t &reg, bool &enabled)      ;
+    UaStatus set_cib_align_width(conf_param_t &reg, uint32_t &width)    ;
+    UaStatus get_cib_align_width(conf_param_t &reg, uint32_t &width)    ;
+    UaStatus set_cib_align_period(conf_param_t &reg, uint32_t &value)   ;
+    UaStatus get_cib_align_period(conf_param_t &reg, uint32_t &value)   ;
+    //
+    UaStatus get_cib_state(conf_param_t &reg, bool &enabled);
+    UaStatus get_cib_value(conf_param_t &reg, uint32_t &value);
+    UaStatus set_cib_value(conf_param_t &reg, const uint32_t value);
+    void refresh_registers();
+    //
+    // -- internal variable cache
+    uint32_t m_align_width;
+    uint32_t m_align_period;
+    bool m_align_enabled;
+    uint32_t m_lbls_width;
+    bool m_lbls_enabled;
+    bool m_trigger_pulser_enabled;
+    bool m_trigger_external_enabled;
+    bool m_daq_queue_enabled;
 
     bool m_is_ready;
     float m_cpu_load;
@@ -96,6 +150,9 @@ private:
     long long unsigned int m_prev_tot_idle;
     long long unsigned int m_total;
     std::string m_id;
+    int m_mmap_fd;
+    std::map<int,cib_gpio_t> m_reg_map;
+    std::map<std::string,conf_param_t> m_regs;
 
     cib::i2c::AD5339 m_dac;
 

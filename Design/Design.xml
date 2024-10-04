@@ -473,9 +473,47 @@
     	addressSpaceWrite="forbidden"
     	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
 </d:cachevariable>
-  	<d:method name="set_dac_threshold" executionSynchronicity="synchronous">
+<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Byte" name="pdts_address" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0"></d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="trigger_pulser_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="trigger_external_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="daq_queue_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="lbls_queue_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="lbls_pulse_width_clocks" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="2">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="align_laser_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="align_laser_width" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="10">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="align_laser_period" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="6250000">
+  	</d:cachevariable>
+  	  	<d:method name="set_dac_threshold" executionSynchronicity="synchronous">
     	<d:argument dataType="OpcUa_UInt16" name="dac_level"></d:argument>
-    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method><d:method name="reset_pdts" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+    	<d:method name="reset_pdts" executionSynchronicity="synchronous">
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	
+  	<d:method name="set_trigger_pulser" executionSynchronicity="synchronous">
+  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="set_trigger_external" executionSynchronicity="synchronous">
+  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="set_lbls_width" executionSynchronicity="synchronous">
+    	<d:argument dataType="OpcUa_UInt32" name="width"></d:argument>
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="set_lbls_state" executionSynchronicity="synchronous">
+  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="set_align_state" executionSynchronicity="synchronous">
+  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="set_align_params" executionSynchronicity="synchronous">
+  		<d:argument dataType="OpcUa_UInt32" name="width_clocks"></d:argument>
+  		<d:argument dataType="OpcUa_UInt32" name="period_clocks"></d:argument>
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
   </d:class>
   <d:class name="IoLaserSystem">
