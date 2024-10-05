@@ -121,14 +121,26 @@ public:
     UaStatus sim_get_motor_info();
     UaStatus sim_move_motor(json &resp);
     UaStatus sim_stop_motor(json &resp);
-    //
+
+    // -- low level motor commands
     UaStatus move_wrapper(int32_t dest, json &resp);
     UaStatus get_motor_info();
     UaStatus move_motor(json &resp);
     UaStatus stop(json &resp);
     UaStatus config(json &conf, json &resp);
     UaStatus terminate(json &resp);
-    bool validate_config_fragment(json &conf, json &resp);
+    UaStatus reset(json &resp);
+    UaStatus get_alarm_state(json &resp);
+    UaStatus clear_alarm(json &resp);
+
+    // aux methods
+    UaStatus validate_config_fragment(json &conf, json &resp);
+    UaStatus init_cib_mem();
+    UaStatus map_registers(json &conf,json &resp);
+    UaStatus validate_registers(json &conf,json &resp);
+    void refresh_registers();
+    UaStatus check_cib_mem(json &resp);
+
     //
     const bool get_monitor() {return m_monitor;}
     void set_monitor(bool m) {m_monitor = m;}

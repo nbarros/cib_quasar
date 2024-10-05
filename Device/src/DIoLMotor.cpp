@@ -35,7 +35,7 @@ extern "C" {
 #include <random>
 #include <cib_registers.h>
 #include <mem_utils.h>
-
+#define DEBUG 1
 
 #define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
 
