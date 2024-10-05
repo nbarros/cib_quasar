@@ -21,7 +21,7 @@
     </d:cachevariable>
     <d:cachevariable name="target_position" addressSpaceWrite="forbidden" dataType="OpcUa_Int32" initializeWith="valueAndStatus" nullPolicy="nullForbidden" initialValue="-99999" initialStatus="OpcUa_BadWaitingForInitialData">
 	</d:cachevariable>
-    <d:cachevariable name="current_position" addressSpaceWrite="forbidden" dataType="OpcUa_Int32" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
+    <d:cachevariable name="current_position_motor" addressSpaceWrite="forbidden" dataType="OpcUa_Int32" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_UInt16" name="refresh_period_ms"
@@ -33,6 +33,10 @@
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Double" name="torque" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Double" name="temperature_C" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+  </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Int32" name="alarm_code" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
+  </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="alarm_desc" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="none">
   </d:cachevariable>
     
     
@@ -78,6 +82,8 @@
       <d:returnvalue dataType="UaString" name="response"/>
     </d:method>
     <d:method name="reset" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+    <d:method name="clear_alarm" executionSynchronicity="synchronous">
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
     
 
@@ -201,7 +207,62 @@
   	
 
   </d:class>  
-  <d:class name="IoLLaserUnit">
+  <d:class name="IoLCIB">
+    <d:devicelogic />
+    <d:configentry dataType="UaString" name="id" isKey="true" storedInDeviceObject="true" />
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="mem_load" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
+    </d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="cpu_load" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="-1.0">
+		</d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="state" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="unknown">
+		</d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="external_interlock" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialValue="OpcUa_False" initialStatus="OpcUa_BadWaitingForInitialData"><!--what is this for?-->
+    </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="dac_threshold" nullPolicy="nullForbidden" addressSpaceWrite="delegated" initialValue="4095" initialStatus="OpcUa_BadWaitingForInitialData">
+    </d:cachevariable><!--could add here some registers indicating what is going on in the CIB itself, for instance, timing system state--><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Byte" name="pdts_state" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
+</d:cachevariable>
+<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Byte" name="pdts_address" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0"></d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="trigger_pulser_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="trigger_external_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="daq_queue_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="lbls_queue_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="lbls_pulse_width_clocks" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="2">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="align_laser_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="align_laser_width" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="10">
+  	</d:cachevariable>
+  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="align_laser_period" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="6250000">
+  	</d:cachevariable>
+  	  	<d:method name="set_dac_threshold" executionSynchronicity="synchronous">
+    	<d:argument dataType="OpcUa_UInt16" name="dac_level"></d:argument>
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+    	<d:method name="reset_pdts" executionSynchronicity="synchronous">
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	
+  	<d:method name="set_trigger_pulser" executionSynchronicity="synchronous">
+  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="set_trigger_external" executionSynchronicity="synchronous">
+  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="set_lbls_width" executionSynchronicity="synchronous">
+    	<d:argument dataType="OpcUa_UInt32" name="width"></d:argument>
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="set_lbls_state" executionSynchronicity="synchronous">
+  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="set_align_state" executionSynchronicity="synchronous">
+  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  	<d:method name="set_align_params" executionSynchronicity="synchronous">
+  		<d:argument dataType="OpcUa_UInt32" name="width_clocks"></d:argument>
+  		<d:argument dataType="OpcUa_UInt32" name="period_clocks"></d:argument>
+  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+  </d:class><d:class name="IoLLaserUnit">
     <d:devicelogic />
     <d:configentry dataType="UaString" name="id" isKey="true"
     	storedInDeviceObject="true">
@@ -452,70 +513,7 @@
 
   </d:class>
 
-  <d:class name="IoLCIB">
-    <d:devicelogic/>
-    <d:configentry dataType="UaString" name="id" isKey="true"
-    	storedInDeviceObject="true" />
-    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="mem_load" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
-    </d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="cpu_load" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="-1.0">
-		</d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="state" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="unknown">
-		</d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus"
-    	dataType="OpcUa_Boolean" name="external_interlock"
-    	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
-    	initialValue="OpcUa_False" initialStatus="OpcUa_BadWaitingForInitialData"><!--what is this for?-->
-    </d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="dac_threshold" nullPolicy="nullForbidden" addressSpaceWrite="delegated" initialValue="4095" initialStatus="OpcUa_BadWaitingForInitialData">
-    </d:cachevariable><!--could add here some registers indicating what is going on in the CIB itself, for instance, timing system state--><d:cachevariable
-    	initializeWith="valueAndStatus" dataType="OpcUa_Byte"
-    	name="pdts_state" nullPolicy="nullForbidden"
-    	addressSpaceWrite="forbidden"
-    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
-</d:cachevariable>
-<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Byte" name="pdts_address" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0"></d:cachevariable>
-  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="trigger_pulser_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
-  	</d:cachevariable>
-  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="trigger_external_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
-  	</d:cachevariable>
-  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="daq_queue_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
-  	</d:cachevariable>
-  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="lbls_queue_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
-  	</d:cachevariable>
-  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="lbls_pulse_width_clocks" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="2">
-  	</d:cachevariable>
-  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="align_laser_enabled" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
-  	</d:cachevariable>
-  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="align_laser_width" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="10">
-  	</d:cachevariable>
-  	<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="align_laser_period" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="6250000">
-  	</d:cachevariable>
-  	  	<d:method name="set_dac_threshold" executionSynchronicity="synchronous">
-    	<d:argument dataType="OpcUa_UInt16" name="dac_level"></d:argument>
-    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-    	<d:method name="reset_pdts" executionSynchronicity="synchronous">
-  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-  	
-  	<d:method name="set_trigger_pulser" executionSynchronicity="synchronous">
-  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
-  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-  	<d:method name="set_trigger_external" executionSynchronicity="synchronous">
-  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
-  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-  	<d:method name="set_lbls_width" executionSynchronicity="synchronous">
-    	<d:argument dataType="OpcUa_UInt32" name="width"></d:argument>
-    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-  	<d:method name="set_lbls_state" executionSynchronicity="synchronous">
-  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
-  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-  	<d:method name="set_align_state" executionSynchronicity="synchronous">
-  		<d:argument dataType="OpcUa_Boolean" name="enabled"></d:argument>
-  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-  	<d:method name="set_align_params" executionSynchronicity="synchronous">
-  		<d:argument dataType="OpcUa_UInt32" name="width_clocks"></d:argument>
-  		<d:argument dataType="OpcUa_UInt32" name="period_clocks"></d:argument>
-  		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
-  </d:class>
+  
   <d:class name="IoLaserSystem">
     <d:devicelogic/>
     <d:configentry dataType="UaString" name="id" isKey="true"

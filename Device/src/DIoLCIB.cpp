@@ -46,35 +46,35 @@ using std::ostringstream;
 
 namespace Device
 {
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
-  // 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
-  // 1     Users don't modify this code!!!!                                  1
-  // 1     If you modify this code you may start a fire or a flood somewhere,1
-  // 1     and some human being may possible cease to exist. You don't want  1
-  // 1     to be charged with that!                                          1
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
+// 1     Users don't modify this code!!!!                                  1
+// 1     If you modify this code you may start a fire or a flood somewhere,1
+// 1     and some human being may possible cease to exist. You don't want  1
+// 1     to be charged with that!                                          1
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
 
 
 
 
 
 
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
-  // 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
-  // 2     (code for which only stubs were generated automatically)          2
-  // 2     You should add the implementation but dont alter the headers      2
-  // 2     (apart from constructor, in which you should complete initializati2
-  // 2     on list)                                                          2
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
+// 2     (code for which only stubs were generated automatically)          2
+// 2     You should add the implementation but dont alter the headers      2
+// 2     (apart from constructor, in which you should complete initializati2
+// 2     on list)                                                          2
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
 
-  /* sample ctr */
-  DIoLCIB::DIoLCIB (
-      const Configuration::IoLCIB& config,
-      Parent_DIoLCIB* parent
-  ):
-        Base_DIoLCIB( config, parent)
+/* sample ctr */
+DIoLCIB::DIoLCIB (
+    const Configuration::IoLCIB& config,
+    Parent_DIoLCIB* parent
+):
+    Base_DIoLCIB( config, parent)
 
-        /* fill up constructor initialization list here */
+    /* fill up constructor initialization list here */
         , m_is_ready(false)
         , m_cpu_load(0.0)
         , m_used_mem(0.0)
@@ -83,7 +83,7 @@ namespace Device
         , m_prev_tot_sys(0)
         , m_prev_tot_idle(0)
         , m_total(0)
-        {
+{
     /* fill up constructor body here */
     // start by initializing the initial counters
     FILE* file = fopen("/proc/stat", "r");
@@ -96,49 +96,92 @@ namespace Device
       {
         LOG(Log::ERR) << log_e("constructor","Failed to map CIB memory. This is definitely not good.");
       }
-        }
+}
 
-  /* sample dtr */
-  DIoLCIB::~DIoLCIB ()
-  {
-  }
+/* sample dtr */
+DIoLCIB::~DIoLCIB ()
+{
+}
 
-  /* delegates for cachevariables */
+/* delegates for cachevariables */
 
-  /* Note: never directly call this function. */
+/* Note: never directly call this function. */
 
-  UaStatus DIoLCIB::writeDac_threshold ( const OpcUa_UInt16& v)
-  {
+UaStatus DIoLCIB::writeDac_threshold ( const OpcUa_UInt16& v)
+{
     json resp;
     uint16_t val = v;
     UaStatus st = set_dac_threshold(val,resp);
     return st;
-  }
+}
 
 
-  /* delegators for methods */
-  UaStatus DIoLCIB::callSet_dac_threshold (
-      OpcUa_UInt16 dac_level,
-      UaString& response
-  )
-  {
+/* delegators for methods */
+UaStatus DIoLCIB::callSet_dac_threshold (
+    OpcUa_UInt16 dac_level,
+    UaString& response
+)
+{
     json resp;
     UaStatus st = set_dac_threshold(dac_level,resp);
     response = UaString(resp.dump().c_str());
     return st;
-  }
-  UaStatus DIoLCIB::callReset_pdts (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLCIB::callReset_pdts (
+    UaString& response
+)
+{
     return OpcUa_BadNotImplemented;
-  }
+}
+UaStatus DIoLCIB::callSet_trigger_pulser (
+    OpcUa_Boolean enabled,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLCIB::callSet_trigger_external (
+    OpcUa_Boolean enabled,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLCIB::callSet_lbls_width (
+    OpcUa_UInt32 width,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLCIB::callSet_lbls_state (
+    OpcUa_Boolean enabled,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLCIB::callSet_align_state (
+    OpcUa_Boolean enabled,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLCIB::callSet_align_params (
+    OpcUa_UInt32 width_clocks,
+    OpcUa_UInt32 period_clocks,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
 
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
-  // 3     FULLY CUSTOM CODE STARTS HERE                                     3
-  // 3     Below you put bodies for custom methods defined for this class.   3
-  // 3     You can do whatever you want, but please be decent.               3
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3     FULLY CUSTOM CODE STARTS HERE                                     3
+// 3     Below you put bodies for custom methods defined for this class.   3
+// 3     You can do whatever you want, but please be decent.               3
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
 
   UaStatus DIoLCIB::init_cib_mem()
   {
@@ -419,9 +462,237 @@ namespace Device
     res = m_dac.set_level(1,4095);
     return res;
   }
+  UaStatus DIoLCIB::check_cib_mem(json &resp)
+  {
+    const std::string lbl = "check_cib";
+    if (m_reg_map.size() == 0x0)
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"CIB memory not mapped. System on lockdown.");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidState;
+      return OpcUa_BadInvalidState;
+    }
+    else
+    {
+      return OpcUa_Good;
+    }
+  }
+  UaStatus DIoLCIB::validate_registers(json &conf,json &resp)
+  {
+    const std::string lbl = "validate_registers";
+    std::vector<std::string> mandatory_keys = {
+        "pdts_status","pdts_reset","trigger_pulser","trigger_external",
+        "daq_queue_state","lbls_queue_state","lbls_width","align_width",
+        "align_period","align_state"
+    };
+    //
+    // actually, check for all entries and report all missing ones
+    std::vector<std::string> missing;
+    //
+    for (auto entry: mandatory_keys)
+    {
+      if (!conf.contains(entry))
+      {
+        missing.push_back(entry);
+      }
+    }
+    if (missing.size() > 0)
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Missing mandatory entries in CIB mmap config fragment [");
+      for (auto e : missing)
+      {
+        msg << "(" <<  e << "),";
+      }
+      msg << "]";
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
+      return OpcUa_BadInvalidArgument;
+    }
+    //
+    missing.clear();
+    // all good, return true
+    return OpcUa_Good;
+  }
+
+  UaStatus DIoLCIB::map_registers(json &conf,json &resp)
+  {
+    UaStatus st = validate_registers(conf,resp);
+    if (st != OpcUa_Good)
+    {
+      return OpcUa_BadInvalidArgument;
+    }
+    // this method is specific for each device
+    // -- first obtain a map to all the memory
+    std::ostringstream msg("");
+    const std::string lbl = "map_registers";
+    json reginfo = conf;
+#ifdef DEBUG
+    LOG(Log::INF) << log_i(lbl.c_str(),"Mapping registers");
+#endif
+    st = check_cib_mem(resp);
+    if(st != OpcUa_Good)
+    {
+#ifdef DEBUG
+    LOG(Log::ERR) << log_e(lbl.c_str(),"CIB memory not mapped");
+#endif
+      return st;
+    }
+    else
+    {
+      // if there are any registers there, clean them out
+      if (m_regs.size())
+      {
+        m_regs.clear();
+      }
+      // now grab the entries
+      try
+      {
+        for (auto jt = reginfo.begin(); jt != reginfo.end(); ++jt)
+        {
+          if (jt.value().at(0) == -1)
+          {
+            // disabled register
+            // skip
+            continue;
+          }
+          conf_param_t tmp;
+          // for these, nothing is optional
+          // offset corresponds to the
+          tmp.reg = m_reg_map.at(jt.value().at(0));
+          tmp.offset = jt.value().at(1);
+          tmp.bit_high = jt.value().at(2);
+          tmp.bit_low = jt.value().at(3);
+          tmp.maddr = (tmp.reg.vaddr+(tmp.offset*GPIO_CH_OFFSET));
+          tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
+#ifdef DEBUG
+          LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg.id
+              << " offset " << tmp.offset << " bh " << tmp.bit_high << " bl " << tmp.bit_low
+              << " addr " << std::hex << tmp.maddr << std::dec << " mask " << std::hex << tmp.mask
+              << std::dec << " ";
+#endif
+          m_regs.insert(std::pair<std::string,conf_param_t>(jt.key(),tmp));
+        }
+      }
+      catch(json::exception &e)
+      {
+        msg.clear();msg.str("");
+        msg << log_e(lbl.c_str()," ") << "Incomplete config fragment [mmap] : " << e.what();
+        resp["messages"].push_back(msg.str());
+        return OpcUa_Bad;
+      }
+      catch(std::exception &e)
+      {
+        msg.clear();msg.str("");
+        msg << log_e(lbl.c_str()," ") << "Problem parsing config fragment [mmap] : " << e.what();
+        resp["messages"].push_back(msg.str());
+        return OpcUa_Bad;
+      }
+      return OpcUa_Good;
+    }
+    return OpcUa_Good;
+  }
+  UaStatus DIoLCIB::validate_config_fragment(json &conf, json &resp)
+  {
+    // this is just a validation check for the available keys.
+    // it will only check the mandatory keys.
+    const std::string lbl = "validate_config";
+    std::vector<std::string> mandatory_keys = {
+        "dac_threshold","alignment_laser","mmap"
+    };
+    std::vector<std::string> optional_keys = {
+        "lbls_width_clocks"
+    };
+    //
+    // actually, check for all entries and report all missing ones
+    std::vector<std::string> missing;
+    //
+    for (auto entry: mandatory_keys)
+    {
+      if (!conf.contains(entry))
+      {
+        missing.push_back(entry);
+      }
+    }
+    if (missing.size() > 0)
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Missing mandatory entries in CIB config fragment [");
+      for (auto e : missing)
+      {
+        msg << "(" <<  e << "),";
+      }
+      msg << "]";
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
+      return OpcUa_BadInvalidArgument;
+    }
+    //
+    missing.clear();
+    // check the optional keys
+    for (auto entry: optional_keys)
+    {
+      if (!conf.contains(entry))
+      {
+        missing.push_back(entry);
+      }
+    }
+    if (missing.size() > 0)
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      msg << log_w(lbl.c_str(),"Missing optional entries in CIB config fragment [");
+      for (auto e : missing)
+      {
+        msg << "(" <<  e << "),";
+      }
+      msg << "]";
+      resp["messages"].push_back(msg.str());
+    }
+    // all good, return true
+    return OpcUa_Good;
+  }
   UaStatus DIoLCIB::config(json &conf, json &resp)
   {
+    const std::string lbl  = "config";
     UaStatus st = OpcUa_Good;
+    std::ostringstream msg("");
+    st = validate_config_fragment(conf,resp);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
+    // first of all we need to grab the mmap, as the registers need to be mapped
+    // prior to attemting writing anything
+    if (!conf.contains("mmap"))
+    {
+      msg.clear(); msg.str("");
+      resp["status"] = "ERROR";
+      msg << log_e(lbl.c_str(),"Can't find mandatory [mmap] configuration field");
+      resp["messages"].push_back(msg.str());
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
+      return OpcUa_BadInvalidArgument;
+    }
+    else
+    {
+      st = map_registers(conf.at("mmap"),resp);
+      if (st != OpcUa_Good)
+      {
+        return st;
+      }
+    }
+    // -- now that registers are mapped, we can process the configuration
     for (json::iterator it = conf.begin(); it != conf.end(); ++it)
     {
       LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
@@ -438,8 +709,71 @@ namespace Device
           return st;
         }
       }
+      if (it.key() == "alignment_laser")
+      {
+        // this requires the other two to be loaded as well
+        json sobj= it.value();
+        // first grab the width and period
+        uint32_t width, period;
+        width = sobj.at("width").get<uint32_t>();
+        // set the width
+        if (m_regs.find("align_width") != m_regs.end())
+        {
+          set_cib_align_width(m_regs.at("align_width"),width);
+        }
+        else
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Failed to find register in configuration fragment : align_width");
+          resp["status"]= "ERROR";
+          resp["messages"].push_back(msg.str());
+          resp["statuscode"]= OpcUa_BadInvalidArgument;
+          return OpcUa_BadInvalidArgument;
+        }
+        period = sobj.at("period").get<uint32_t>();
+        if (m_regs.find("align_period") != m_regs.end())
+        {
+          set_cib_align_period(m_regs.at("align_period"),width);
+        }
+        else
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Failed to find register in configuration fragment : align_period");
+          resp["status"]= "ERROR";
+          resp["messages"].push_back(msg.str());
+          resp["statuscode"]= OpcUa_BadInvalidArgument;
+          return OpcUa_BadInvalidArgument;
+        }
+        bool align_enabled = sobj.at("enabled").get<bool>();
+        if (m_regs.find("align_state") != m_regs.end())
+        {
+          set_cib_align_state(m_regs.at("align_state"),align_enabled);
+        }
+        else
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Failed to find register in configuration fragment : align_state");
+          resp["status"]= "ERROR";
+          resp["messages"].push_back(msg.str());
+          resp["statuscode"]= OpcUa_BadInvalidArgument;
+          return OpcUa_BadInvalidArgument;
+        }
+      }
+      if (it.key() == "lbls_width_clks")
+      {
+        //
+        uint32_t v = it.value();
+        st = get_cib_lbls_width(m_regs.at("lbls_width"),v);
+        if (st != OpcUa_Good)
+        {
+          resp["status"] = "ERROR";
+          resp["messages"].push_back("Failed to set LBLS pulse width");
+          resp["statuscode"] = OpcUa_Bad;
+          return st;
+        }
+      }
     }
-    return st;
+    return OpcUa_Good;
   }
   void DIoLCIB::refresh_pdts()
   {

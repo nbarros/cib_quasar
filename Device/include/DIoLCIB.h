@@ -58,6 +58,31 @@ public:
     UaStatus callReset_pdts (
         UaString& response
     ) ;
+    UaStatus callSet_trigger_pulser (
+        OpcUa_Boolean enabled,
+        UaString& response
+    ) ;
+    UaStatus callSet_trigger_external (
+        OpcUa_Boolean enabled,
+        UaString& response
+    ) ;
+    UaStatus callSet_lbls_width (
+        OpcUa_UInt32 width,
+        UaString& response
+    ) ;
+    UaStatus callSet_lbls_state (
+        OpcUa_Boolean enabled,
+        UaString& response
+    ) ;
+    UaStatus callSet_align_state (
+        OpcUa_Boolean enabled,
+        UaString& response
+    ) ;
+    UaStatus callSet_align_params (
+        OpcUa_UInt32 width_clocks,
+        OpcUa_UInt32 period_clocks,
+        UaString& response
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */
@@ -104,6 +129,9 @@ private:
     void refresh_pdts();
     UaStatus set_dac_threshold(uint16_t &val,json &resp);
     UaStatus init_cib_mem();
+    UaStatus map_registers(json &conf,json &resp);
+    UaStatus validate_registers(json &conf,json &resp);
+    UaStatus validate_config_fragment(json &conf, json &resp);
     UaStatus reset_pdts(json &resp);
     // internal methods specific to the CIB
     UaStatus cib_pdts_status(uintptr_t &addr,uint8_t &pdts_stat, uint8_t &pdts_addr);
@@ -127,6 +155,7 @@ private:
     UaStatus get_cib_value(conf_param_t &reg, uint32_t &value);
     UaStatus set_cib_value(conf_param_t &reg, const uint32_t value);
     void refresh_registers();
+    UaStatus check_cib_mem(json &resp);
     //
     // -- internal variable cache
     uint32_t m_align_width;

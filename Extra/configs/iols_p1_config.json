@@ -3,9 +3,11 @@
 "cib":{
 	"dac_threshold":3000,
 	"lbls_width_clks":2,
-	"align_enabled" : false,
-	"align_width": 10,
-	"align_period" : 6250000,
+	"alignment_laser" : {
+		"enabled":false,
+		"width" : 10,
+		"period":6250000
+	},
 	"mmap" : 
 	{
 	"pdts_status": [0,0,3,0],
