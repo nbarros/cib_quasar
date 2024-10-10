@@ -10,7 +10,7 @@
 "refresh_period_ms":50,
 "refresh_movememt_ms":10,
 "mmap": 
-	{"moving": [0,0,0],
+	{
 	 "direction" : [0,3,3],
 	 "init_pos" : [1,20,0],
 	 "cur_pos" : [4,20,0]

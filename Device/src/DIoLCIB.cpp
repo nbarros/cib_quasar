@@ -46,35 +46,35 @@ using std::ostringstream;
 
 namespace Device
 {
-// 1111111111111111111111111111111111111111111111111111111111111111111111111
-// 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
-// 1     Users don't modify this code!!!!                                  1
-// 1     If you modify this code you may start a fire or a flood somewhere,1
-// 1     and some human being may possible cease to exist. You don't want  1
-// 1     to be charged with that!                                          1
-// 1111111111111111111111111111111111111111111111111111111111111111111111111
+  // 1111111111111111111111111111111111111111111111111111111111111111111111111
+  // 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
+  // 1     Users don't modify this code!!!!                                  1
+  // 1     If you modify this code you may start a fire or a flood somewhere,1
+  // 1     and some human being may possible cease to exist. You don't want  1
+  // 1     to be charged with that!                                          1
+  // 1111111111111111111111111111111111111111111111111111111111111111111111111
 
 
 
 
 
 
-// 2222222222222222222222222222222222222222222222222222222222222222222222222
-// 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
-// 2     (code for which only stubs were generated automatically)          2
-// 2     You should add the implementation but dont alter the headers      2
-// 2     (apart from constructor, in which you should complete initializati2
-// 2     on list)                                                          2
-// 2222222222222222222222222222222222222222222222222222222222222222222222222
+  // 2222222222222222222222222222222222222222222222222222222222222222222222222
+  // 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
+  // 2     (code for which only stubs were generated automatically)          2
+  // 2     You should add the implementation but dont alter the headers      2
+  // 2     (apart from constructor, in which you should complete initializati2
+  // 2     on list)                                                          2
+  // 2222222222222222222222222222222222222222222222222222222222222222222222222
 
-/* sample ctr */
-DIoLCIB::DIoLCIB (
-    const Configuration::IoLCIB& config,
-    Parent_DIoLCIB* parent
-):
-    Base_DIoLCIB( config, parent)
+  /* sample ctr */
+  DIoLCIB::DIoLCIB (
+      const Configuration::IoLCIB& config,
+      Parent_DIoLCIB* parent
+  ):
+        Base_DIoLCIB( config, parent)
 
-    /* fill up constructor initialization list here */
+        /* fill up constructor initialization list here */
         , m_is_ready(false)
         , m_cpu_load(0.0)
         , m_used_mem(0.0)
@@ -83,105 +83,105 @@ DIoLCIB::DIoLCIB (
         , m_prev_tot_sys(0)
         , m_prev_tot_idle(0)
         , m_total(0)
-{
+        {
     /* fill up constructor body here */
     // start by initializing the initial counters
     FILE* file = fopen("/proc/stat", "r");
     int ret = fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
     ret = fclose(file);
     (void)ret; // this is just to suppress the compilation warning
-        // initialize the CIB memory maps
-      UaStatus st = init_cib_mem();
-      if (st != OpcUa_Good)
-      {
-        LOG(Log::ERR) << log_e("constructor","Failed to map CIB memory. This is definitely not good.");
-      }
-}
+    // initialize the CIB memory maps
+    UaStatus st = init_cib_mem();
+    if (st != OpcUa_Good)
+    {
+      LOG(Log::ERR) << log_e("constructor","Failed to map CIB memory. This is definitely not good.");
+    }
+        }
 
-/* sample dtr */
-DIoLCIB::~DIoLCIB ()
-{
-}
+  /* sample dtr */
+  DIoLCIB::~DIoLCIB ()
+  {
+  }
 
-/* delegates for cachevariables */
+  /* delegates for cachevariables */
 
-/* Note: never directly call this function. */
+  /* Note: never directly call this function. */
 
-UaStatus DIoLCIB::writeDac_threshold ( const OpcUa_UInt16& v)
-{
+  UaStatus DIoLCIB::writeDac_threshold ( const OpcUa_UInt16& v)
+  {
     json resp;
     uint16_t val = v;
     UaStatus st = set_dac_threshold(val,resp);
     return st;
-}
+  }
 
 
-/* delegators for methods */
-UaStatus DIoLCIB::callSet_dac_threshold (
-    OpcUa_UInt16 dac_level,
-    UaString& response
-)
-{
+  /* delegators for methods */
+  UaStatus DIoLCIB::callSet_dac_threshold (
+      OpcUa_UInt16 dac_level,
+      UaString& response
+  )
+  {
     json resp;
     UaStatus st = set_dac_threshold(dac_level,resp);
     response = UaString(resp.dump().c_str());
     return st;
-}
-UaStatus DIoLCIB::callReset_pdts (
-    UaString& response
-)
-{
+  }
+  UaStatus DIoLCIB::callReset_pdts (
+      UaString& response
+  )
+  {
     return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLCIB::callSet_trigger_pulser (
-    OpcUa_Boolean enabled,
-    UaString& response
-)
-{
+  }
+  UaStatus DIoLCIB::callSet_trigger_pulser (
+      OpcUa_Boolean enabled,
+      UaString& response
+  )
+  {
     return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLCIB::callSet_trigger_external (
-    OpcUa_Boolean enabled,
-    UaString& response
-)
-{
+  }
+  UaStatus DIoLCIB::callSet_trigger_external (
+      OpcUa_Boolean enabled,
+      UaString& response
+  )
+  {
     return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLCIB::callSet_lbls_width (
-    OpcUa_UInt32 width,
-    UaString& response
-)
-{
+  }
+  UaStatus DIoLCIB::callSet_lbls_width (
+      OpcUa_UInt32 width,
+      UaString& response
+  )
+  {
     return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLCIB::callSet_lbls_state (
-    OpcUa_Boolean enabled,
-    UaString& response
-)
-{
+  }
+  UaStatus DIoLCIB::callSet_lbls_state (
+      OpcUa_Boolean enabled,
+      UaString& response
+  )
+  {
     return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLCIB::callSet_align_state (
-    OpcUa_Boolean enabled,
-    UaString& response
-)
-{
+  }
+  UaStatus DIoLCIB::callSet_align_state (
+      OpcUa_Boolean enabled,
+      UaString& response
+  )
+  {
     return OpcUa_BadNotImplemented;
-}
-UaStatus DIoLCIB::callSet_align_params (
-    OpcUa_UInt32 width_clocks,
-    OpcUa_UInt32 period_clocks,
-    UaString& response
-)
-{
+  }
+  UaStatus DIoLCIB::callSet_align_params (
+      OpcUa_UInt32 width_clocks,
+      OpcUa_UInt32 period_clocks,
+      UaString& response
+  )
+  {
     return OpcUa_BadNotImplemented;
-}
+  }
 
-// 3333333333333333333333333333333333333333333333333333333333333333333333333
-// 3     FULLY CUSTOM CODE STARTS HERE                                     3
-// 3     Below you put bodies for custom methods defined for this class.   3
-// 3     You can do whatever you want, but please be decent.               3
-// 3333333333333333333333333333333333333333333333333333333333333333333333333
+  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+  // 3     FULLY CUSTOM CODE STARTS HERE                                     3
+  // 3     Below you put bodies for custom methods defined for this class.   3
+  // 3     You can do whatever you want, but please be decent.               3
+  // 3333333333333333333333333333333333333333333333333333333333333333333333333
 
   UaStatus DIoLCIB::init_cib_mem()
   {
@@ -234,7 +234,7 @@ UaStatus DIoLCIB::callSet_align_params (
     }
     return OpcUa_Good;
   }
-
+  //
   void DIoLCIB::poll_mem()
   {
     struct sysinfo memInfo;
@@ -245,7 +245,7 @@ UaStatus DIoLCIB::callSet_align_params (
     m_used_mem = static_cast<float>(total-free)/static_cast<float>(total);
     getAddressSpaceLink()->setMem_load(m_used_mem,OpcUa_Good);
   }
-
+  //
   void DIoLCIB::poll_cpu()
   {
     unsigned long long tot_usr, tot_usr_low, tot_sys, tot_idle;
@@ -540,7 +540,7 @@ UaStatus DIoLCIB::callSet_align_params (
     if(st != OpcUa_Good)
     {
 #ifdef DEBUG
-    LOG(Log::ERR) << log_e(lbl.c_str(),"CIB memory not mapped");
+      LOG(Log::ERR) << log_e(lbl.c_str(),"CIB memory not mapped");
 #endif
       return st;
     }

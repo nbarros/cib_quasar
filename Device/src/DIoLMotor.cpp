@@ -35,6 +35,7 @@ extern "C" {
 #include <random>
 #include <cib_registers.h>
 #include <mem_utils.h>
+#include <cib_mem.h>
 #define DEBUG 1
 
 #define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
@@ -76,32 +77,31 @@ DIoLMotor::DIoLMotor (
     Base_DIoLMotor( config, parent)
 
     /* fill up constructor initialization list here */
-                ,m_sim_pos(0)
-                ,m_sim_speed(0)
-                ,m_sim_tpos(0)
-                ,m_sim_moving(false)
-                ,m_position(-999999)
-                ,m_position_setpoint(-999999)
-                ,m_is_ready(false)
-                ,m_is_moving(false)
-                ,m_acceleration(0.0)
-                ,m_deceleration(0.0)
-                ,m_speed_setpoint(0.0)
-                ,m_speed_readout(0.0)
-                ,m_torque(0.0)
-                ,m_temperature(0.0)
-                //,m_address("")
-                ,m_refresh_ms(0)
-                ,m_monitor(false)
-                ,m_monitor_status(OpcUa_BadResourceUnavailable)
-                ,m_server_host("")
-                ,m_server_port(0)
-                ,m_range_min(-999999)
-                ,m_range_max(-999999)
-                ,m_id("NONE")
-                ,m_coordinate_index(0)
-                ,m_mmap_fd(0)
-                ,m_mapped_mem(0)
+        ,m_sim_pos(0)
+        ,m_sim_speed(0)
+        ,m_sim_tpos(0)
+        ,m_sim_moving(false)
+        ,m_position_motor(-999999)
+        ,m_position_setpoint(-999999)
+        ,m_is_ready(false)
+        ,m_is_moving(false)
+        ,m_acceleration(0.0)
+        ,m_deceleration(0.0)
+        ,m_speed_setpoint(0.0)
+        ,m_speed_readout(0.0)
+        ,m_torque(0.0)
+        ,m_temperature(0.0)
+        //,m_address("")
+        ,m_refresh_ms(0)
+        ,m_monitor(false)
+        ,m_monitor_status(OpcUa_BadResourceUnavailable)
+        ,m_server_host("")
+        ,m_server_port(0)
+        ,m_range_min(-999999)
+        ,m_range_max(-999999)
+        ,m_id("NONE")
+        ,m_coordinate_index(0)
+        ,m_mmap_fd(0)
 {
     /* fill up constructor body here */
     // initialize cURL
@@ -117,7 +117,7 @@ DIoLMotor::DIoLMotor (
     //
 
     // allocate the memory mapped registers
-    (void)map_registers();
+    (void)init_cib_mem();
 
     if (m_monitor)
     {
@@ -131,6 +131,7 @@ DIoLMotor::DIoLMotor (
 /* sample dtr */
 DIoLMotor::~DIoLMotor ()
 {
+    clear_cib_mem();
     curl_global_cleanup();
 }
 
@@ -184,6 +185,8 @@ UaStatus DIoLMotor::callConfig (
 
     LOG(Log::INF) << "Raw content : " << config_json.toUtf8();
     json resp;
+    const std::string lbl = "config";
+    bool has_exception = false;
     UaStatus st = OpcUa_Good;
     std::ostringstream msg("");
     try
@@ -198,44 +201,38 @@ UaStatus DIoLMotor::callConfig (
       msg.clear(); msg.str("");
       msg << log_i("config","Motor configuration updated");
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
-
+      resp["statuscode"] = OpcUa_Good;
       response = UaString(resp.dump().c_str());
     }
     catch(json::exception &e)
     {
-      std::ostringstream msg("");
-      msg << log_e("config","Caught a JSON parsing exception : ") << e.what();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
-      response = UaString(resp.dump().c_str());
-      return OpcUa_Good;
-
+      has_exception = true;
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Caught a JSON parsing exception : ") << e.what();
     }
     catch(std::exception &e)
     {
-      msg << log_e("config","Caught an STL exception : ") << e.what();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
-
-      response = UaString(resp.dump().c_str());
-
-      return OpcUa_Good;
+      has_exception = true;
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Caught an STL exception : ") << e.what();
     }
     catch(...)
     {
-      msg << log_e("config","Caught an unknown exception");
+      has_exception = true;
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Caught an unknown exception");
+    }
+    if (has_exception)
+    {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
 
       response = UaString(resp.dump().c_str());
-
       return OpcUa_Good;
     }
-    // force an update after a config
+
+    // force an update after a successful config
     update();
     return OpcUa_Good;
 }
@@ -264,7 +261,7 @@ UaStatus DIoLMotor::callMove_relative (
     // the returned status is always OpcUa_Good
     // but the real execution status is passed through the json response
     UaStatus st = OpcUa_Good;
-    st = move_wrapper(m_position+num_steps,resp);
+    st = move_wrapper(m_position_motor+num_steps,resp);
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
 }
@@ -292,8 +289,15 @@ UaStatus DIoLMotor::callReset (
     UaString& response
 )
 {
-  // reset is a tricky thing.
-  //FIXME: Implement it
+    // reset is a tricky thing.
+    //FIXME: Implement it
+    return OpcUa_BadNotImplemented;
+}
+UaStatus DIoLMotor::callClear_alarm (
+    UaString& response
+)
+{
+    //FIXME: Implement it
     return OpcUa_BadNotImplemented;
 }
 
@@ -307,15 +311,10 @@ UaStatus DIoLMotor::callReset (
   {
     UaStatus st = OpcUa_Good;
     std::ostringstream msg("");
-    if (!is_ready())
+    st = check_motor_ready(resp);
+    if (st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      resp["status"] = "ERROR";
-      msg << log_e("start_move","Motor is not ready to operate");
-      resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidState;
-      LOG(Log::ERR) << msg.str();
-      return OpcUa_BadInvalidState;
+      return st;
     }
     // -- if we don't have a good monitoring status we cannot be sure of
     // what is the status of the motor downstream.
@@ -345,11 +344,11 @@ UaStatus DIoLMotor::callReset (
     //      return OpcUa_Good;
     //    }
     // check that position and position_set_point are not the same
-    if (m_position == m_position_setpoint)
+    if (m_position_motor == m_position_setpoint)
     {
       resp["status"] = "OK";
       msg.clear(); msg.str("");
-      msg << log_w("start_move","Motor is already at destination") << " (" << m_position << " vs " << m_position_setpoint << ")";
+      msg << log_w("start_move","Motor is already at destination") << " (" << m_position_motor << " vs " << m_position_setpoint << ")";
       resp["messages"].push_back(msg.str());
       resp["status_code"] = OpcUa_Good;
       LOG(Log::ERR) << msg.str();
@@ -391,7 +390,8 @@ UaStatus DIoLMotor::callReset (
     // server updates
     // i.e., form the server to the client
     //position_ = {static_cast<double>(rand()),static_cast<double>(rand()),static_cast<double>(rand())};
-    getAddressSpaceLink()->setCurrent_position(m_position,status);
+    getAddressSpaceLink()->setCurrent_position_motor(m_position_motor,status);
+    getAddressSpaceLink()->setCurrent_position_cib(m_position_cib,status);
     //getAddressSpaceLink()->setSpeed(m_speed, status);
     // -- the speed is obtained from the address space
     //m_speed = getAddressSpaceLink()->getSpeed();
@@ -417,8 +417,8 @@ UaStatus DIoLMotor::callReset (
     // 2.1. position_set_point
     // 2.2. speed
     // 2.3. acceleration
-//    LOG(Log::INF) << "Checking readiness for motor ID=" << m_id
-//        << " with positionSetPoint = (" << m_position_setpoint << ")";
+    //    LOG(Log::INF) << "Checking readiness for motor ID=" << m_id
+    //        << " with positionSetPoint = (" << m_position_setpoint << ")";
     if (m_is_moving)
     {
       return false;
@@ -427,7 +427,7 @@ UaStatus DIoLMotor::callReset (
     {
       return false;
     }
-//    LOG(Log::INF) << "It is ready";
+    //    LOG(Log::INF) << "It is ready";
     return true;
   }
 
@@ -464,7 +464,7 @@ UaStatus DIoLMotor::callReset (
                 }).detach();
   }
 
-  void DIoLMotor::move_monitor(DIoLMotor *obj)
+  void DIoLMotor::cib_movement_monitor(DIoLMotor *obj)
   {
     static int32_t prev_pos = 0;
     static bool prev_moving = false;
@@ -474,7 +474,7 @@ UaStatus DIoLMotor::callReset (
       {
         auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(10);
         prev_pos =m_position_cib;
-        m_position_cib = cib::util::reg_read(m_regs.at("cur_pos").addr);
+        m_position_cib = cib::util::reg_read(m_regs.at("cur_pos").maddr);
 
         // if the position didn't change and the latest speed readout
         // is 0, set m_is_moving = false
@@ -496,23 +496,24 @@ UaStatus DIoLMotor::callReset (
       }
                 }).detach();
   }
-
-
-
-  UaStatus DIoLMotor::get_motor_info()
+  UaStatus DIoLMotor::query_motor(const std::string request, json &reply, json &resp)
   {
+    // FIXME: All low level functions should call this one for requests
     string addr = "http://";
     addr+= m_server_host;
-    addr += "/api/info";
-
+    addr += "/api/";
+    addr += request;
     uint16_t lport = m_server_port;
-    //OpcUa_StatusCode status= OpcUa_Good;
+    //mutex to
+    const std::lock_guard<std::mutex> lock(m_motor_mtx);
     auto curl = curl_easy_init();
-    if (curl) {
+    if (curl)
+    {
       curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
       curl_easy_setopt(curl, CURLOPT_PORT, lport);
 
       curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+      // this may eventually become a configuration parameter?
       curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 500L);
 
       //curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
@@ -525,59 +526,129 @@ UaStatus DIoLMotor::callReset (
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_function);
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
       curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_string);
-
       CURLcode res = curl_easy_perform(curl);
       // Check for errors
+      // timeout error is  CURLE_OPERATION_TIMEDOUT
       if (res != CURLE_OK)
       {
-        LOG(Log::ERR) << "curl_easy_perform() failed: "
-            << curl_easy_strerror(res);
+        std::ostringstream msg("");
+        msg << log_e("query_motor","curl_easy_perform() failed: ") << curl_easy_strerror(res);
+#ifdef DEBUG
+        LOG(Log::ERR) << msg.str();
+#endif
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["statuscode"] = OpcUa_BadCommunicationError;
         curl_easy_cleanup(curl);
         curl = NULL;
         m_monitor_status = OpcUa_BadResourceUnavailable;
-        return OpcUa_BadResourceUnavailable;
+        return OpcUa_BadCommunicationError;
       }
-
-      //LOG(Log::INF) << "Received response [" << response_string << "]";
-      // now we should parse the answer
-      // it is meant to be a json object
-      json answer = json::parse(response_string);
-      /**
-       * Typical answer: {"cur_pos":25000,"cur_speed":0,"m_temp":" 38.8","tar_pos":25000,"torque":"  1.9"}
-       */
-      m_position = answer["cur_pos"];
-      m_speed_readout = answer["cur_speed"];
-      m_temperature = std::stod(answer["m_temp"].get<std::string>());
-      m_torque = std::stod(answer["torque"].get<std::string>());
-
-      // if speed is zero, refresh the CIB position to the current one
-      if (m_speed_readout == 0)
+#ifdef DEBUG
+      LOG(Log::INF) << "Received response [" << response_string << "]";
+#endif
+      try
       {
-        // tell the CIB that we are no longer moving
-        std::string reg = "moving";
-        cib::util::reg_write_mask_offset(m_regs.at(reg).addr,0x0,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
-        // refresh the current position
-        reg = "init_pos";
-        cib::util::reg_write_mask_offset(m_regs.at(reg).addr,m_position,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
+        reply = json::parse(response_string);
       }
-      curl_easy_cleanup(curl);
-      curl = NULL;
+      catch (std::exception &e)
+      {
+        std::ostringstream msg("");
+        msg << log_e("query_motor","Caucght an exception parsing the server response: ") << e.what();
+#ifdef DEBUG
+        LOG(Log::ERR) << msg.str();
+#endif
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["statuscode"] = OpcUa_BadCommunicationError;
+        curl_easy_cleanup(curl);
+        curl = NULL;
+        m_monitor_status = OpcUa_BadResourceUnavailable;
+        return OpcUa_BadCommunicationError;
+      }
     }
+    curl_easy_cleanup(curl);
+    curl = NULL;
+    return OpcUa_Good;
+  }
+
+  UaStatus DIoLMotor::get_motor_info()
+  {
+    std::string request = "info";
+    json reply, resp;
+    UaStatus st = query_motor(request,reply,resp);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
+    // if it arrived here, we have a valid answer
+    if (reply.contains("cur_pos"))
+    {
+      m_position_motor = reply.at("cur_pos").get<int32_t>();
+    }
+    if (reply.contains("tar_pos"))
+    {
+      int32_t tpos = reply.at("tar_pos").get<int32_t>();
+      if (tpos != m_position_setpoint)
+      {
+        // something is wrong, the target is not what we think
+        // FIXME: What to do in this case?
+      }
+    }
+    if (reply.contains("cur_speed"))
+    {
+      m_speed_readout = reply.at("cur_speed").get<uint32_t>();
+    }
+    if (reply.contains("torque"))
+    {
+      m_torque = reply.at("torque").get<double>();
+    }
+    if (reply.contains("m_temp"))
+    {
+      m_temperature = reply.at("m_temp").get<double>();
+    }
+    if (reply.contains("alarm_code"))
+    {
+      m_alarm_code_motor = reply.at("alarm_code").get<int32_t>();
+    }
+
+    if (m_speed_readout == 0)
+    {
+      m_is_moving = false;
+    }
+    else
+    {
+      m_is_moving = true;
+    }
+
+    // if speed is zero, refresh the CIB position to the current one
+    //    if (m_speed_readout == 0)
+    //    {
+    //      // tell the CIB that we are no longer moving
+    //      //FIXME: Continue here
+    //      //      std::string reg = "moving";
+    //      //      cib::util::reg_write_mask_offset(m_regs.at(reg).maddr,0x0,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
+    //      // refresh the current position
+    //      reg = "init_pos";
+    //      cib::util::reg_write_mask_offset(m_regs.at(reg).maddr,m_position_motor,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
+    //    }
     m_monitor_status = OpcUa_Good;
 
     return OpcUa_Good;
   }
-
+  //
   UaStatus DIoLMotor::move_motor(json &resp)
   {
     // set the moving and direction bits of the respective registers
     // it is not an issue if they are set a bit earlier...the motor should not be moving at this stage
     // make a mask for the relevant bits
-    std::string reg = "moving";
-    cib::util::reg_write_mask_offset(m_regs.at(reg).addr,0x1,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
-    reg = "direction";
+    //    std::string reg = "moving";
+    //    cib::util::reg_write_mask_offset(m_regs.at(reg).addr,0x1,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
+    const std::string lbl = "move";
+    //    std::string reg = "direction";
     uint32_t dir;
-    if (m_position_setpoint > m_position)
+    UaStatus st = OpcUa_Good;
+    if (m_position_setpoint > m_position_motor)
     {
       dir = 0x1;
     }
@@ -585,67 +656,43 @@ UaStatus DIoLMotor::callReset (
     {
       dir = 0x0;
     }
-    cib::util::reg_write_mask_offset(m_regs.at(reg).addr,dir,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
-    // -- why not, refresh also the current position, as stated by the motor
-    reg = "init_pos";
-    cib::util::reg_write_mask_offset(m_regs.at(reg).addr,m_position,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
-
-    string addr = "http://";
-    addr+= m_server_host;
-    addr += "/api/move";
-    uint16_t lport = m_server_port;
+    st = cib_set_direction(dir);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
+    st = cib_set_init_position(m_position_motor);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
+    // and now start the motor moving
+    std::string query = "move";
     OpcUa_StatusCode status= OpcUa_Good;
     auto curl = curl_easy_init();
     if (curl) {
-      ostringstream query("");
-      query << "pos=" << m_position_setpoint;
+      ostringstream qpars("");
+      qpars << "pos=" << m_position_setpoint;
       if (m_speed_setpoint != 0)
       {
-        query << "&speed=" << m_speed_setpoint;
+        qpars << "&speed=" << m_speed_setpoint;
       }
       if (m_acceleration != 0)
       {
-        query << "&accel=" << m_acceleration;
+        qpars << "&accel=" << m_acceleration;
       }
       if (m_deceleration != 0)
       {
-        query << "&decel=" << m_deceleration;
+        qpars << "&decel=" << m_deceleration;
       }
-      addr += "?";
-      addr += query.str();
-      int ret = 0;
-      ret |= curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
-      ret |= curl_easy_setopt(curl, CURLOPT_PORT, lport);
-      ret |= curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
-      ret |= curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 500L);
-      //curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
-      ret |= curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.42.0");
-      ret |= curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
-      ret |= curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
-      std::string response_string;
-      std::string header_string;
-      ret |= curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_function);
-      ret |= curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
-      ret |= curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_string);
-      ret |= curl_easy_perform(curl);
-      // Check for errors
-      if (ret != CURLE_OK)
+      query += "?";
+      query += qpars.str();
+      json answer;
+      status = query_motor(query,answer,resp);
+      if (status != OpcUa_Good)
       {
-        ostringstream msg("");
-        msg << log_e("move_motor"," ") << "curl_easy_perform() failed: " << curl_easy_strerror(static_cast<CURLcode>(ret));
-        resp["status"] = "ERROR";
-        resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadNoCommunication;
-        LOG(Log::ERR) << msg.str();
-        curl_easy_cleanup(curl);
-        curl = NULL;
-        return OpcUa_BadNoCommunication;
+        return status;
       }
-      //        cout << response_string;
-      LOG(Log::INF) << "Received response [" << response_string << "]";
-      // now we should parse the answer
-      // it is meant to be a json object
-      json answer = json::parse(response_string);
       /**
        * Typical answer: {"cur_pos":25000,"cur_speed":0,"m_temp":" 38.8","tar_pos":25000,"torque":"  1.9"}
        */
@@ -653,15 +700,21 @@ UaStatus DIoLMotor::callReset (
       {
         std::ostringstream msg("");
         status = OpcUa_Good;
-        msg << log_i("move_motor","Remote command successful");
+        msg << log_i(lbl.c_str(),"Remote command successful");
+#ifdef DEBUG
+        LOG(Log::INF) << msg.str();
+#endif
         resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_Good;
+        resp["statuscode"] = OpcUa_Good;
       }
       else
       {
-        resp["status"] = answer["status"];
+        resp["status"] = "ERROR";
         std::ostringstream msg("");
-        msg << log_e("move_motor","Failed to execute remote command");
+        msg << log_e("move_motor","Failed to execute remote command : ") << answer["status"];
+#ifdef DEBUG
+        LOG(Log::ERR) << msg.str();
+#endif
         resp["messages"].push_back(msg.str());
         resp["status_code"] = OpcUa_Bad;
         status =  OpcUa_Bad;
@@ -674,230 +727,55 @@ UaStatus DIoLMotor::callReset (
       resp["status"] = "ERROR";
       std::ostringstream msg("");
       msg << log_e("move_motor","Failed to get a connection handle");
-      resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadNoCommunication;
-
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
-      status =  OpcUa_BadNoCommunication;
+#endif
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadCommunicationError;
+      status =  OpcUa_BadCommunicationError;
     }
     return status;
   }
-
   UaStatus DIoLMotor::stop(json &resp)
   {
-    string addr = "http://";
-    addr+= m_server_host;
-    addr += "/api/stop";
-    uint16_t lport = m_server_port;
-    //	string addr = "http://" + server_address() + "/api/stop";
-    //
-    //	static const uint16_t port = 5001;
-    OpcUa_StatusCode status= OpcUa_Good;
-    auto curl = curl_easy_init();
-    if (curl) {
-      int ret = 0;
-      //
-      ret |= curl_easy_setopt(curl, CURLOPT_URL, addr.c_str());
-      ret |= curl_easy_setopt(curl, CURLOPT_PORT, lport);
-      //
-      ret |= curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
-      ret |= curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 500L);
+    const std::string lbl = "stop";
+    UaStatus st = OpcUa_Good;
+    std::string query = "move";
+    json answer;
+    st = query_motor(query,answer,resp);
 
-      //curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
-      ret |= curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.42.0");
-      ret |= curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
-      ret |= curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
-      //
-      std::string response_string;
-      std::string header_string;
-      ret |= curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_function);
-      ret |= curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
-      ret |= curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_string);
-      // Check for errors
-      if (ret != CURLE_OK)
-      {
-        ostringstream msg("");
-        msg << log_w("stop_motor","Failed to set connection options : ") <<  curl_easy_strerror(static_cast<CURLcode>(ret));
-        resp["messages"].push_back(msg.str());
-        //
-        LOG(Log::WRN) << msg.str();
-      }
-      //
-      ret = curl_easy_perform(curl);
-      // Check for errors
-      if (ret != CURLE_OK)
-      {
-        ostringstream msg("");
-        msg << log_e("stop_motor","curl_easy_perform() failed : ") << curl_easy_strerror(static_cast<CURLcode>(ret));
-        resp["status"] = "ERROR";
-        resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_BadCommunicationError;
-        LOG(Log::ERR) << msg.str();
-        curl_easy_cleanup(curl);
-        curl = NULL;
-        return OpcUa_BadCommunicationError;
-      }
-      // cout << response_string;
-      LOG(Log::INF) << "Received response [" << response_string << "]";
-      // now we should parse the answer
-      // it is meant to be a json object
-      json answer = json::parse(response_string);
-      if (answer["status"] == string("OK"))
-      {
-        std::ostringstream msg("");
-        msg << log_i("move_motor","Remote command successful");
-        resp["status"] = "OK";
-        resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_Good;
-        LOG(Log::INF) << msg.str();
-        status =  OpcUa_Good;
-      }
-      else
-      {
-        std::ostringstream msg("");
-        msg << log_e("move_motor","Failed to execute remote command successful");
-        resp["status"] = "ERROR";
-        resp["messages"].push_back(msg.str());
-        resp["status_code"] = OpcUa_Bad;
-
-        LOG(Log::ERR) << msg.str();
-        status = OpcUa_Bad;
-      }
-      curl_easy_cleanup(curl);
-      curl = NULL;
+    // cout << response_string;
+#ifdef DEBUG
+    LOG(Log::INF) << "Received response [" << answer << "]";
+#endif
+    // now we should parse the answer
+    // it is meant to be a json object
+    if (answer["status"] == string("OK"))
+    {
+      std::ostringstream msg("");
+      msg << log_i("move_motor","Remote command successful");
+      resp["status"] = "OK";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Good;
+      LOG(Log::INF) << msg.str();
+      st =  OpcUa_Good;
     }
     else
     {
       std::ostringstream msg("");
-      msg << log_e("move_motor","Failed to get a connection handle");
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadNoCommunication;
-      LOG(Log::ERR) << msg.str();
-      status =  OpcUa_BadNoCommunication;
-    }
-    // toggle the relevant bits
-    // also refresh the cur_pos
-    // there may be a race condition between the command being sent to the motor and the action being executed
-    std::string reg = "moving";
-    cib::util::reg_write_mask_offset(m_regs.at(reg).addr,0x0,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
-    // -- why not, refresh also the current position, as stated by the motor
-    reg = "init_pos";
-    cib::util::reg_write_mask_offset(m_regs.at(reg).addr,m_position,m_regs.at(reg).mask,m_regs.at(reg).bit_low);
-    return status;
-  }
-
-  UaStatus DIoLMotor::sim_get_motor_info()
-  {
-
-    // -- simulate that we're just getting the current settings from the motor itself
-
-    // now we should parse the answer
-    // it is meant to be a json object
-    /**
-     * Typical answer: {"cur_pos":25000,"cur_speed":0,"m_temp":" 38.8","tar_pos":25000,"torque":"  1.9"}
-     */
-    // grab this from the
-    m_monitor_status = OpcUa_Good;
-    m_is_moving = m_sim_moving;
-    m_position = m_sim_pos;
-    // just set the speed equal to the setting
-    m_speed_readout = m_sim_speed;
-    // the temperature is just a random number between 36 and 37 degrees
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    std::uniform_real_distribution<double> dist_temp(36.0, 37.0);
-    std::uniform_real_distribution<double> dist_torque(0.0, 2.0);
-    m_temperature = dist_temp(mt);
-    m_torque = dist_torque(mt);
-
-    return OpcUa_Good;
-  }
-
-  UaStatus DIoLMotor::sim_move_motor(json &resp)
-  {
-
-    OpcUa_StatusCode status= OpcUa_Good;
-
-
-
-    // initiate the thread to start the movement simulator
-    // note that the movement is *not* realistically simulated, i.e.,
-    // only the position is being monotonically updated a rate of
-    // <speed> steps per second
-
-
-    if (m_sim_moving)
-    {
-      std::ostringstream msg("");
-      msg << log_e("sim_move_motor","Motor is already moving");
+      msg << log_e("move_motor","Failed to execute remote command successful");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["status_code"] = OpcUa_Bad;
+
       LOG(Log::ERR) << msg.str();
-      return OpcUa_Bad;
+      st = OpcUa_Bad;
     }
-
-    // if it is not yet moving start the thread
-
-    // set the simulation conditions
-    m_sim_speed = m_speed_setpoint;
-    // this permits that one changes the position set point
-    // without affecting the ongoing movement
-    m_sim_tpos = m_position_setpoint;
-
-    std::thread([this]()
-                {
-
-      this->m_sim_moving = true;
-      while (this->m_sim_moving)
-      {
-        if (!this->m_sim_moving || (this->m_sim_tpos == this->m_sim_pos))
-        {
-          // stop the thread
-          break;
-        }
-
-        // update every 5 ms
-        auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000/this->m_sim_speed);
-        if (this->m_sim_pos < this->m_sim_tpos)
-        {
-          this->m_sim_pos += 1;
-
-        } else
-        {
-          this->m_sim_pos -= 1;
-        }
-
-        std::this_thread::sleep_until(x);
-      }
-      LOG(Log::WRN) << "Dropping out of the sim_move thread";
-                }).detach();
-
-    std::ostringstream msg("");
-    msg << log_i("sim_move_motor","Motor movement initiated");
-    resp["status"] = "OK";
-    resp["messages"].push_back(msg.str());
-    resp["status_code"] = status;
-    return status;
+    // -- why not, refresh also the current position, as stated by the motor
+    st = cib_set_init_position(m_position_motor);
+    return st;
   }
-
-  UaStatus DIoLMotor::sim_stop_motor(json &resp)
-  {
-    OpcUa_StatusCode status= OpcUa_Good;
-    std::ostringstream msg("");
-
-    m_sim_moving = false;
-
-    resp["status"] = "OK";
-    msg << log_i("sim_stop_motor","Motor stopped successfuly");
-    resp["messages"].push_back(msg.str());
-    resp["status_code"] = OpcUa_Good;
-    //resp["message"] = "Failed to get a connection handle";
-
-    return status;
-  }
-
+  // set the motor range to validate requests
   UaStatus DIoLMotor::set_range_min(const int32_t &v)
   {
     // this is just an internal limiter, so just make the assignment
@@ -905,7 +783,6 @@ UaStatus DIoLMotor::callReset (
     UaStatus ss = getAddressSpaceLink()->setRange_min(m_range_min,OpcUa_Good);
     return ss;
   }
-
   UaStatus DIoLMotor::set_range_max(const int32_t &v)
   {
     // this is just an internal limiter, so just make the assignment
@@ -913,25 +790,29 @@ UaStatus DIoLMotor::callReset (
     UaStatus ss = getAddressSpaceLink()->setRange_max(m_range_max,OpcUa_Good);
     return ss;
   }
-
   UaStatus DIoLMotor::set_id(const std::string &id)
   {
     m_id = id;
     return OpcUa_Good;
   }
-
   UaStatus DIoLMotor::set_refresh_period(const uint16_t &v)
   {
     m_refresh_ms = v;
-    LOG(Log::INF) << "Updating refresh rate for motor " << get_id() << " to " << v << " ms";
+#ifdef DEBUG
+    LOG(Log::INF) << "Updating refresh rate for motor " << m_id << " to " << v << " ms";
+#endif
     if (v != 0 && !m_monitor)
     {
-      LOG(Log::INF) << "Starting a timer on motor " << get_id() << " to refresh every " << v << " ms";
+#ifdef DEBUG
+      LOG(Log::INF) << "Starting a timer on motor " << m_id << " to refresh every " << v << " ms";
+#endif
       timer_start(this);
     }
     else if (v == 0)
     {
+#ifdef DEBUG
       LOG(Log::WRN) << "Stopping the monitor timer" ;
+#endif
       m_monitor = false;
     }
     UaStatus st = getAddressSpaceLink()->setRefresh_period_ms(v,OpcUa_Good);
@@ -940,88 +821,86 @@ UaStatus DIoLMotor::callReset (
   }
   UaStatus DIoLMotor::set_acceleration(const uint32_t &v)
   {
-    LOG(Log::INF) << "Updating acceleration motor " << get_id() << " to " << v ;
-    if (m_is_moving)
-    {
-      // the motor is moving
-      // do not accept the update
-      return OpcUa_BadInvalidState;
-    }
-    if (m_acceleration == v)
-    {
-      // the value is the same. Do nothing
-      return OpcUa_Good;
-    }
+#ifdef DEBUG
+    LOG(Log::INF) << "Updating acceleration motor " << m_id << " to " << v ;
+#endif
     m_acceleration = v;
     UaStatus st = getAddressSpaceLink()->setAcceleration(m_acceleration,OpcUa_Good);
     return st;
   }
   UaStatus DIoLMotor::set_deceleration(const uint32_t &v)
   {
-    LOG(Log::INF) << "Updating deceleration motor " << get_id() << " to " << v ;
-    if (m_is_moving)
-    {
-      // the motor is moving
-      // do not accept the update
-      return OpcUa_BadInvalidState;
-    }
-    if (m_deceleration == v)
-    {
-      // the value is the same. Do nothing
-      return OpcUa_Good;
-    }
+#ifdef DEBUG
+    LOG(Log::INF) << "Updating deceleration motor " << m_id << " to " << v ;
+#endif
     m_deceleration = v;
     UaStatus st= getAddressSpaceLink()->setDeceleration(m_deceleration,OpcUa_Good);
     return st;
   }
   UaStatus DIoLMotor::set_speed(const uint32_t &v)
   {
-    LOG(Log::INF) << "Updating spped of motor " << get_id() << " to " << v ;
-    if (m_speed_setpoint == v)
-    {
-      // the value is the same. Do nothing
-      return OpcUa_Good;
-    }
+#ifdef DEBUG
+    LOG(Log::INF) << "Updating spped of motor " << m_id << " to " << v ;
+#endif
     m_speed_setpoint = v;
     UaStatus st = getAddressSpaceLink()->setSpeed(m_speed_setpoint,OpcUa_Good);
     return st;
-
   }
-
+  //
   UaStatus DIoLMotor::config(json &conf, json &resp)
   {
     UaStatus st = OpcUa_Good;
+    const std::string lbl = "config";
     std::ostringstream msg("");
     // -- first things first, validate the configuration fragment
-    if (!validate_config_fragment(conf,resp))
+    st = validate_config_fragment(conf,resp);
+    if (st != OpcUa_Good )
     {
       msg.clear();msg.str("");
-      msg << log_e("config"," ") << "Incomplete config fragment.";
+      msg << log_e(lbl.c_str()," ") << "Incomplete config fragment.";
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
       resp["messages"].push_back(msg.str());
       return OpcUa_BadInvalidArgument;
     }
     // first confirm that this configuration is for the correct motor
+#ifdef DEBUG
     LOG(Log::INF) << "Dumping  config fragment : " << conf.dump();
+#endif
     if (conf.at("id").get<std::string>() != get_id())
     {
       msg << log_e("config"," ") << "Mismatch in motor id on configuration token (" << get_id() << "!=" << conf.at("id").get<std::string>() << ")";
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidArgument;
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
       return OpcUa_BadInvalidArgument;
     }
-    //    else
-    //    {
-    //      // the ids match...we have the right motor, so configure it
-    //      UaString as_v(conf.at("id").get<std::string>().c_str());
-    //      st = getAddressSpaceLink()->setId(as_v,OpcUa_Good);
-    //    }
     // if the ids match, lets set the parameters
     // special iterator member functions for objects
+    // -- not that it matters in this specific case, but lets first map the registers
+    json regconf = conf.at("mmap");
+    st = map_registers(regconf,resp);
+    if (st != OpcUa_Good)
+    {
+      msg.clear();msg.str("");
+      msg << log_e(lbl.c_str()," ") << "Failed to map registers.";
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
+      return OpcUa_BadInvalidArgument;
+    }
     for (json::iterator it = conf.begin(); it != conf.end(); ++it)
     {
+#ifdef DEBUG
       LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
+#endif
       if (it.key() == "server_address")
       {
         m_server_host = it.value();
@@ -1030,9 +909,11 @@ UaStatus DIoLMotor::callReset (
         if (st!= OpcUa_Good)
         {
           msg.clear(); msg.str("");
-          msg << log_w("config","Failure updating [server_addr] in adress space. Returned code ") << st;
+          msg << log_w(lbl.c_str(),"Failure updating [server_addr] in adress space. Returned code ") << st;
           resp["messages"].push_back(msg.str());
+#ifdef DEBUG
           LOG(Log::WRN) << msg.str();
+#endif
         }
       }
       if (it.key() == "port")
@@ -1042,99 +923,106 @@ UaStatus DIoLMotor::callReset (
         if (st!= OpcUa_Good)
         {
           msg.clear(); msg.str("");
-          msg << log_w("config","Failure updating [server_port] in adress space. Returned code ") << st;
+          msg << log_w(lbl.c_str(),"Failure updating [server_port] in adress space. Returned code ") << st;
           resp["messages"].push_back(msg.str());
+#ifdef DEBUG
           LOG(Log::WRN) << msg.str();
+#endif
         }
       }
       if (it.key() == "speed")
       {
         st = set_speed(it.value());
-        getAddressSpaceLink()->setSpeed(m_speed_setpoint,st);
       }
       if (it.key() == "acceleration")
       {
         st = set_acceleration(it.value());
-        getAddressSpaceLink()->setAcceleration(m_acceleration,st);
       }
       if (it.key() == "deceleration")
       {
         st = set_deceleration(it.value());
-        getAddressSpaceLink()->setDeceleration(m_deceleration,st);
       }
       if (it.key() == "refresh_period_ms")
       {
         st = set_refresh_period(it.value());
-        getAddressSpaceLink()->setRefresh_period_ms(m_refresh_ms, st);
       }
       if (it.key() == "range")
       {
         int32_t min, max;
         min = it.value().at(0);
         max = it.value().at(1);
-
         st = set_range_min(min);
-        getAddressSpaceLink()->setRange_min(min,st);
         st = set_range_min(max);
-        getAddressSpaceLink()->setRange_max(min,st);
       }
       if (it.key() == "coordinate_index")
       {
         m_coordinate_index = it.value();
       }
-      if (it.key() == "mmap")
-      {
-        // if there are any registers there, clean them out
-        if (m_regs.size())
-        {
-          m_regs.clear();
-        }
-        json frag = it.value();
-        // now grab the entries
-        try
-        {
-          for (auto jt = frag.begin(); jt != frag .end(); ++jt)
-          {
-            motor_regs_t tmp;
-            // for these, nothing is optional
-            tmp.offset = jt.value().at(0);
-            tmp.bit_high = jt.value().at(1);
-            tmp.bit_low = jt.value().at(2);
-            tmp.addr = 0x0;
-            tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
-            m_regs.insert(std::pair<std::string,motor_regs_t>(it.key(),tmp));
-          }
-        }
-        catch(json::exception &e)
-        {
-          msg.clear();msg.str("");
-          msg << log_e("config"," ") << "Incomplete config fragment [mmap] : " << e.what();
-          resp["messages"].push_back(msg.str());
-          throw;
-        }
-        catch(std::exception &e)
-        {
-          msg.clear();msg.str("");
-          msg << log_e("config"," ") << "Problem parsing config fragment [mmap] : " << e.what();
-          resp["messages"].push_back(msg.str());
-          throw;
-        }
-      }
+//      if (it.key() == "mmap")
+//      {
+//        // if there are any registers there, clean them out
+//        if (m_regs.size())
+//        {
+//          m_regs.clear();
+//        }
+//        json frag = it.value();
+//        // now grab the entries
+//        try
+//        {
+//          for (auto jt = frag.begin(); jt != frag .end(); ++jt)
+//          {
+//            motor_regs_t tmp;
+//            // for these, nothing is optional
+//            tmp.offset = jt.value().at(0);
+//            tmp.bit_high = jt.value().at(1);
+//            tmp.bit_low = jt.value().at(2);
+//            tmp.addr = 0x0;
+//            tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
+//            m_regs.insert(std::pair<std::string,motor_regs_t>(it.key(),tmp));
+//          }
+//        }
+//        catch(json::exception &e)
+//        {
+//          msg.clear();msg.str("");
+//          msg << log_e("config"," ") << "Incomplete config fragment [mmap] : " << e.what();
+//          resp["messages"].push_back(msg.str());
+//          throw;
+//        }
+//        catch(std::exception &e)
+//        {
+//          msg.clear();msg.str("");
+//          msg << log_e("config"," ") << "Problem parsing config fragment [mmap] : " << e.what();
+//          resp["messages"].push_back(msg.str());
+//          throw;
+//        }
+//      }
     }
     // if we reached this point, things seem to be good
     // now it is time to map the registers
-    if (st == OpcUa_Good)
-    {
-      map_registers();
-    }
+//    if (st == OpcUa_Good)
+//    {
+//      map_registers();
+//    }
     return st;
   }
-
-  bool DIoLMotor::validate_config_fragment(json &conf, json &resp)
+  UaStatus DIoLMotor::validate_config_fragment(json &conf, json &resp)
   {
-    std::vector<std::string> keys = {"id","server_address","port","speed","range","acceleration","deceleration","refresh_period_ms","mmap"};
+    // this is just a validation check for the available keys.
+    // it will only check the mandatory keys.
+    const std::string lbl = "validate_config";
+    std::vector<std::string> mandatory_keys = {
+        "id","coordinate_index","server_address","server_port",
+        "speed","range","acceleration","deceleration",
+        "refresh_period_ms","refresh_movement_ms","mmap"
+    };
+    std::vector<std::string> optional_keys = {
+
+    };
+    //
+    // actually, check for all entries and report all missing ones
     std::vector<std::string> missing;
-    for (auto entry: keys)
+    //
+    for (auto entry: mandatory_keys)
     {
       if (!conf.contains(entry))
       {
@@ -1145,7 +1033,7 @@ UaStatus DIoLMotor::callReset (
     {
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_e("config","Missing entries in Laser Unit config fragment [");
+      msg << log_e(lbl.c_str(),"Missing mandatory entries in MOTOR config fragment [");
       for (auto e : missing)
       {
         msg << "(" <<  e << "),";
@@ -1153,72 +1041,86 @@ UaStatus DIoLMotor::callReset (
       msg << "]";
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidArgument;
-      return false;
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
+      return OpcUa_BadInvalidArgument;
+    }
+    //
+    missing.clear();
+    // check the optional keys
+    for (auto entry: optional_keys)
+    {
+      if (!conf.contains(entry))
+      {
+        missing.push_back(entry);
+      }
+    }
+    if (missing.size() > 0)
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      msg << log_w(lbl.c_str(),"Missing optional entries in MOTOR config fragment [");
+      for (auto e : missing)
+      {
+        msg << "(" <<  e << "),";
+      }
+      msg << "]";
+      resp["messages"].push_back(msg.str());
     }
     // all good, return true
-    return true;
+    return OpcUa_Good;
   }
   UaStatus DIoLMotor::set_position_setpoint(const int32_t target)
   {
     m_position_setpoint = target;
     return OpcUa_Good;
   }
-  UaStatus DIoLMotor::map_registers()
+  UaStatus DIoLMotor::init_cib_mem()
   {
-    // this method is specific for each device
-    // -- first obtain a map to all the memory
-    if (m_mapped_mem)
+    // -- there may be several registers to be mapped
+    cib_gpio_t tmpreg;
+    tmpreg.id = MOTOR_1_REG;
+    tmpreg.paddr = GPIO_MOTOR_1_MEM_LOW;
+    tmpreg.size = 0xFFF;
+    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MOTOR_1_MEM_LOW,GPIO_MOTOR_1_MEM_HIGH);
+    if (tmpreg.vaddr == 0x0)
     {
-      std::ostringstream msg("");
-      msg << log_e("map_registers"," ") << "Memory pointer already populated. Doing nothing.";
-      LOG(Log::WRN) << msg.str();
-      return OpcUa_Bad;
+      LOG(Log::ERR) << "\n\nFailed to map MOTOR_1 CIB memory region. This is going to fail spectacularly!!!\n\n";
     }
-#ifdef SIMULATION
-    m_mapped_mem = reinterpret_cast<uintptr_t>(new uint32_t[(CIB_CONFIG_ADDR_HIGH-CIB_CONFIG_ADDR_BASE)/sizeof(uint32_t)]);
-#else
-    m_mapped_mem = cib::util::map_phys_mem(m_mmap_fd,CIB_CONFIG_ADDR_BASE,CIB_CONFIG_ADDR_HIGH);
+    m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\n MOTOR_1_REG mapped to "
+        << std::hex << m_reg_map.at(MOTOR_1_REG).vaddr << std::dec;
 #endif
-    if (m_mapped_mem != 0)
+    tmpreg.id= MOTOR_2_REG;
+    tmpreg.paddr = GPIO_MOTOR_2_MEM_LOW;
+    tmpreg.size = 0xFFF;
+    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MOTOR_2_MEM_LOW,GPIO_MOTOR_2_MEM_HIGH);
+    if (tmpreg.vaddr == 0x0)
     {
-      // fill up each register and set the respective register pointers
-      for (auto it : m_regs)
-      {
-        // note that there are 4 bytes in each register
-        it.second.addr = (m_mapped_mem+(it.second.offset*sizeof(uint32_t)));
-      }
-      // start the movement monitor
-      move_monitor(this);
-      return OpcUa_Good;
+      LOG(Log::ERR) << "\n\nFailed to map MOTOR_2 CIB memory region. This is going to fail spectacularly!!!\n\n";
     }
-    else
+    m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\n MOTOR_2_REG mapped to " << std::hex << m_reg_map.at(MOTOR_2_REG).vaddr << std::dec;
+#endif
+    tmpreg.id= MOTOR_3_REG;
+    tmpreg.paddr = GPIO_MOTOR_3_MEM_LOW;
+    tmpreg.size = 0xFFF;
+    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MOTOR_3_MEM_LOW,GPIO_MOTOR_3_MEM_HIGH);
+    if (tmpreg.vaddr == 0x0)
     {
-      // do nothing and just complain back
-      return OpcUa_Bad;
+      LOG(Log::ERR) << "\n\nFailed to map MOTOR_3 CIB memory region. This is going to fail spectacularly!!!\n\n";
     }
-  }
-
-  UaStatus DIoLMotor::unmap_registers()
-  {
-#ifdef SIMULATION
-    delete [] reinterpret_cast<uint32_t*>(m_mapped_mem);
-    m_mapped_mem = 0;
-    m_mmap_fd = 0;
+    m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\nMOTOR_3_REG mapped to " << std::hex << m_reg_map.at(MOTOR_3_REG).vaddr << std::dec;
+#endif
+    if (m_reg_map.size() != 3)
+    {
+      // sError is a special case of status, since this
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regions. This is going to fail spectacularly!!!\n\n";
+    }
     return OpcUa_Good;
-#else
-    size_t size = CIB_CONFIG_ADDR_HIGH - CIB_CONFIG_ADDR_BASE;
-    int ret = cib::util::unmap_mem(cib::util::cast_to_void(m_mapped_mem), size);
-    if (ret == 0)
-    {
-      return OpcUa_Good;
-    }
-    else
-    {
-      return OpcUa_Bad;
-    }
-    close(m_mmap_fd);
-#endif
   }
 
   bool DIoLMotor::is_in_range(const int32_t &v)
@@ -1230,7 +1132,304 @@ UaStatus DIoLMotor::callReset (
   {
     return OpcUa_Good;
   }
+  UaStatus DIoLMotor::check_cib_mem(json &resp)
+  {
+    const std::string lbl = "check_cib";
+    if (m_reg_map.size() == 0x0)
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"CIB memory not mapped. System on lockdown.");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidState;
+      return OpcUa_BadInvalidState;
+    }
+    else
+    {
+      return OpcUa_Good;
+    }
+  }
+  UaStatus DIoLMotor::validate_registers(json &conf,json &resp)
+  {
+    const std::string lbl = "validate_registers";
+    std::vector<std::string> mandatory_keys = {
+        "direction","init_pos","cur_pos"
+    };
+    //
+    // actually, check for all entries and report all missing ones
+    std::vector<std::string> missing;
+    //
+    for (auto entry: mandatory_keys)
+    {
+      if (!conf.contains(entry))
+      {
+        missing.push_back(entry);
+      }
+    }
+    if (missing.size() > 0)
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Missing mandatory entries in CIB mmap config fragment [");
+      for (auto e : missing)
+      {
+        msg << "(" <<  e << "),";
+      }
+      msg << "]";
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
+      return OpcUa_BadInvalidArgument;
+    }
+    //
+    missing.clear();
+    // all good, return true
+    return OpcUa_Good;
+  }
+  UaStatus DIoLMotor::map_registers(json &conf,json &resp)
+  {
+    UaStatus st = validate_registers(conf,resp);
+    if (st != OpcUa_Good)
+    {
+      return OpcUa_BadInvalidArgument;
+    }
+    // this method is specific for each device
+    // -- first obtain a map to all the memory
+    std::ostringstream msg("");
+    const std::string lbl = "map_registers";
+    json reginfo = conf;
+#ifdef DEBUG
+    LOG(Log::INF) << log_i(lbl.c_str(),"Mapping registers");
+#endif
+    st = check_cib_mem(resp);
+    if(st != OpcUa_Good)
+    {
+#ifdef DEBUG
+      LOG(Log::ERR) << log_e(lbl.c_str(),"CIB memory not mapped");
+#endif
+      return st;
+    }
+    else
+    {
+      // if there are any registers there, clean them out
+      if (m_regs.size())
+      {
+        m_regs.clear();
+      }
+      // now grab the entries
+      try
+      {
+        for (auto jt = reginfo.begin(); jt != reginfo.end(); ++jt)
+        {
+          if (jt.value().at(0) == -1)
+          {
+            // disabled register
+            // skip
+            continue;
+          }
+          cib_param_t tmp;
+          // for these, nothing is optional
+          // offset corresponds to the
+          tmp.reg = m_reg_map.at(jt.value().at(0));
+          tmp.offset = jt.value().at(1);
+          tmp.bit_high = jt.value().at(2);
+          tmp.bit_low = jt.value().at(3);
+          tmp.maddr = (tmp.reg.vaddr+(tmp.offset*GPIO_CH_OFFSET));
+          tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
+#ifdef DEBUG
+          LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg.id
+              << " offset " << tmp.offset << " bh " << tmp.bit_high << " bl " << tmp.bit_low
+              << " addr " << std::hex << tmp.maddr << std::dec << " mask " << std::hex << tmp.mask
+              << std::dec << " ";
+#endif
+          m_regs.insert(std::pair<std::string,cib_param_t>(jt.key(),tmp));
+        }
+      }
+      catch(json::exception &e)
+      {
+        msg.clear();msg.str("");
+        msg << log_e(lbl.c_str()," ") << "Incomplete config fragment [mmap] : " << e.what();
+        resp["messages"].push_back(msg.str());
+        return OpcUa_Bad;
+      }
+      catch(std::exception &e)
+      {
+        msg.clear();msg.str("");
+        msg << log_e(lbl.c_str()," ") << "Problem parsing config fragment [mmap] : " << e.what();
+        resp["messages"].push_back(msg.str());
+        return OpcUa_Bad;
+      }
+    }
+    // if we reached this point, all is good, so lets start the CIB position monitoring service
+    cib_movement_monitor(this);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLMotor::check_motor_ready(json &resp)
+  {
+    if (!is_ready())
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      resp["status"] = "ERROR";
+      msg << log_e("start_move","Motor is not ready to operate");
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_BadInvalidState;
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
+      return OpcUa_BadInvalidState;
+    }
+    return OpcUa_Good;
+  }
+  UaStatus DIoLMotor::clear_cib_mem()
+   {
+    // this just cleans up the mapped GPIO registers
+    // first clear up the specific mapped registers
+    m_regs.clear();
+    for (auto item: m_reg_map)
+    {
+      cib::util::unmap_mem(item.second.vaddr,item.second.size);
+    }
+    m_reg_map.clear();
+    close(m_mmap_fd);
+    m_mmap_fd = 0x0;
+    return OpcUa_Good;
+   }
 
+  UaStatus DIoLMotor::cib_set_init_position(int32_t &pos)
+  {
+    // convert the position into a signed value with the specific mask
+    uint32_t position = cib::util::cast_from_signed(pos,m_regs.at("init_pos").mask);
+    cib::util::reg_write_mask_offset(m_regs.at("init_pos").maddr,position,m_regs.at("init_pos").mask,m_regs.at("init_pos").bit_low);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLMotor::cib_set_direction(uint32_t &dir)
+  {
+    // convert the position into a signed value with the specific mask
+    cib::util::reg_write_mask_offset(m_regs.at("direction").maddr,dir,m_regs.at("direction").mask,m_regs.at("direction").bit_low);
+    return OpcUa_Good;
+  }
+  UaStatus DIoLMotor::cib_get_position(int32_t &pos)
+  {
+    // Grab the position
+    // read the register
+    uint32_t reg_val = cib::util::reg_read(m_regs.at("position").maddr);
+    int32_t m_pos = cib::util::cast_to_signed((reg_val & m_regs.at("position").mask),m_regs.at("position").mask);
+#ifdef DEBUG
+    LOG(Log::INF) << log_i("cib_get_position","Readout position ") << m_pos;
+#endif
+    pos = m_pos;
+    return OpcUa_Good;
+  }
+
+
+  //
+  //
+  // -- simulation methods.
+  //
+  //
+  UaStatus DIoLMotor::sim_get_motor_info()
+  {
+    //
+    // - - simulate that we're just getting the current settings from the motor itself
+    //
+    // now we should parse the answer
+    // it is meant to be a json object
+    /**
+     * Typical answer: {"cur_pos":25000,"cur_speed":0,"m_temp":" 38.8","tar_pos":25000,"torque":"  1.9"}
+     */
+    // grab this from the
+    m_monitor_status = OpcUa_Good;
+    m_is_moving = m_sim_moving;
+    m_position_motor = m_sim_pos;
+    // just set the speed equal to the setting
+    m_speed_readout = m_sim_speed;
+    // the temperature is just a random number between 36 and 37 degrees
+    std::random_device rd;
+    std::mt19937 mt(rd());
+    std::uniform_real_distribution<double> dist_temp(36.0, 37.0);
+    std::uniform_real_distribution<double> dist_torque(0.0, 2.0);
+    m_temperature = dist_temp(mt);
+    m_torque = dist_torque(mt);
+    //
+    return OpcUa_Good;
+  }
+  UaStatus DIoLMotor::sim_move_motor(json &resp)
+  {
+    //
+    OpcUa_StatusCode status= OpcUa_Good;
+    //
+    // initiate the thread to start the movement simulator
+    // note that the movement is *not* realistically simulated, i.e.,
+    // only the position is being monotonically updated a rate of
+    // <speed> steps per second
+    if (m_sim_moving)
+    {
+      std::ostringstream msg("");
+      msg << log_e("sim_move_motor","Motor is already moving");
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["status_code"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
+      return OpcUa_Bad;
+    }
+    //
+    // if it is not yet moving start the thread
+    //
+    // set the simulation conditions
+    m_sim_speed = m_speed_setpoint;
+    // this permits that one changes the position set point
+    // without affecting the ongoing movement
+    m_sim_tpos = m_position_setpoint;
+    //
+    std::thread([this]()
+                {
+      this->m_sim_moving = true;
+      while (this->m_sim_moving)
+      {
+        if (!this->m_sim_moving || (this->m_sim_tpos == this->m_sim_pos))
+        {
+          // stop the thread
+          break;
+        }
+        // update every 5 ms
+        auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000/this->m_sim_speed);
+        if (this->m_sim_pos < this->m_sim_tpos)
+        {
+          this->m_sim_pos += 1;
+        } else
+        {
+          this->m_sim_pos -= 1;
+        }
+        std::this_thread::sleep_until(x);
+      }
+      LOG(Log::WRN) << "Dropping out of the sim_move thread";
+                }).detach();
+    //
+    std::ostringstream msg("");
+    msg << log_i("sim_move_motor","Motor movement initiated");
+    resp["status"] = "OK";
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = status;
+    return status;
+  }
+  UaStatus DIoLMotor::sim_stop_motor(json &resp)
+  {
+    OpcUa_StatusCode status= OpcUa_Good;
+    std::ostringstream msg("");
+    //
+    m_sim_moving = false;
+    //
+    resp["status"] = "OK";
+    msg << log_i("sim_stop_motor","Motor stopped successfuly");
+    resp["messages"].push_back(msg.str());
+    resp["status_code"] = OpcUa_Good;
+    //resp["message"] = "Failed to get a connection handle";
+    //
+    return status;
+  }
 } // -- namespace
 
 

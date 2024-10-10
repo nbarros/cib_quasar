@@ -68,7 +68,8 @@
     	addressSpaceWrite="forbidden"
     	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="unknown">
     </d:cachevariable>
-    <!-- methods that allow for standalone motor operation -->
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Int32" name="current_position_cib" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+    </d:cachevariable><!-- methods that allow for standalone motor operation -->
     <d:method name="config" executionSynchronicity="synchronous">
       <d:argument dataType="UaString" name="config_json" />
       <d:returnvalue dataType="UaString" name="response" />
@@ -86,6 +87,7 @@
     <d:method name="clear_alarm" executionSynchronicity="synchronous">
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
     
+
 
 
 
