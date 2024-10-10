@@ -7,8 +7,8 @@
 "range":[-3100,28786],
 "acceleration":200,
 "decceleration":200,
-"refresh_period_ms":50,
-"refresh_movememt_ms":10,
+"refresh_period_ms":500,
+"refresh_movememt_ms":5,
 "mmap": 
 	{
 	 "direction" : [0,3,3],

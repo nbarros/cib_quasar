@@ -30,18 +30,9 @@ using string = std::string;
 #include <json.hpp>
 using json = nlohmann::json;
 #include <mutex>
-
+#include <atomic>
 namespace Device
 {
-
-  typedef struct
-  {
-    uint16_t offset;
-    uint16_t bit_high;
-    uint16_t bit_low;
-    uintptr_t addr; // addr is the memory mapped address of this particular register
-    uint32_t mask;
-  } motor_regs_t;
 
 class
     DIoLMotor
@@ -109,7 +100,7 @@ private:
     static size_t curl_write_function(void* ptr, size_t size, size_t nmemb, std::string* data);
     //void timer_start(std::function<void(void)> func, unsigned int interval);
     // -- this one monitors the motor itself
-    void timer_start(DIoLMotor *obj);
+    void motor_monitor(DIoLMotor *obj);
 
     void refresh_server_info();
     UaStatus map_registers();
@@ -138,33 +129,35 @@ public:
     //
     void update();
     bool is_ready();
-    //
-    // Simulation functions
-    //
-    UaStatus sim_get_motor_info();
-    UaStatus sim_move_motor(json &resp);
-    UaStatus sim_stop_motor(json &resp);
 
     // -- wrapper for interface commands commands
-    UaStatus config_wrapper(json &conf, json &resp);
     UaStatus move_wrapper(int32_t dest, json &resp);
-    UaStatus get_motor_info();
+    UaStatus reset_wrapper(json &resp);
+    UaStatus clear_alarm_wrapper(json &resp);
 
-    UaStatus move_motor(json &resp);
-    UaStatus stop(json &resp);
+    // motor commands
+    UaStatus motor_get_info();
+    UaStatus motor_move(json &resp);
+    UaStatus motor_stop(json &resp);
+    UaStatus motor_clear_alarm(json &resp);
+    UaStatus motor_get_position(json &resp);
+    UaStatus motor_get_alarm(json &resp);
+    // other commands that are not specific of the motor hardware
     UaStatus config(json &conf, json &resp);
     UaStatus terminate(json &resp);
     UaStatus reset(json &resp);
     UaStatus get_alarm_state(json &resp);
-    UaStatus clear_alarm(json &resp);
 
 
     //
-    const bool get_monitor() {return m_monitor;}
-    void set_monitor(bool m) {m_monitor = m;}
+    const bool get_monitor() {return m_monitor.load();}
+    void set_monitor(bool m) {m_monitor.store(m);}
     //
     UaStatus set_range_min(const int32_t &v);
     UaStatus set_range_max(const int32_t &v);
+    int32_t get_range_min() const {return m_range_min;}
+    int32_t get_range_max() const {return m_range_max;}
+    //
     UaStatus set_refresh_period(const uint16_t &v);
     UaStatus set_acceleration(const uint32_t &v);
     UaStatus set_deceleration(const uint32_t &v);
@@ -173,31 +166,29 @@ public:
     UaStatus set_position_setpoint(const int32_t target);
     // Ua
     UaStatus set_id(const std::string &id);
-    const std::string get_id() {return m_id;}
+    inline const std::string get_id() {return m_id;}
     //
     void set_server_addr(const std::string &s);
     const std::string get_server_addr() {return m_server_host;}
     bool is_moving() const {return m_is_moving;}
     bool is_in_range(const int32_t &v);
-    int32_t get_range_min() const {return m_range_min;}
-    int32_t get_range_max() const {return m_range_max;}
 private:
 
 
     // aux methods
     // -- basic communication function. All communication goes through here
     UaStatus query_motor(const std::string request, json &reply, json &resp);
-    UaStatus query_cib_position(int32_t &pos);
-    UaStatus set_cib_init_position(int32_t &pos);
-    UaStatus set_cib_direction(int32_t &dir);
 
     // basic fundamental tests
     UaStatus check_motor_ready(json &resp);
     UaStatus check_motor_moving(json &resp);
+    UaStatus check_monitor_status(json &resp);
+    UaStatus check_position_in_range(const int32_t value, json &resp);
 
     // other aux functions
     UaStatus init_cib_mem();
     UaStatus clear_cib_mem();
+    UaStatus query_cib_position(int32_t &pos);
     void refresh_registers();
     UaStatus validate_config_fragment(json &conf, json &resp);
     UaStatus map_registers(json &conf,json &resp);
@@ -206,22 +197,20 @@ private:
     UaStatus cib_set_init_position(int32_t &pos);
     UaStatus cib_set_direction(uint32_t &dir);
     UaStatus cib_get_position(int32_t &pos);
-    // -- this one monitors the movement register
+
+    //
+    // -- timed monitors --
+    //
+    // this one monitors the movement register
     void cib_movement_monitor(DIoLMotor *obj);
 
+
+
     const uint16_t get_refresh_ms() {return m_refresh_ms;}
-    // these are internal variables to simulate the movement itself
-    void sim_mv();
-    int32_t m_sim_pos;
-    int32_t m_sim_speed;
-    int32_t m_sim_tpos;
-    bool m_sim_moving;
-    //
-    //
+
     int32_t m_position_motor;
     int32_t m_position_cib;
     int32_t m_position_setpoint;
-//    OpcUa_StatusCode m_position_setpoint_status;
     //
     bool m_is_ready; // declares where it is ready for operation
     // this essentially means that all settings are in a reasonable state
@@ -230,12 +219,13 @@ private:
     uint32_t m_deceleration;
     uint32_t m_speed_setpoint;
     uint32_t m_speed_readout; // current speed reported by the motor
-    int32_t m_alarm_code_motor;
+    int32_t  m_alarm_code_motor;
     double m_torque;
     double m_temperature;
     uint32_t m_refresh_ms;
-    bool m_monitor;
-    OpcUa_StatusCode m_monitor_status;
+    uint32_t m_refresh_cib_ms;
+    std::atomic<bool> m_monitor;
+    UaStatus m_monitor_status;
     std::string m_server_host;
     uint16_t m_server_port;
     int32_t m_range_min;

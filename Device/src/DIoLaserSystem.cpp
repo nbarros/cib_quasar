@@ -789,7 +789,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       // next stop the motors
       for (Device::DIoLMotor* lmotor : iolmotors ())
       {
-        st = lmotor->stop(resp);
+        st = lmotor->motor_stop(resp);
         if (st != OpcUa_Good)
         {
           reset(msg);
@@ -961,7 +961,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
               return st;
             }
             // now move the motor
-            st = lmotor->move_motor(resp);
+            st = lmotor->motor_move(resp);
             if (st != OpcUa_Good)
             {
               resp["status"] = "ERROR";
