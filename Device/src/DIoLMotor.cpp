@@ -575,6 +575,9 @@ namespace Device
     addr+= m_server_host;
     addr += "/api/";
     addr += request;
+#ifdef DEBUG
+    LOG(Log::INF) << log_i(lbl.c_str(),"Query address : ") << addr;
+#endif
     uint16_t lport = m_server_port;
     //mutex to
     const std::lock_guard<std::mutex> lock(m_motor_mtx);
