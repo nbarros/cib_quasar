@@ -1033,6 +1033,13 @@ namespace Device
   }
   UaStatus DIoLCIB::set_cib_value(conf_param_t &reg, const uint32_t value)
   {
+#ifdef DEBUG
+    LOG(Log::INF) << log_i("cib_set","Writting into ")
+        << " addr 0x" << std::hex << reg.maddr << std::dec
+        << " val " << value
+        << " mask 0x" << std::hex << reg.mask << std::dec
+        << " offset " << reg.bit_low;
+#endif
     cib::util::reg_write_mask_offset(reg.maddr, value, reg.mask, reg.bit_low);
     return OpcUa_Good;
   }
