@@ -681,7 +681,7 @@ namespace Device
     }
     if (reply.contains("m_temp"))
     {
-      m_temperature = reply.at("m_temp").get<double>();
+      m_temperature = std::stod(reply.at("m_temp").get<std::string>());
     }
     if (reply.contains("alarm_code"))
     {
