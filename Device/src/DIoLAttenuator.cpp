@@ -47,6 +47,8 @@ using json = nlohmann::json;
 #define log_w(m,s) log_msg("WARN",m,s)
 #define log_i(m,s) log_msg("INFO",m,s)
 
+//#define DEBUG 1
+
 namespace Device
 {
 // 1111111111111111111111111111111111111111111111111111111111111111111111111

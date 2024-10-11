@@ -41,7 +41,7 @@ using json = nlohmann::json;
 #define log_w(m,s) log_msg("WARN",m,s)
 #define log_i(m,s) log_msg("INFO",m,s)
 
-#define DEBUG 1
+//#define DEBUG 1
 using std::ostringstream;
 
 namespace Device

@@ -677,7 +677,7 @@ namespace Device
     }
     if (reply.contains("torque"))
     {
-      m_torque = reply.at("torque").get<double>();
+      m_torque = std::stod(reply.at("torque").get<std::string>());
     }
     if (reply.contains("m_temp"))
     {

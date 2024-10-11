@@ -17,7 +17,6 @@
 
  */
 
-//#define DEBUG 1
 #include <Configuration.hxx> // TODO; should go away, is already in Base class for ages
 
 #include <DIoLLaserUnit.h>
@@ -43,6 +42,7 @@ using json = nlohmann::json;
 #define log_w(m,s) log_msg("WARN",m,s)
 #define log_i(m,s) log_msg("INFO",m,s)
 //
+//#define DEBUG 1
 using std::ostringstream;
 using std::map;
 using std::string;
