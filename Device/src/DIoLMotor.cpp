@@ -586,7 +586,7 @@ namespace Device
 
       curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
       // this may eventually become a configuration parameter?
-      curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 500L);
+      //curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 500L);
 
       //curl_easy_setopt(curl, CURLOPT_USERPWD, "user:pass");
       curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.42.0");
@@ -1006,7 +1006,7 @@ namespace Device
 #endif
         }
       }
-      if (it.key() == "port")
+      if (it.key() == "server_port")
       {
         m_server_port = it.value();
         st = getAddressSpaceLink()->setServer_port(m_server_port,OpcUa_Good);
@@ -1042,7 +1042,7 @@ namespace Device
         min = it.value().at(0);
         max = it.value().at(1);
         st = set_range_min(min);
-        st = set_range_min(max);
+        st = set_range_max(max);
       }
       if (it.key() == "coordinate_index")
       {
