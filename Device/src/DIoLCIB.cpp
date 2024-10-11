@@ -719,6 +719,9 @@ namespace Device
         // set the width
         if (m_regs.find("align_width") != m_regs.end())
         {
+#ifdef DEBUG
+          LOG(Log::INF) << log_i(lbl.c_str(), "Setting align width to ") << width;
+#endif
           set_cib_align_width(m_regs.at("align_width"),width);
         }
         else
@@ -733,7 +736,10 @@ namespace Device
         period = sobj.at("period").get<uint32_t>();
         if (m_regs.find("align_period") != m_regs.end())
         {
-          set_cib_align_period(m_regs.at("align_period"),width);
+#ifdef DEBUG
+          LOG(Log::INF) << log_i(lbl.c_str(), "Setting align period to ") << period;
+#endif
+          set_cib_align_period(m_regs.at("align_period"),period);
         }
         else
         {
@@ -747,6 +753,9 @@ namespace Device
         bool align_enabled = sobj.at("enabled").get<bool>();
         if (m_regs.find("align_state") != m_regs.end())
         {
+#ifdef DEBUG
+          LOG(Log::INF) << log_i(lbl.c_str(), "Setting align state to ") << align_enabled;
+#endif
           set_cib_align_state(m_regs.at("align_state"),align_enabled);
         }
         else
