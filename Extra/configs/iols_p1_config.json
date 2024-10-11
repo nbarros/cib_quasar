@@ -29,17 +29,17 @@
 	"server_address":"192.168.2.173",
 	"port":5000,
 	"speed":200,
-	"range":[-3100,28786],
+	"range":[-580000,580000],
 	"acceleration":200,
 	"decceleration":200,
-	"refresh_period_ms":50,
-	"refresh_movememt_ms":10,
+	"refresh_period_ms":500,
+	"refresh_movememt_ms":5,
 	"motor_com_timeout_ms" : 500,
 	"mmap": 
 		{
-		 "direction" : [0,3,3],
-		 "init_pos" : [1,20,0],
-		 "cur_pos" : [4,20,0]
+		 "direction" : [6,0,31,31],
+		 "init_pos" : [6,0,21,0],
+		 "cur_pos" : [6,1,21,0]
 		}
 	},
 	{
@@ -48,16 +48,16 @@
 	"server_address":"192.168.2.173",
 	"port":5000,
 	"speed":200,
-	"range":[-3100,28786],
+	"range":[-580000,580000],
 	"acceleration":200,
 	"decceleration":200,
-	"refresh_period_ms":50,
-	"refresh_movememt_ms":10,
+	"refresh_period_ms":500,
+	"refresh_movememt_ms":5,
 	"mmap": 
 		{
-		 "direction" : [0,3,3],
-		 "init_pos" : [1,20,0],
-		 "cur_pos" : [4,20,0]
+		 "direction" : [7,0,31,31],
+		 "init_pos" : [7,0,21,0],
+		 "cur_pos" : [7,1,21,0]
 		}
 	
 	},
@@ -70,13 +70,13 @@
 	"range":[-3100,28786],
 	"acceleration":200,
 	"decceleration":200,
-	"refresh_period_ms":50,
-	"refresh_movememt_ms":10,
+	"refresh_period_ms":500,
+	"refresh_movememt_ms":5,
 	"mmap": 
 		{
-		"direction" : [0,3,3],
-		 "init_pos" : [1,20,0],
-		 "cur_pos" : [4,20,0]
+		"direction" : [8,0,31,31],
+		 "init_pos" : [8,0,16,0],
+		 "cur_pos" : [8,1,16,0]
 		}
 	}
 ],

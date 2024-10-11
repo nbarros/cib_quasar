@@ -995,6 +995,11 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       //
       //
       // we have reached the destination
+      // step 2.0 : start power meter readings
+      for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+      {
+        st = lmeter->start_readings(resp);
+      }
       // step 2: resume operation of the laser unit
       st = iollaserunit()->fire_discrete_shots(num_pulses,resp);
       if (st != OpcUa_Good)
@@ -1011,6 +1016,11 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       // at this stage we are done
       // make sure that the laser is in pause state
       iollaserunit()->pause(resp);
+      for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+      {
+        st = lmeter->stop_readings(resp);
+      }
+
     }
     catch(json::exception &e)
     {
@@ -1331,6 +1341,12 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     // step 3: initiate movement (already done)
     //
     //
+    // step 2.0 : start power meter readings
+    for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+    {
+      st = lmeter->start_readings(resp);
+    }
+
     // step 4: tell laser to get into business
     //
     st = iollaserunit()->resume(resp);
@@ -1374,6 +1390,11 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       return;
     }
     // if it reached this stage, all is well and work is done
+    for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+    {
+      st = lmeter->stop_readings(resp);
+    }
+
   }
 
 
