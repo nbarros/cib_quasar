@@ -108,11 +108,6 @@ namespace Device
     // everything else will be processed in contained form
     //getAddressSpaceLink()->setPositionSetPoint(m_position_setpoint, OpcUa_BadWaitingForInitialData);
 
-#ifdef SIMULATION
-    LOG(Log::WRN)<< "***!!! RUNNING IN SIMULATION MODE !!!***";
-#endif
-    //
-
     // allocate the memory mapped registers
     (void)init_cib_mem();
 

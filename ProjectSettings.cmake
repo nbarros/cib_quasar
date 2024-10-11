@@ -14,7 +14,7 @@ set(SERVER_INCLUDE_DIRECTORIES  )
 set(SERVER_LINK_LIBRARIES  "-lcurl" spdlog i2c cib_i2c)
 set(SERVER_LINK_DIRECTORIES  )
 
-add_compile_definitions(SIMULATION)
+#add_compile_definitions(SIMULATION)
 
 
 ##set(CMAKE_VERBOSE_MAKEFILE ON)

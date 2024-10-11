@@ -83,8 +83,10 @@ namespace Device
         , m_prev_tot_sys(0)
         , m_prev_tot_idle(0)
         , m_total(0)
+        ,m_mmap_fd(0)
         {
     /* fill up constructor body here */
+    m_id = id();
     // start by initializing the initial counters
     FILE* file = fopen("/proc/stat", "r");
     int ret = fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
