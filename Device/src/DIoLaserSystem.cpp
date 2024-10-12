@@ -518,7 +518,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     try
     {
       // convert to an array that
-      std::string appr(response.toUtf8());
+      std::string appr(approach.toUtf8());
       st = move_to_pos(position,appr,resp);
     }
     catch(json::exception &e)
@@ -2029,10 +2029,14 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     if ((position.size() != 3) || (approach.size()!= 3))
     {
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Arguments do not have the right size. Both should have dimension 3");
+      msg << log_e(lbl.c_str(),"Arguments do not have the right size. Both should have dimension 3. ")
+          << "Got pos " << position.size() << " approach " << approach.size() << " : " << approach;
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidArgument;
+#ifdef DEBUG
+      LOG(Log::ERR) << msg.str();
+#endif
       return OpcUa_BadInvalidArgument;
     }
     for (size_t idx = 0; idx < approach.size(); idx++)

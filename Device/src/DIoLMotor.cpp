@@ -575,9 +575,9 @@ namespace Device
     addr+= m_server_host;
     addr += "/api/";
     addr += request;
-#ifdef DEBUG
-    LOG(Log::INF) << log_i(lbl.c_str(),"Query address : ") << addr;
-#endif
+//#ifdef DEBUG
+//    LOG(Log::INF) << log_i(lbl.c_str(),"Query address : ") << addr;
+//#endif
     uint16_t lport = m_server_port;
     //mutex to
     const std::lock_guard<std::mutex> lock(m_motor_mtx);
@@ -621,9 +621,9 @@ namespace Device
         m_monitor_status = OpcUa_BadResourceUnavailable;
         return OpcUa_BadCommunicationError;
       }
-#ifdef DEBUG
-      LOG(Log::INF) << "Received response [" << response_string << "]";
-#endif
+//#ifdef DEBUG
+//      LOG(Log::INF) << log_i(lbl.c_str(),"Received response [") << response_string << "]";
+//#endif
       try
       {
         reply = json::parse(response_string);
@@ -1177,10 +1177,7 @@ namespace Device
   {
     UaStatus st = motor_get_position(resp);
     pos = m_position_motor;
-    if (st != OpcUa_Good)
-    {
-      return st;
-    }
+    return st;
   }
 
   UaStatus DIoLMotor::init_cib_mem()
