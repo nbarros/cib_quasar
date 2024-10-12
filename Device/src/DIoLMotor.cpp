@@ -1168,6 +1168,21 @@ namespace Device
     m_position_setpoint = target;
     return OpcUa_Good;
   }
+  UaStatus DIoLMotor::get_position_setpoint(int32_t &target)
+  {
+    target = m_position_setpoint;
+    return OpcUa_Good;
+  }
+  UaStatus DIoLMotor::get_position_motor(int32_t &pos, json &resp)
+  {
+    UaStatus st = motor_get_position(resp);
+    pos = m_position_motor;
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
+  }
+
   UaStatus DIoLMotor::init_cib_mem()
   {
     // -- there may be several registers to be mapped

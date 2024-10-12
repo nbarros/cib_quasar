@@ -164,6 +164,11 @@ public:
     UaStatus set_speed(const uint32_t &v);
     const size_t get_coordinate_index() {return m_coordinate_index;}
     UaStatus set_position_setpoint(const int32_t target);
+    UaStatus get_position_setpoint(int32_t &target);
+
+    UaStatus get_position_motor(int32_t &pos, json &resp);
+
+
     // Ua
     UaStatus set_id(const std::string &id);
     inline const std::string get_id() {return m_id;}

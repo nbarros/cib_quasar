@@ -2019,7 +2019,117 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       const std::vector<OpcUa_Byte>&  approach,
       json &resp)
   {
+    const std::string lbl = "move_to_pos";
+    const uint32_t overstep = 200;
     std::ostringstream msg("");
+    UaStatus st = OpcUa_Good;
+    bool error_moving = false;
+    // before we do anything check the valid approaches
+    bool failed_validation = false;
+    if ((position.size() != 3) || (approach.size()!= 3))
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Arguments do not have the right size. Both should have dimension 3");
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
+      return OpcUa_BadInvalidArgument;
+    }
+    for (std::vector<OpcUa_Byte>::size_type idx = 0; idx < approach.size(); idx++)
+    {
+      switch (approach.at(idx))
+      {
+        case 'u':
+        case 'd':
+        case '-':
+          break;
+        default:
+          msg.clear(); msg.str("");
+          msg << log_e("move_to_pos","Failed to validate the approach options ")
+              << " for entry " << idx << ". Should be one of ('u', 'd','-')";
+          resp["messages"].push_back(msg.str());
+          failed_validation = true;
+          break;
+      }
+    }
+    if (failed_validation)
+    {
+      resp["status"] = "ERROR";
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
+      return OpcUa_BadInvalidArgument;
+    }
+    // -- Validations passed. Starting the work
+    for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < position.size(); idx++)
+    {
+      // get the motor that is responsible for this coordinate
+      Device::DIoLMotor* lmotor = iolmotors().at(m_map_motor_coordinates.at(idx));
+      // get its current position
+      int32_t c_pos;
+      st = lmotor->get_position_motor(c_pos,resp);
+      if (st != OpcUa_Good)
+      {
+        // failed to query the motor. Fail here as well
+        return st;
+      }
+      // we have the current position, decide whether the approach is good or requires some overstepping
+      if (c_pos < position.at(idx))
+      {
+        // current position is "below" the target, only 'u' requires overstepping
+        if (approach.at(idx) == 'u')
+        {
+          int32_t interim_target = position.at(idx) + overstep;
+          st = lmotor->move_wrapper(interim_target,resp);
+          if (st != OpcUa_Good)
+          {
+            resp["status"] = "ERROR";
+            reset(msg);
+            msg << log_e("move_motor","Failed to set target position for motor (id : ")
+                                                        << lmotor->get_id() << ").";
+            resp["messages"].push_back(msg.str());
+            resp["statuscode"] = static_cast<uint32_t>(st);
+            // nothing is being done, so just terminate this task
+            return st;
+          }
+        }
+        // now we can move to the *real* target position
+      }
+      else if (c_pos > position.at(idx))
+      {
+        // we are above. If approach is 'd', we have to overstep
+        // current position is "below" the target, only 'u' requires overstepping
+        if (approach.at(idx) == 'd')
+        {
+          int32_t interim_target = position.at(idx) - overstep;
+          st = lmotor->move_wrapper(interim_target,resp);
+          if (st != OpcUa_Good)
+          {
+            resp["status"] = "ERROR";
+            reset(msg);
+            msg << log_e("move_motor","Failed to set target position for motor (id : ")
+                                                        << lmotor->get_id() << ").";
+            resp["messages"].push_back(msg.str());
+            resp["statuscode"] = static_cast<uint32_t>(st);
+            // nothing is being done, so just terminate this task
+            return st;
+          }
+        }
+      }
+      // if we reached this point, we are ready to go to the *real* target position
+      st = lmotor->move_wrapper(position.at(idx),resp);
+      if (st != OpcUa_Good)
+      {
+        resp["status"] = "ERROR";
+        reset(msg);
+        msg << log_e("move_motor","Failed to set target position for motor (id : ")
+                                                    << lmotor->get_id() << ").";
+        resp["messages"].push_back(msg.str());
+        resp["statuscode"] = static_cast<uint32_t>(st);
+        // nothing is being done, so just terminate this task
+        return st;
+      }
+    }
+    // nothin failed so far...we should be where we want.
+
     // don't implement this yet
     return OpcUa_Good;
   }
