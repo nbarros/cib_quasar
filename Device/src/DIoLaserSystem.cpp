@@ -507,7 +507,7 @@ UaStatus DIoLaserSystem::callShutdown (
 }
 UaStatus DIoLaserSystem::callMove_to_pos (
     const std::vector<OpcUa_Int32>&  position,
-    const std::vector<OpcUa_Byte>&  approach,
+    const UaString&  approach,
     UaString& response
 )
 {
@@ -517,7 +517,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     UaStatus st;
     try
     {
-      st = move_to_pos(position,approach,resp);
+      // convert to an array that
+      std::string appr(response.toUtf8());
+      st = move_to_pos(position,appr,resp);
     }
     catch(json::exception &e)
     {
@@ -543,7 +545,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
     }
-    //response = UaString(resp.dump().c_str());
+    response = UaString(resp.dump().c_str());
     return OpcUa_Good;
 }
 
@@ -2015,9 +2017,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
   }
 
   UaStatus DIoLaserSystem::move_to_pos(
-      const std::vector<OpcUa_Int32>&  position,
-      const std::vector<OpcUa_Byte>&  approach,
-      json &resp)
+      const std::vector<OpcUa_Int32>&  position,const std::string approach, json &resp)
   {
     const std::string lbl = "move_to_pos";
     const uint32_t overstep = 200;
@@ -2035,7 +2035,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       resp["statuscode"] = OpcUa_BadInvalidArgument;
       return OpcUa_BadInvalidArgument;
     }
-    for (std::vector<OpcUa_Byte>::size_type idx = 0; idx < approach.size(); idx++)
+    for (size_t idx = 0; idx < approach.size(); idx++)
     {
       switch (approach.at(idx))
       {

@@ -92,7 +92,7 @@ public:
     ) ;
     UaStatus callMove_to_pos (
         const std::vector<OpcUa_Int32>&  position,
-        const std::vector<OpcUa_Byte>&  approach,
+        const UaString&  approach,
         UaString& response
     ) ;
 
@@ -123,9 +123,7 @@ private:
     UaStatus warmup(json &resp);
     UaStatus shutdown(json &resp);
     UaStatus move_to_pos(
-        const std::vector<OpcUa_Int32>&  position,
-        const std::vector<OpcUa_Byte>&  approach,
-        json &resp);
+        const std::vector<int32_t>&  position, const std::string approach,json &resp);
     // this is a stripped down version that does not make any checks
     // those are supposed to have been made before
     UaStatus move_motor(
