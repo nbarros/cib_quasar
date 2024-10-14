@@ -1425,6 +1425,10 @@ namespace Device
     // convert the position into a signed value with the specific mask
     uint32_t position = cib::util::cast_from_signed(pos,m_regs.at("init_pos").mask);
     cib::util::reg_write_mask_offset(m_regs.at("init_pos").maddr,position,m_regs.at("init_pos").mask,m_regs.at("init_pos").bit_low);
+    // load the initial position into the firmware
+    cib::util::reg_write_mask_offset(m_regs.at("load").maddr,0x1,m_regs.at("load").mask,m_regs.at("load").bit_low);
+    // and now untoggle it
+    cib::util::reg_write_mask_offset(m_regs.at("load").maddr,0x0,m_regs.at("load").mask,m_regs.at("load").bit_low);
     return OpcUa_Good;
   }
   UaStatus DIoLMotor::cib_set_direction(uint32_t &dir)
