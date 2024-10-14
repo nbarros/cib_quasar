@@ -100,7 +100,7 @@ DIoLLaserUnit::DIoLLaserUnit (
             ,m_fire_width(10)
             ,m_serial_number("")
             ,m_warmup_timer(20) // 30 min
-            ,m_serial_busy(false)
+//            ,m_serial_busy(false)
             ,m_config_completed(false)
 {
     /* fill up constructor body here */
@@ -1369,8 +1369,8 @@ UaStatus DIoLLaserUnit::callResume (
     // this call does not care for sError state.
     // it attempts to do a peaceful shutdown, regardless of the overall state
     //    UaStatus st = OpcUa_Good;
-    // we want terminate to take over the mutex
-    const std::lock_guard<std::mutex> lock(m_serial_mutex);
+    // we want terminate to take over the mutex as early as possible.
+    // everything else is secondary
     std::ostringstream msg("");
     const std::string lbl = "terminate";
 #ifdef DEBUG
@@ -1427,23 +1427,25 @@ UaStatus DIoLLaserUnit::callResume (
 #ifdef DEBUG
       LOG(Log::INF) << log_i(lbl.c_str(),"Closing laser shutter");
 #endif
+      // potential source of trouble here...close/open shutter
+      // also lock the mutex, which will put them hanging, since the mutex is already on hold here
     switch_laser_shutter(ShutterState::sClose,resp);
     // at this stage, nothing else to be done.
     // just delete the device and go into offline mode
     // -- now just delete the device
     // FIXME: There is a potential rate condition here... if while we are terminating, other requests sit on a queue
     update_status(sOffline);
-    while (m_serial_busy.load())
-    {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-    m_serial_busy.store(true);
+//    while (m_serial_busy.load())
+//    {
+//      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//    }
+//    m_serial_busy.store(true);
     if (m_laser)
     {
       delete m_laser;
     }
     m_laser = nullptr;
-    m_serial_busy.store(false);
+//    m_serial_busy.store(false);
     m_config_completed = false;
     return OpcUa_Good;
   }
@@ -1720,6 +1722,7 @@ UaStatus DIoLLaserUnit::callResume (
       terminate(resp);
       return st;
     }
+    //    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     st = check_laser_instance(resp);
     if (st != OpcUa_Good)
     {
@@ -1820,12 +1823,15 @@ UaStatus DIoLLaserUnit::callResume (
   }
   void DIoLLaserUnit::refresh_status(json &resp)
   {
+    //FIXME: There is a bug here, where after calling shutdown, this method crashes due to ongoing
+    // connection
     std::ostringstream msg("");
     uint16_t status = 99;
     std::string desc;
     bool got_exception = false;
     const std::string lbl = "refresh_status";
     UaStatus st = OpcUa_Good;
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     st = check_laser_instance(resp);
     if (st != OpcUa_Good)
     {
@@ -1833,13 +1839,13 @@ UaStatus DIoLLaserUnit::callResume (
     }
     try
     {
-      while (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
+      //      while (m_serial_busy.load())
+      //      {
+      //        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      //      }
+      //      m_serial_busy.store(true);
       m_laser->security(status, desc);
-      m_serial_busy.store(false);
+      // m_serial_busy.store(false);
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
       UaString ss(m_status_map.at(m_status).c_str());
       getAddressSpaceLink()->setState(ss,OpcUa_Good);
@@ -1872,7 +1878,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
+      //      m_serial_busy.store(false);
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadDataUnavailable);
     }
   }
@@ -1978,6 +1984,7 @@ UaStatus DIoLLaserUnit::callResume (
     {
       return st;
     }
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     st = check_laser_instance(resp);
     if (st != OpcUa_Good)
     {
@@ -1988,13 +1995,13 @@ UaStatus DIoLLaserUnit::callResume (
     // everything seems ready. Get counter
     try
     {
-      while (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
+//      while (m_serial_busy.load())
+//      {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//      }
+//      m_serial_busy.store(true);
       m_laser->get_shot_count(count);
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
       // set the local cache
       m_shot_count = count;
       getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_Good);
@@ -2025,7 +2032,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (caught_exception)
     {
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
       LOG(Log::ERR) << msg.str();
       getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_BadCommunicationError);
     }
@@ -2076,24 +2083,24 @@ UaStatus DIoLLaserUnit::callResume (
         msg << log_w(lbl.c_str(),"System already initialized. Just reconfiguring.");
         resp["messages"].push_back(msg.str());
         bool clean_and_rebuild = false;
-        while (m_serial_busy.load())
-        {
-          std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
-        m_serial_busy.store(true);
+//        while (m_serial_busy.load())
+//        {
+//          std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//        }
+//        m_serial_busy.store(true);
         std::string lport = m_laser->get_port();
-        m_serial_busy.store(false);
+//        m_serial_busy.store(false);
         if (lport != m_comport)
         {
           clean_and_rebuild = true;
         }
-        while (m_serial_busy.load())
-        {
-          std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
-        m_serial_busy.store(true);
+//        while (m_serial_busy.load())
+//        {
+//          std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//        }
+//        m_serial_busy.store(true);
         uint16_t lbaud = m_laser->get_baud();
-        m_serial_busy.store(false);
+//        m_serial_busy.store(false);
 
         if (lbaud != m_baud_rate)
         {
@@ -2102,22 +2109,16 @@ UaStatus DIoLLaserUnit::callResume (
         if (clean_and_rebuild)
         {
           // that means that we should terminate and recreate
+          // grab a mutex to destroy the object, so we don't leave operations hanging
+          const std::lock_guard<std::mutex> lock(m_serial_mutex);
           delete m_laser;
           m_laser = nullptr;
-//#ifdef SIMULATION
-//          m_laser = new device::LaserSim();
-//#else
           m_laser = new device::Laser(m_comport.c_str(),m_baud_rate);
-//#endif
         }
       }
       else
       {
-//#ifdef SIMULATION
-//        m_laser = new device::LaserSim();
-//#else
         m_laser = new device::Laser(m_comport.c_str(),m_baud_rate);
-//#endif
       }
       // -- now that we have the system, let's update the settings in
       // the local cache
@@ -2171,7 +2172,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
       terminate(resp);
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
@@ -2196,6 +2197,7 @@ UaStatus DIoLLaserUnit::callResume (
     static ostringstream msg("");
     bool got_exception = false;
     const std::string lbl = "write_divider";
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     UaStatus st = check_ready_state(resp);
     if (st != OpcUa_Good)
     {
@@ -2213,13 +2215,13 @@ UaStatus DIoLLaserUnit::callResume (
     }
     try
     {
-      while (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
+//      while (m_serial_busy.load())
+//      {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//      }
+//      m_serial_busy.store(true);
       m_laser->set_prescale(nv);
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
       m_divider = nv;
       // update the address space as well
       getAddressSpaceLink()->setRep_rate_divider(m_divider, OpcUa_Good);
@@ -2250,7 +2252,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
       getAddressSpaceLink()->setRep_rate_divider(m_divider, OpcUa_BadCommunicationError);
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
@@ -2272,16 +2274,18 @@ UaStatus DIoLLaserUnit::callResume (
     static ostringstream msg("");
     bool got_exception = false;
     const std::string lbl = "write_rate";
-//    UaStatus st = OpcUa_Good;
-    if (m_status != sReady)
+    UaStatus st = OpcUa_Good;
+    // once the mutex is acquired, no more troubles should happen
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
+    st = check_laser_instance(resp);
+    if (st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_e("prescale"," ") << "Laser is not in ready state. Current state :" << m_status_map.at(m_status);
-      resp["messages"].push_back(msg.str());
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
-      return OpcUa_BadInvalidState;
+      return st;
+    }
+    st = check_ready_state(resp);
+    if (st != OpcUa_Good)
+    {
+      return st;
     }
     // check range
     if (v <= 0.0 || v > 20.0)
@@ -2298,16 +2302,16 @@ UaStatus DIoLLaserUnit::callResume (
     }
     try
     {
-      while (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
+//      while (m_serial_busy.load())
+//      {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//      }
+//      m_serial_busy.store(true);
       m_laser->set_repetition_rate(v);
-#ifdef DEBUG
-      LOG(Log::INF) << log_i(lbl.c_str(),"Repetition rate set 1");
-#endif
-      m_serial_busy.store(false);
+//#ifdef DEBUG
+//      LOG(Log::INF) << log_i(lbl.c_str(),"Repetition rate set 1");
+//#endif
+//      m_serial_busy.store(false);
 #ifdef DEBUG
       LOG(Log::INF) << log_i(lbl.c_str(),"Repetition rate set");
 #endif
@@ -2340,7 +2344,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
       getAddressSpaceLink()->setRep_rate_hz(m_rate_hz, OpcUa_BadCommunicationError);
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
@@ -2360,17 +2364,8 @@ UaStatus DIoLLaserUnit::callResume (
     static ostringstream msg("");
     bool got_exception = false;
     const std::string lbl = "write_hv";
-    if (m_status != sReady)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str()," ") << "Laser is not in ready state. Current state :" << m_status_map.at(m_status);
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
-      resp["messages"].push_back(msg.str());
-      LOG(Log::ERR) << msg.str();
-      return OpcUa_BadInvalidState;
-    }
+    UaStatus st = OpcUa_Good;
+    // once the mutex is acquired, no more troubles should happen
     // check range
     if ((v < 0) || (v > 1.3))
     {
@@ -2384,20 +2379,26 @@ UaStatus DIoLLaserUnit::callResume (
       resp["statuscode"] = OpcUa_BadOutOfRange;
       return OpcUa_BadOutOfRange; // avoid overflow
     }
-    UaStatus st = check_laser_instance(resp);
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
+    st = check_laser_instance(resp);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
+    st = check_ready_state(resp);
     if (st != OpcUa_Good)
     {
       return st;
     }
     try
     {
-      while (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
+//      while (m_serial_busy.load())
+//      {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//      }
+//      m_serial_busy.store(true);
       m_laser->set_pump_voltage(v);
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
 #ifdef DEBUG
       LOG(Log::INF) << log_i(lbl.c_str(),"Voltage set");
 #endif
@@ -2430,7 +2431,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
       getAddressSpaceLink()->setDischarge_voltage_kV(m_pump_hv, OpcUa_BadCommunicationError);
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
@@ -2457,7 +2458,7 @@ UaStatus DIoLLaserUnit::callResume (
     //#ifdef DEBUG
     //    LOG(Log::INF) << log_i("update","Updating...");
     //#endif
-    const std::lock_guard<std::mutex> lock(m_serial_mutex);
+//    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     json resp;
     if (m_laser)
     {
@@ -2549,23 +2550,16 @@ UaStatus DIoLLaserUnit::callResume (
     {
       return st;
     }
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     st = check_laser_instance(resp);
-    if (st!=OpcUa_Good)
+    if (st != OpcUa_Good)
     {
       return st;
     }
-    // if the laser is not in the sReady state, also do nothing
-    // likely some parameter is not set yet
-    // also fail if the laser is firing
-    if (m_status != sReady)
+    st = check_ready_state(resp);
+    if (st != OpcUa_Good)
     {
-      msg.clear(); msg.str("");
-      msg << log_e("single_shot","The laser is in the wrong state") << " (expected " << static_cast<uint16_t>(sReady) << " have " << static_cast<uint16_t>(m_status) << ")";
-      LOG(Log::ERR) << msg.str();
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_BadInvalidState;
+      return st;
     }
     // if the shutter is not open, there is no point in firing
     //
@@ -2598,13 +2592,13 @@ UaStatus DIoLLaserUnit::callResume (
       // once the external shutter is in place, one should actually stop using this command and instead
       // drive a single shot from the CIB (so that the external shutter is also timely opened)
       update_status(sLasing);
-      while (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
+//      while (m_serial_busy.load())
+//      {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//      }
+//      m_serial_busy.store(true);
       m_laser->single_shot(); // ensure that the prescale is rescaled
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
       update_status(sReady);
     }
     catch(serial::PortNotOpenedException &e)
@@ -2633,7 +2627,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (caught_exception)
     {
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -3478,15 +3472,22 @@ UaStatus DIoLLaserUnit::callResume (
     const std::string lbl = "close_shutter";
     std::ostringstream msg("");
     bool got_exception = false;
+    UaStatus st = OpcUa_Good;
     try
     {
-      while (m_serial_busy.load())
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
+      st = check_laser_instance(resp);
+      if (st != OpcUa_Good)
       {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        return st;
       }
-      m_serial_busy.store(true);
+//     while (m_serial_busy.load())
+//      {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//      }
+//      m_serial_busy.store(true);
       m_laser->shutter_close();
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3514,8 +3515,10 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"]= OpcUa_BadCommunicationError;
@@ -3530,15 +3533,22 @@ UaStatus DIoLLaserUnit::callResume (
     const std::string lbl = "open_shutter";
     std::ostringstream msg("");
     bool got_exception = false;
+    UaStatus st = OpcUa_Good;
     try
     {
-      while (m_serial_busy.load())
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
+      st = check_laser_instance(resp);
+      if (st != OpcUa_Good)
       {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        return st;
       }
-      m_serial_busy.store(true);
+//      while (m_serial_busy.load())
+//      {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//      }
+//      m_serial_busy.store(true);
       m_laser->shutter_open();
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3566,8 +3576,10 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"]= OpcUa_BadCommunicationError;
@@ -3582,15 +3594,22 @@ UaStatus DIoLLaserUnit::callResume (
     const std::string desc = "start_fire";
     std::ostringstream msg("");
     bool got_exception = false;
+    UaStatus st = OpcUa_Good;
     try
     {
-      while (m_serial_busy.load())
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
+      st = check_laser_instance(resp);
+      if (st != OpcUa_Good)
       {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        return st;
       }
-      m_serial_busy.store(true);
+//      while (m_serial_busy.load())
+//      {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//      }
+//      m_serial_busy.store(true);
       m_laser->fire_start();
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3618,8 +3637,10 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"]= OpcUa_BadCommunicationError;
@@ -3633,15 +3654,22 @@ UaStatus DIoLLaserUnit::callResume (
     const std::string desc = "stop_fire";
     std::ostringstream msg("");
     bool got_exception = false;
+    UaStatus st = OpcUa_Good;
     try
     {
-      while (m_serial_busy.load())
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
+      st = check_laser_instance(resp);
+      if (st != OpcUa_Good)
       {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        return st;
       }
-      m_serial_busy.store(true);
+//      while (m_serial_busy.load())
+//      {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//      }
+//      m_serial_busy.store(true);
       m_laser->fire_stop();
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3669,8 +3697,10 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"]= OpcUa_BadCommunicationError;
@@ -3684,15 +3714,22 @@ UaStatus DIoLLaserUnit::callResume (
     const std::string lbl = "security";
     std::ostringstream msg("");
     bool got_exception = false;
+    UaStatus st = OpcUa_Good;
     try
     {
-      while (m_serial_busy.load())
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
+      st = check_laser_instance(resp);
+      if (st != OpcUa_Good)
       {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        return st;
       }
-      m_serial_busy.store(true);
+//      while (m_serial_busy.load())
+//      {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+//      }
+//      m_serial_busy.store(true);
       m_laser->security(code,desc);
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3720,8 +3757,10 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
+//      m_serial_busy.store(false);
+#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
+#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"]= OpcUa_BadCommunicationError;
