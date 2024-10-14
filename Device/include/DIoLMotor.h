@@ -100,7 +100,8 @@ private:
     static size_t curl_write_function(void* ptr, size_t size, size_t nmemb, std::string* data);
     //void timer_start(std::function<void(void)> func, unsigned int interval);
     // -- this one monitors the motor itself
-    void motor_monitor(DIoLMotor *obj);
+    void motor_stats_monitor();
+    void motor_position_monitor();
 
     void refresh_server_info();
     UaStatus map_registers();
@@ -150,8 +151,10 @@ public:
 
 
     //
-    const bool get_monitor() {return m_monitor.load();}
-    void set_monitor(bool m) {m_monitor.store(m);}
+    const bool get_stats_monitor() {return m_stats_monitor.load();}
+    void set_stats_monitor(bool m) {m_stats_monitor.store(m);}
+    const bool get_position_monitor() {return m_position_monitor.load();}
+    void set_position_monitor(bool m) {m_position_monitor.store(m);}
     //
     UaStatus set_range_min(const int32_t &v);
     UaStatus set_range_max(const int32_t &v);
@@ -207,7 +210,7 @@ private:
     // -- timed monitors --
     //
     // this one monitors the movement register
-    void cib_movement_monitor(DIoLMotor *obj);
+    void cib_movement_monitor();
 
 
 
@@ -229,7 +232,8 @@ private:
     double m_temperature;
     uint32_t m_refresh_ms;
     uint32_t m_refresh_cib_ms;
-    std::atomic<bool> m_monitor;
+    std::atomic<bool> m_stats_monitor;
+    std::atomic<bool> m_position_monitor;
     UaStatus m_monitor_status;
     std::string m_server_host;
     uint16_t m_server_port;

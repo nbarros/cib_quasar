@@ -23,7 +23,8 @@
 	</d:cachevariable>
     <d:cachevariable name="current_position_motor" addressSpaceWrite="forbidden" dataType="OpcUa_Int32" initializeWith="valueAndStatus" nullPolicy="nullAllowed" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus"
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Int32" name="current_position_cib" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+    </d:cachevariable><d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_UInt16" name="refresh_period_ms"
     	nullPolicy="nullForbidden" addressSpaceWrite="delegated"
     	initialValue="5" initialStatus="OpcUa_Good">
@@ -38,14 +39,6 @@
   </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="alarm_desc" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="none">
   </d:cachevariable>
-    
-    
-    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="operation_status" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData"><!--operation_status corresponds to a bitmask. The codes are documented in the manual-->
-    </d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="rpi_cpu" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
-	</d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Float" name="rpi_mem" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
-	</d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_UInt32" name="acceleration"
     	nullPolicy="nullForbidden" addressSpaceWrite="delegated"
@@ -68,8 +61,7 @@
     	addressSpaceWrite="forbidden"
     	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="unknown">
     </d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Int32" name="current_position_cib" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
-    </d:cachevariable><!-- methods that allow for standalone motor operation -->
+    <!-- methods that allow for standalone motor operation -->
     <d:method name="config" executionSynchronicity="synchronous">
       <d:argument dataType="UaString" name="config_json" />
       <d:returnvalue dataType="UaString" name="response" />
