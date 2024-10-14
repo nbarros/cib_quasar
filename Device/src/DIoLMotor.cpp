@@ -545,11 +545,23 @@ namespace Device
       {
         auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_refresh_cib_ms);
         prev_pos =m_position_cib;
-        m_position_cib = cib::util::reg_read(m_regs.at("cur_pos").maddr);
+        int32_t cpos;
+        UaStatus st = cib_get_position(cpos);
+#ifdef DEBUG
+        if (st != OpcUa_Good)
+        {
+          LOG(Log::ERR) << log_e("cib_monitor","Failed to get the current position : ") << cpos;
+        }
+#endif
+        m_position_cib = cpos;
+        getAddressSpaceLink()->setCurrent_position_cib(m_position_cib,OpcUa_Good);
+//        uint32_t position = cib::util::cast_from_signed(pos,m_regs.at("init_pos").mask);
+//        m_position_cib = cib::util::reg_read(m_regs.at("cur_pos").maddr);
 
         // if the position didn't change and the latest speed readout
         // is 0, set m_is_moving = false
-        if ((m_position_cib == prev_pos) && (m_speed_readout == 0))
+        //if ((m_position_cib == prev_pos) && (m_speed_readout == 0))
+        if (m_speed_readout == 0)
         {
           m_is_moving = false;
         }
@@ -1441,8 +1453,8 @@ namespace Device
   {
     // Grab the position
     // read the register
-    uint32_t reg_val = cib::util::reg_read(m_regs.at("position").maddr);
-    int32_t m_pos = cib::util::cast_to_signed((reg_val & m_regs.at("position").mask),m_regs.at("position").mask);
+    uint32_t reg_val = cib::util::reg_read(m_regs.at("cur_pos").maddr);
+    int32_t m_pos = cib::util::cast_to_signed((reg_val & m_regs.at("cur_pos").mask),m_regs.at("cur_pos").mask);
 #ifdef DEBUG
     LOG(Log::INF) << log_i("cib_get_position","Readout position ") << m_pos;
 #endif
