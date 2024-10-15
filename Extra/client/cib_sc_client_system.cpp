@@ -143,8 +143,12 @@ int main()
   retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.A1.state"), val);
   if (retval == UA_STATUSCODE_GOOD)
   {
+    if (UA_Variant_isScalar(val))
+    {
+      spdlog::debug("string reports as a scalar...interesting!");
+    }
     // strings are arrays, therefore
-    if (UA_Variant_hasArrayType(val,&UA_TYPES[UA_TYPES_STRING]))
+    if (val->type == &UA_TYPES[UA_TYPES_STRING])
     {
       std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
       spdlog::info("A1 state : {0}",value);
@@ -168,7 +172,7 @@ int main()
   if (retval == UA_STATUSCODE_GOOD)
   {
     // strings are arrays, therefore
-    if (UA_Variant_hasArrayType(val,&UA_TYPES[UA_TYPES_STRING]))
+    if (val->type == &UA_TYPES[UA_TYPES_STRING])
     {
       std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
       spdlog::info("PM1 state : {0}",value);
@@ -192,7 +196,7 @@ int main()
   if (retval == UA_STATUSCODE_GOOD)
   {
     // strings are arrays, therefore
-    if (UA_Variant_hasArrayType(val,&UA_TYPES[UA_TYPES_STRING]))
+    if (val->type == &UA_TYPES[UA_TYPES_STRING])
     {
       std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
       spdlog::info("CIB1 state : {0}",value);
@@ -216,7 +220,7 @@ int main()
   if (retval == UA_STATUSCODE_GOOD)
   {
     // strings are arrays, therefore
-    if (UA_Variant_hasArrayType(val,&UA_TYPES[UA_TYPES_STRING]))
+    if (val->type == &UA_TYPES[UA_TYPES_STRING])
     {
       std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
       spdlog::info("L1 state : {0}",value);
@@ -241,7 +245,7 @@ int main()
   if (retval == UA_STATUSCODE_GOOD)
   {
     // strings are arrays, therefore
-    if (UA_Variant_hasArrayType(val,&UA_TYPES[UA_TYPES_STRING]))
+    if (val->type == &UA_TYPES[UA_TYPES_STRING])
     {
       std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
       spdlog::info("RNN800 state : {0}",value);
@@ -264,7 +268,7 @@ int main()
   if (retval == UA_STATUSCODE_GOOD)
   {
     // strings are arrays, therefore
-    if (UA_Variant_hasArrayType(val,&UA_TYPES[UA_TYPES_STRING]))
+    if (val->type == &UA_TYPES[UA_TYPES_STRING])
     {
       std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
       spdlog::info("RNN600 state : {0}",value);
@@ -287,7 +291,7 @@ int main()
   if (retval == UA_STATUSCODE_GOOD)
   {
     // strings are arrays, therefore
-    if (UA_Variant_hasArrayType(val,&UA_TYPES[UA_TYPES_STRING]))
+    if (val->type == &UA_TYPES[UA_TYPES_STRING])
     {
       std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
       spdlog::info("LSTAGE state : {0}",value);
@@ -311,7 +315,7 @@ int main()
   if (retval == UA_STATUSCODE_GOOD)
   {
     // strings are arrays, therefore
-    if (UA_Variant_hasArrayType(val,&UA_TYPES[UA_TYPES_STRING]))
+    if (val->type == &UA_TYPES[UA_TYPES_STRING])
     {
       std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
       spdlog::info("LS1 state : {0}",value);
@@ -365,7 +369,7 @@ int main()
     // and the second should be the description
     laser_status_code = *static_cast<UA_Int16*>(output[0].data);
     std::string desc((char*)static_cast<UA_String*>(output[1].data)->data,(size_t)static_cast<UA_String*>(output[1].data)->length);
-    spdlog::info("Response : {0} ({1}",laser_status_code,desc);
+    spdlog::info("Response : {0} ({1})",laser_status_code,desc);
   }
   else
   {
