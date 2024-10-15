@@ -618,7 +618,7 @@ UaStatus DIoLAttenuator::init_device(json &resp)
 //#ifdef SIMULATION
 //      m_att = new device::AttenuatorSim();
 //#else
-      LOG(Log::ERR) << "DIoLAttenuator::init : Initializing the attenuator with port  " << m_comport << " : " << m_baud_rate;
+      LOG(Log::INF) << "DIoLAttenuator::init : Initializing the attenuator with port  " << m_comport << " : " << m_baud_rate;
 
       m_att = new device::Attenuator(m_comport.c_str(),m_baud_rate);
 //#endif
