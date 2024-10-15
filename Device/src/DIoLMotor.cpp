@@ -1485,9 +1485,9 @@ UaStatus DIoLMotor::callClear_alarm (
     // read the register
     uint32_t reg_val = cib::util::reg_read(m_regs.at("cur_pos").maddr);
     int32_t m_pos = cib::util::cast_to_signed((reg_val & m_regs.at("cur_pos").mask),m_regs.at("cur_pos").mask);
-#ifdef DEBUG
-    LOG(Log::INF) << log_i("cib_get_position","Readout position ") << m_pos;
-#endif
+//#ifdef DEBUG
+//    LOG(Log::INF) << log_i("cib_get_position","Readout position ") << m_pos;
+//#endif
     pos = m_pos;
     return OpcUa_Good;
   }
