@@ -28,7 +28,34 @@ using std::string;
 using std::vector;
 using json = nlohmann::json;
 
+void parse_method_response_string(std::string &input)
+{
+  try
+  {
+    json jresp = json::parse(input);
+    spdlog::info("Returned status : {0}",jresp["status"].get<std::string>());
+    spdlog::info("Returned statuscode : {0}",jresp["statuscode"].get<uint32_t>());
+    spdlog::info("Returned messages :");
+    for (auto e : jresp.at("messages"))
+    {
+      spdlog::info("--> [{0}]",e.get<std::string>());
+    }
 
+  }
+  catch(json::exception &e)
+  {
+    spdlog::critical("Caught a JSON exception : {0}",e.what());
+  }
+  catch(std::exception &e)
+  {
+    spdlog::critical("Caught an STL exception : {0}",e.what());
+  }
+  catch(...)
+  {
+    spdlog::critical("Caught an unknown exception");
+  }
+
+}
 
 int main()
 {
@@ -115,16 +142,10 @@ int main()
     // All methods in the CIB return a json string
     std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
     spdlog::info("{0}",response);
-    json jresp = json::parse(response);
-    spdlog::info("After parsing : {0}",jresp.dump().c_str());
+    parse_method_response_string(response);
+    //    json jresp = json::parse(response);
+    //    spdlog::info("After parsing : {0}",jresp.dump().c_str());
     // if we want to be more picky:
-    spdlog::info("Returned status : {0}",jresp["status"].get<std::string>());
-    spdlog::info("Returned statuscode : {0}",jresp["statuscode"].get<uint32_t>());
-    spdlog::info("Returned messages :");
-    for (auto e : jresp.at("messages"))
-    {
-      spdlog::info("--> [{0}]",e.get<std::string>());
-    }
     // clear the array
     UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
   }
@@ -387,6 +408,9 @@ int main()
   if(retval == UA_STATUSCODE_GOOD)
   {
     spdlog::info("Method called successfully. Returned {0} arguments (none expected)",outputSize);
+    // actually, this returns a typical response string
+    std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
+    parse_method_response_string(response);
   }
   else
   {
