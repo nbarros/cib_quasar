@@ -90,7 +90,9 @@ DIoLMotor::DIoLMotor (
             //,m_address("")
             ,m_refresh_ms(500)
             ,m_refresh_cib_ms(10)
+            ,m_position_monitor(false)
             ,m_stats_monitor(false)
+            ,m_cib_monitor(false)
             ,m_monitor_status(OpcUa_BadResourceUnavailable)
             ,m_server_host("")
             ,m_server_port(0)
@@ -111,14 +113,14 @@ DIoLMotor::DIoLMotor (
     // allocate the memory mapped registers
     (void)init_cib_mem();
 
-    if (m_stats_monitor)
-    {
-      if (m_refresh_ms != 0.0)
-      {
-        motor_position_monitor();
-        motor_stats_monitor();
-      }
-    }
+//    if (m_stats_monitor)
+//    {
+//      if (m_refresh_ms != 0.0)
+//      {
+//        motor_position_monitor();
+//        motor_stats_monitor();
+//      }
+//    }
     m_id = id();
 }
 
@@ -520,7 +522,7 @@ UaStatus DIoLMotor::callClear_alarm (
     if (m_position_monitor.load())
     {
 #ifdef DEBUG
-      LOG(Log::WRN) << "Trying to set a position monitor timer that has already been set up. Skipping.";
+      LOG(Log::WRN) << log_w("motor_monitor","Trying to set a position monitor timer that has already been set up. Skipping.");
 #endif
       return;
     }
@@ -592,10 +594,16 @@ UaStatus DIoLMotor::callClear_alarm (
   void DIoLMotor::cib_movement_monitor()
   {
     // in this case, even though it is a separate thread, use the motor as the reference
+    if (m_cib_monitor.load())
+    {
+      LOG(Log::WRN) << log_w("cib_mon","CIB monitor already running. Doing nothing.");
+      return;
+    }
+    m_cib_monitor.store(true);
     std::thread([this]()
                 {
       int32_t prev_pos = 0;
-      while (m_position_monitor.load())
+      while (m_cib_monitor.load())
       {
         auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_refresh_cib_ms);
         prev_pos =m_position_cib;
@@ -849,9 +857,9 @@ UaStatus DIoLMotor::callClear_alarm (
     std::string query = "position";
     json answer;
     st = query_motor(query,answer,resp);
-#ifdef DEBUG
-    LOG(Log::INF) << "Received response [" << answer << "]";
-#endif
+//#ifdef DEBUG
+//    LOG(Log::INF) << "Received response [" << answer << "]";
+//#endif
     // now we should parse the answer
     // it is meant to be a json object
     if (answer["status"] == string("OK"))
@@ -862,9 +870,9 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-#ifdef DEBUG
-      LOG(Log::INF) << msg.str();
-#endif
+//#ifdef DEBUG
+//      LOG(Log::INF) << msg.str();
+//#endif
       st =  OpcUa_Good;
     }
     else
@@ -952,9 +960,9 @@ UaStatus DIoLMotor::callClear_alarm (
 #ifdef DEBUG
       LOG(Log::INF) << "Starting a timer on motor " << m_id << " to refresh every " << v << " ms";
 #endif
-      motor_position_monitor();
-      // -- do 10 times that for the stats
-      motor_stats_monitor();
+//      motor_position_monitor();
+//      // -- do 10 times that for the stats
+//      motor_stats_monitor();
     }
     else if (v == 0)
     {
@@ -1111,47 +1119,22 @@ UaStatus DIoLMotor::callClear_alarm (
         // timer to refresh the cib position
         m_refresh_cib_ms = it.value();
         // since by now the registers are mapped, we can initiate the thread
-        cib_movement_monitor();
       }
-      //      if (it.key() == "mmap")
-      //      {
-      //        // if there are any registers there, clean them out
-      //        if (m_regs.size())
-      //        {
-      //          m_regs.clear();
-      //        }
-      //        json frag = it.value();
-      //        // now grab the entries
-      //        try
-      //        {
-      //          for (auto jt = frag.begin(); jt != frag .end(); ++jt)
-      //          {
-      //            motor_regs_t tmp;
-      //            // for these, nothing is optional
-      //            tmp.offset = jt.value().at(0);
-      //            tmp.bit_high = jt.value().at(1);
-      //            tmp.bit_low = jt.value().at(2);
-      //            tmp.addr = 0x0;
-      //            tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
-      //            m_regs.insert(std::pair<std::string,motor_regs_t>(it.key(),tmp));
-      //          }
-      //        }
-      //        catch(json::exception &e)
-      //        {
-      //          msg.clear();msg.str("");
-      //          msg << log_e("config"," ") << "Incomplete config fragment [mmap] : " << e.what();
-      //          resp["messages"].push_back(msg.str());
-      //          throw;
-      //        }
-      //        catch(std::exception &e)
-      //        {
-      //          msg.clear();msg.str("");
-      //          msg << log_e("config"," ") << "Problem parsing config fragment [mmap] : " << e.what();
-      //          resp["messages"].push_back(msg.str());
-      //          throw;
-      //        }
-      //      }
     }
+    //
+    // configuration is done.
+    // start by resetting the target position to the current position
+    st = motor_get_position(resp);
+    if (st == OpcUa_Good)
+    {
+      m_position_setpoint = m_position_motor;
+    }
+    //
+    // start the monitors
+    motor_position_monitor();
+    motor_stats_monitor();
+    cib_movement_monitor();
+    //
     return st;
   }
   UaStatus DIoLMotor::validate_config_fragment(json &conf, json &resp)
@@ -1164,9 +1147,7 @@ UaStatus DIoLMotor::callClear_alarm (
         "speed","range","acceleration","deceleration",
         "refresh_period_ms","refresh_movement_ms","mmap"
     };
-    std::vector<std::string> optional_keys = {
-
-    };
+    std::vector<std::string> optional_keys = {   };
     //
     // actually, check for all entries and report all missing ones
     std::vector<std::string> missing;
@@ -1292,6 +1273,11 @@ UaStatus DIoLMotor::callClear_alarm (
   }
   UaStatus DIoLMotor::terminate(json &resp)
   {
+    // the main thing here is to stop the monitors
+    m_cib_monitor.store(false);
+    m_position_monitor.store(false);
+    m_stats_monitor.store(false);
+    //
     return OpcUa_Good;
   }
   UaStatus DIoLMotor::check_cib_mem(json &resp)

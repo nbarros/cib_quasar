@@ -234,6 +234,7 @@ private:
     uint32_t m_refresh_cib_ms;
     std::atomic<bool> m_stats_monitor;
     std::atomic<bool> m_position_monitor;
+    std::atomic<bool> m_cib_monitor;
     UaStatus m_monitor_status;
     std::string m_server_host;
     uint16_t m_server_port;
