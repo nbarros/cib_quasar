@@ -364,20 +364,22 @@ AccessControl::getUserAccessLevel(UA_Server *server, UA_AccessControl *ac,
   UA_String_init(&str_nodeId);
   UA_NodeId_print(nodeId, &str_nodeId);
 
+  // For now everyone has all permissions
+  return 0xFF;
   //printf("Checking permission for session %s and context %p %s\n",strId.data,sessionContext, static_cast<UA_ByteString *>(sessionContext)->data);
   //printf("node %s and context %p \n",str_nodeId.data, nodeContext);
 
-  UA_String *context = static_cast<UA_ByteString *>(sessionContext);
-  UA_String  u = UA_String_fromChars("nuno");
-  if (UA_String_equal(context,&u ))
-  {
-    return 0xFF; // permit everything
-  }
-  else
-  {
-    // everyone else can only read
-    return UA_ACCESSLEVELMASK_READ;
-  }
+//  UA_String *context = static_cast<UA_ByteString *>(sessionContext);
+//  UA_String  u = UA_String_fromChars("nuno");
+  //  if (UA_String_equal(context,&u ))
+//  {
+//    return 0xFF; // permit everything
+//  }
+//  else
+//  {
+//    // everyone else can only read
+//    return UA_ACCESSLEVELMASK_READ;
+//  }
 }
 
 UA_Boolean
@@ -422,6 +424,9 @@ AccessControl::getUserExecutableOnObject(UA_Server *server, UA_AccessControl *ac
                                   const UA_NodeId *methodId, void *methodContext,
                                   const UA_NodeId *objectId, void *objectContext) {
 
+  // for now allow everything
+  return true;
+
   UA_String *context = static_cast<UA_ByteString *>(sessionContext);
   UA_String  u = UA_String_fromChars("nuno");
   bool is_operator= UA_String_equal(context,&u )?true:false;
@@ -464,8 +469,6 @@ AccessControl::allowBrowseNode(UA_Server *server, UA_AccessControl *ac,
                         const UA_NodeId *sessionId, void *sessionContext,
                         const UA_NodeId *nodeId, void *nodeContext) {
 
-  // TODO: Find if there is a way of figuring out
-  // which nodes are methods, to not even allow them to be browsed by
   UA_String str_nodeId;
   UA_String_init(&str_nodeId);
   UA_NodeId_print(nodeId, &str_nodeId);
@@ -504,7 +507,8 @@ AccessControl::allowBrowseNode(UA_Server *server, UA_AccessControl *ac,
   //  UA_Server_readBrowseName(UA_Server *server, const UA_NodeId nodeId,
   //                           UA_QualifiedName *outBrowseName)
 
-//  printf("\n\nBrowse result for node %s and user %s : %d\n\n",nqname.name.data,context->data,result);
+  //  printf("\n\nBrowse result for node %s and user %s : %d\n\n",nqname.name.data,context->data,result);
+  return true;
 
   return result;
 
@@ -549,6 +553,7 @@ AccessControl::getUserExecutable(UA_Server *server, UA_AccessControl *ac,
                           const UA_NodeId *methodId, void *methodContext) {
 //  printf("\n\nCalled getUserExecutable\n\n");
 
+  return true;
 
   UA_String str_nodeId;
   UA_String_init(&str_nodeId);
@@ -584,7 +589,7 @@ void AccessControl::link_callbacks(UA_Server *s)
   // clear whatever exists in terms of access control
   config->accessControl.clear(&config->accessControl);
   UA_StatusCode retval = AccessControl::init_access_control(config, true,
-                 &config->securityPolicies[config->securityPoliciesSize-1].policyUri, 2, logins);
+                 &config->securityPolicies[config->securityPoliciesSize-1].policyUri, 4, logins);
       if (retval != UA_STATUSCODE_GOOD)
       {
         LOG(Log::ERR) <<
