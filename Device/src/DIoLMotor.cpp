@@ -721,7 +721,7 @@ UaStatus DIoLMotor::callClear_alarm (
       if (reply.contains("tar_pos"))
       {
         int32_t tpos = reply.at("tar_pos").get<int32_t>();
-        if (tpos != m_position_setpoint)
+        if ((tpos < (m_position_setpoint-5)) || (tpos > (m_position_setpoint+5)))
         {
           // something is wrong, the target is not what we think
           // FIXME: What to do in this case?

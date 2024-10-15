@@ -1344,6 +1344,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       LOG(Log::WRN) << msg.str();
 #endif
       delete m_laser;
+#ifdef DEBUG
+      LOG(Log::INF) << "Pointer deleted";
+#endif
     }
     m_laser = nullptr;
     m_config_completed = false;
@@ -2313,20 +2316,21 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // This is a problematic method, since it runs on a separate thread.
     // Therefore it needs to do several checks to make sure it does not enter into race conditions with the normal operation
     // the main issue here is when there is a race condition with the termination
-   json resp;
+    return;
+    json resp;
     if (m_laser)
     {
       refresh_status(resp);
       refresh_shot_count(resp);
       get_laser_shutter();
     }
-
-    UaStatus st = check_error_state(resp);
-    if (st != OpcUa_Good)
-    {
-      LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an sError status. Terminating.";
-      terminate(resp);
-    }
+    UaStatus st;
+    //UaStatus st = check_error_state(resp);
+    //if (st != OpcUa_Good)
+    //{
+    //  LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an sError status. Terminating.";
+    //  terminate(resp);
+    //}
     // do also a refresh of the relevant registers
     if ((m_status != sOffline) && m_config_completed)
     {
@@ -3024,15 +3028,15 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     uint32_t rval = cib::util::reg_read(m_regs.at("qs_delay").addr);
     // now extract the delay from the register value
     uint32_t delay = ((rval & m_regs.at("qs_delay").mask) >> m_regs.at("qs_delay").bit_low);
-#ifdef DEBUG
-    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch delay (clocks) :") << delay;
-#endif
+//#ifdef DEBUG
+//    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch delay (clocks) :") << delay;
+//#endif
     m_qswitch_delay = delay;
     // convert to floating point
     uint32_t delay_us = conv_to_us(delay);
-#ifdef DEBUG
-    LOG(Log::INF) << log_i(lbl.c_str()," QSwitch delay (us) :") << delay_us;
-#endif
+//#ifdef DEBUG
+//    LOG(Log::INF) << log_i(lbl.c_str()," QSwitch delay (us) :") << delay_us;
+//#endif
     getAddressSpaceLink()->setQswitch_delay_us(delay_us, OpcUa_Good);
     return OpcUa_Good;
   }
@@ -3069,15 +3073,15 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     uint32_t rval = cib::util::reg_read(m_regs.at("qs_width").addr);
     // now extract the width from the register value
     uint32_t width = ((rval & m_regs.at("qs_width").mask) >> m_regs.at("qs_width").bit_low);
-#ifdef DEBUG
-    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch width (clocks) :") << width;
-#endif
+//#ifdef DEBUG
+//    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch width (clocks) :") << width;
+//#endif
     m_qswitch_width = width;
     // convert to floating point
     uint32_t width_us = conv_to_us(width);
-#ifdef DEBUG
-    LOG(Log::INF) << log_i(lbl.c_str()," QSwitch width (us) :") << width_us;
-#endif
+//#ifdef DEBUG
+//    LOG(Log::INF) << log_i(lbl.c_str()," QSwitch width (us) :") << width_us;
+//#endif
     getAddressSpaceLink()->setQswitch_width_us(width_us, OpcUa_Good);
     return OpcUa_Good;
   }
@@ -3114,15 +3118,15 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     uint32_t rval = cib::util::reg_read(m_regs.at("fire_width").addr);
     // now extract the width from the register value
     uint32_t width = ((rval & m_regs.at("fire_width").mask) >> m_regs.at("fire_width").bit_low);
-#ifdef DEBUG
-    LOG(Log::INF) << log_i(lbl.c_str()," Fire width (clocks) :") << width;
-#endif
+//#ifdef DEBUG
+//    LOG(Log::INF) << log_i(lbl.c_str()," Fire width (clocks) :") << width;
+//#endif
     m_fire_width = width;
     // convert to floating point
     uint32_t width_us = conv_to_us(width);
-#ifdef DEBUG
-    LOG(Log::INF) << log_i(lbl.c_str()," Fire width (us) :") << width_us;
-#endif
+//#ifdef DEBUG
+//    LOG(Log::INF) << log_i(lbl.c_str()," Fire width (us) :") << width_us;
+//#endif
     getAddressSpaceLink()->setFire_width_us(width_us, OpcUa_Good);
     return OpcUa_Good;
   }
