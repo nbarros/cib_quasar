@@ -42,7 +42,7 @@ using json = nlohmann::json;
 #define log_w(m,s) log_msg("WARN",m,s)
 #define log_i(m,s) log_msg("INFO",m,s)
 //
-//#define DEBUG 1
+#define DEBUG 1
 using std::ostringstream;
 using std::map;
 using std::string;
@@ -120,69 +120,14 @@ DIoLLaserUnit::DIoLLaserUnit (
     m_status_map.insert({sStandby,"standby"});
     m_status_map.insert({sError,"error"});
 
-    // -- there are several registers to be mapped:
-    cib_reg_t tmpreg;
-    tmpreg.id = LASER_REG;
-    tmpreg.paddr = GPIO_LASER_MEM_LOW;
-    tmpreg.size = 0xFFF;
-    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_LASER_MEM_LOW,GPIO_LASER_MEM_HIGH);
-    if (tmpreg.vaddr == 0x0)
-    {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map LASER CIB memory region. This is going to fail spectacularly!!!\n\n";
-    }
-    m_reg_map[LASER_REG] = tmpreg;
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : LASER_REG mapped to " << std::hex << m_reg_map.at(LASER_REG).vaddr << std::dec;
-#endif
-    tmpreg.id= MISC_REG;
-    tmpreg.paddr = GPIO_MISC_MEM_LOW;
-    tmpreg.size = 0xFFF;
-    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MISC_MEM_LOW,GPIO_MISC_MEM_HIGH);
-    if (tmpreg.vaddr == 0x0)
-    {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
-    }
-    m_reg_map[MISC_REG] = tmpreg;
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : MISC_REG mapped to " << std::hex << m_reg_map.at(MISC_REG).vaddr << std::dec;
-#endif
-    tmpreg.id= ALIGN_REG;
-    tmpreg.paddr = GPIO_ALIGN_MEM_LOW;
-    tmpreg.size = 0xFFF;
-    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
-    if (tmpreg.vaddr == 0x0)
-    {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
-    }
-    m_reg_map[ALIGN_REG] = tmpreg;
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : ALIGN_REG mapped to " << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
-#endif
-
-    //#endif
-
-    if (m_reg_map.size() != 3)
-    {
-      // sError is a special case of status, since this
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map oneor more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
-      m_status = sError;
-    }
+    cib_init_mem();
 }
 
 /* sample dtr */
 DIoLLaserUnit::~DIoLLaserUnit ()
 {
-    // clear up the memory for the CIB
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Unammping CIB memory regions.";
 
-    for (auto entry: m_reg_map)
-    {
-#ifdef DEBUG
-      LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Clearing CIB memory [" << entry.first << "\n";
-#endif
-      cib::util::unmap_mem(entry.second.vaddr,entry.second.size);
-    }
-    close(m_mmap_fd);
+  cib_free_mem();
 }
 
 /* delegates for cachevariables */
@@ -524,8 +469,6 @@ UaStatus DIoLLaserUnit::callCheck_laser_status (
     std::string desc;
     laser_security(status,desc,resp);
     description= UaString(desc.c_str());
-    //    refresh_status(resp);
-    //
     return OpcUa_Good;
     //
 }
@@ -845,15 +788,31 @@ UaStatus DIoLLaserUnit::callResume (
 // 3     You can do whatever you want, but please be decent.               3
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
 
-  UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &resp)
+UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &resp)
   {
     std::ostringstream msg("");
     const std::string lbl = "set_conn";
     //FIXME: how do we get out of the error state?
-    if (m_status == sError)
+    UaStatus st = check_error_state(resp);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
+    //
+    // it only reaches here if it is also *not* in the sError state
+    UaStatus st = check_not_offline_state(resp);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
+    // do a second cross-check. At this stage there should not be any instantiated object
+    json tresp;
+    st = check_laser_instance(tresp);
+    // we shouldn't actually ever reach this state
+    if (st == OpcUa_Good)
     {
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Laser Unit in sError state. System on lockdown. Check for error messages.");
+      msg << log_e(lbl.c_str(),"Laser instance found. This is unexpected and therefore a termination will be forced first.");
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
 #endif
@@ -861,34 +820,6 @@ UaStatus DIoLLaserUnit::callResume (
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
       return OpcUa_BadInvalidState;
-}
-    //
-    // it only reaches here if it is also *not* in the sError state
-    if (m_status != sOffline)
-    {
-      msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Laser is online. You must first shut it down.");
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_Bad;
-    }
-    // do a second cross-check. At this stage there should not be any instantiated object
-    // we shouldn't actually ever reach this state
-    if (m_laser)
-    {
-      msg.clear(); msg.str("");
-      msg << log_w(lbl.c_str(),"Laser instance found. This is unexpected and therefore a termination will be forced first.");
-#ifdef DEBUG
-      LOG(Log::WRN) << msg.str();
-#endif
-      resp["status"] = "WARNING";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_Good;
-      (void)terminate(resp);
     }
     // at this stage we are good to set the connection parameters
     // otherwise, it is fair game
@@ -900,7 +831,7 @@ UaStatus DIoLLaserUnit::callResume (
 #ifdef DEBUG
       LOG(Log::INF) << msg.str();
 #endif
-      resp["status"] = "SUCCESS";
+      resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -934,7 +865,7 @@ UaStatus DIoLLaserUnit::callResume (
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
 #endif
-      resp["status"] = "SUCCESS";
+      resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -1326,43 +1257,6 @@ UaStatus DIoLLaserUnit::callResume (
       }
                 }
     ).detach();
-
-  //    // this only matters if we are in warmup state
-  //    if (m_status != sWarmup)
-  //    {
-  //      LOG(Log::WRN) << "Trying to start a warmup timer without being in warmup state. Doing nothing.";
-  //      return;
-  //    }
-  //    // initate a timer that will just sleep until the timer is over
-  //    // and then automatically switch to paused state
-  //    //    uint32_t n_secs= 0;
-  //    std::thread([this]()
-  //                {
-  //      std::this_thread::sleep_for(std::chrono::minutes(m_warmup_timer));
-  //      // once the sleep is done do the following:
-  //      // close external shutter
-  //      // open internal shutter
-  //      // enable qswitch
-  //      //
-  //      // actually, check that we are still in warmup state before doing anything
-  //      // this safeguards if someone hits stop or terminate while warming up
-  //      //
-  //      if (m_status != sWarmup)
-  //      {
-  //        // state charged for some reason. Do nothing.
-  //        // only stop and terminate can actually interfere with warmup
-  //        LOG(Log::WRN) << "Warmup timer reached end but state no longer in warmup. Doing nothing.";
-  //        return;
-  //      }
-  //      else
-  //      {
-  //        // -- reached the end of the warmup
-  //        // switch to standby...which is pretty much the same thing, just with a different name
-  //        update_status(sStandby);
-  //        start_standby_timer();
-  //      }
-  //                }
-  //    ).detach();
   }
   UaStatus DIoLLaserUnit::terminate(json &resp)
   {
@@ -1373,6 +1267,8 @@ UaStatus DIoLLaserUnit::callResume (
     // everything else is secondary
     std::ostringstream msg("");
     const std::string lbl = "terminate";
+    // terminate should take on a mutex right away so other methods do nothing during this period
+
 #ifdef DEBUG
     LOG(Log::WRN) << log_w(lbl.c_str(),"Terminating the current object instance.");
 #endif
@@ -1391,6 +1287,9 @@ UaStatus DIoLLaserUnit::callResume (
         LOG(Log::WRN) << msg.str();
 #endif
         resp["messages"].push_back(msg.str());
+        //FIXME: What happens we if we lose the serial connection while the laser is connected?
+        // Should we try to reconnect?
+        // what happens if we delete this pointer after a serial exception?
         delete m_laser;
         m_laser = nullptr;
         return OpcUa_Uncertain;
@@ -1429,23 +1328,24 @@ UaStatus DIoLLaserUnit::callResume (
 #endif
       // potential source of trouble here...close/open shutter
       // also lock the mutex, which will put them hanging, since the mutex is already on hold here
+
     switch_laser_shutter(ShutterState::sClose,resp);
     // at this stage, nothing else to be done.
     // just delete the device and go into offline mode
     // -- now just delete the device
     // FIXME: There is a potential rate condition here... if while we are terminating, other requests sit on a queue
     update_status(sOffline);
-//    while (m_serial_busy.load())
-//    {
-//      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//    }
-//    m_serial_busy.store(true);
     if (m_laser)
     {
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
+#ifdef DEBUG
+      std::ostringstream msg("");
+      msg << log_w(lbl.c_str(),"Deleting the laser pointer");
+      LOG(Log::WRN) << msg.str();
+#endif
       delete m_laser;
     }
     m_laser = nullptr;
-//    m_serial_busy.store(false);
     m_config_completed = false;
     return OpcUa_Good;
   }
@@ -1831,21 +1731,20 @@ UaStatus DIoLLaserUnit::callResume (
     bool got_exception = false;
     const std::string lbl = "refresh_status";
     UaStatus st = OpcUa_Good;
-    const std::lock_guard<std::mutex> lock(m_serial_mutex);
-    st = check_laser_instance(resp);
-    if (st != OpcUa_Good)
-    {
-      return;
-    }
     try
     {
-      //      while (m_serial_busy.load())
-      //      {
-      //        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      //      }
-      //      m_serial_busy.store(true);
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
+      st = check_laser_instance(resp);
+      if (st != OpcUa_Good)
+      {
+        return;
+      }
+      st = check_offline_state(resp);
+      if (st != OpcUa_Good)
+      {
+        return;
+      }
       m_laser->security(status, desc);
-      // m_serial_busy.store(false);
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
       UaString ss(m_status_map.at(m_status).c_str());
       getAddressSpaceLink()->setState(ss,OpcUa_Good);
@@ -1878,7 +1777,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-      //      m_serial_busy.store(false);
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_BadDataUnavailable);
     }
   }
@@ -1995,13 +1893,7 @@ UaStatus DIoLLaserUnit::callResume (
     // everything seems ready. Get counter
     try
     {
-//      while (m_serial_busy.load())
-//      {
-//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//      }
-//      m_serial_busy.store(true);
       m_laser->get_shot_count(count);
-//      m_serial_busy.store(false);
       // set the local cache
       m_shot_count = count;
       getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_Good);
@@ -2032,7 +1924,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (caught_exception)
     {
-//      m_serial_busy.store(false);
       LOG(Log::ERR) << msg.str();
       getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_BadCommunicationError);
     }
@@ -2083,25 +1974,15 @@ UaStatus DIoLLaserUnit::callResume (
         msg << log_w(lbl.c_str(),"System already initialized. Just reconfiguring.");
         resp["messages"].push_back(msg.str());
         bool clean_and_rebuild = false;
-//        while (m_serial_busy.load())
-//        {
-//          std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//        }
-//        m_serial_busy.store(true);
+        // no need of mutex for this, as far as there is an instance
         std::string lport = m_laser->get_port();
-//        m_serial_busy.store(false);
         if (lport != m_comport)
         {
           clean_and_rebuild = true;
         }
-//        while (m_serial_busy.load())
-//        {
-//          std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//        }
-//        m_serial_busy.store(true);
+        // same here. No need for mutex
         uint16_t lbaud = m_laser->get_baud();
-//        m_serial_busy.store(false);
-
+        //
         if (lbaud != m_baud_rate)
         {
           clean_and_rebuild = true;
@@ -2172,7 +2053,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-//      m_serial_busy.store(false);
       terminate(resp);
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
@@ -2198,7 +2078,12 @@ UaStatus DIoLLaserUnit::callResume (
     bool got_exception = false;
     const std::string lbl = "write_divider";
     const std::lock_guard<std::mutex> lock(m_serial_mutex);
-    UaStatus st = check_ready_state(resp);
+    UaStatus st = check_laser_instance(resp);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
+    st = check_ready_state(resp);
     if (st != OpcUa_Good)
     {
       return st;
@@ -2215,15 +2100,8 @@ UaStatus DIoLLaserUnit::callResume (
     }
     try
     {
-//      while (m_serial_busy.load())
-//      {
-//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//      }
-//      m_serial_busy.store(true);
       m_laser->set_prescale(nv);
-//      m_serial_busy.store(false);
       m_divider = nv;
-      // update the address space as well
       getAddressSpaceLink()->setRep_rate_divider(m_divider, OpcUa_Good);
     }
     catch(serial::PortNotOpenedException &e)
@@ -2252,7 +2130,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-//      m_serial_busy.store(false);
       getAddressSpaceLink()->setRep_rate_divider(m_divider, OpcUa_BadCommunicationError);
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
@@ -2275,18 +2152,6 @@ UaStatus DIoLLaserUnit::callResume (
     bool got_exception = false;
     const std::string lbl = "write_rate";
     UaStatus st = OpcUa_Good;
-    // once the mutex is acquired, no more troubles should happen
-    const std::lock_guard<std::mutex> lock(m_serial_mutex);
-    st = check_laser_instance(resp);
-    if (st != OpcUa_Good)
-    {
-      return st;
-    }
-    st = check_ready_state(resp);
-    if (st != OpcUa_Good)
-    {
-      return st;
-    }
     // check range
     if (v <= 0.0 || v > 20.0)
     {
@@ -2300,18 +2165,21 @@ UaStatus DIoLLaserUnit::callResume (
       resp["statuscode"] = OpcUa_BadOutOfRange;
       return OpcUa_BadOutOfRange; // This shouldn't even be changed
     }
+    // once the mutex is acquired, no more troubles should happen
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
+    st = check_laser_instance(resp);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
+    st = check_ready_state(resp);
+    if (st != OpcUa_Good)
+    {
+      return st;
+    }
     try
     {
-//      while (m_serial_busy.load())
-//      {
-//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//      }
-//      m_serial_busy.store(true);
       m_laser->set_repetition_rate(v);
-//#ifdef DEBUG
-//      LOG(Log::INF) << log_i(lbl.c_str(),"Repetition rate set 1");
-//#endif
-//      m_serial_busy.store(false);
 #ifdef DEBUG
       LOG(Log::INF) << log_i(lbl.c_str(),"Repetition rate set");
 #endif
@@ -2344,7 +2212,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-//      m_serial_busy.store(false);
       getAddressSpaceLink()->setRep_rate_hz(m_rate_hz, OpcUa_BadCommunicationError);
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
@@ -2365,7 +2232,6 @@ UaStatus DIoLLaserUnit::callResume (
     bool got_exception = false;
     const std::string lbl = "write_hv";
     UaStatus st = OpcUa_Good;
-    // once the mutex is acquired, no more troubles should happen
     // check range
     if ((v < 0) || (v > 1.3))
     {
@@ -2392,13 +2258,7 @@ UaStatus DIoLLaserUnit::callResume (
     }
     try
     {
-//      while (m_serial_busy.load())
-//      {
-//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//      }
-//      m_serial_busy.store(true);
       m_laser->set_pump_voltage(v);
-//      m_serial_busy.store(false);
 #ifdef DEBUG
       LOG(Log::INF) << log_i(lbl.c_str(),"Voltage set");
 #endif
@@ -2431,7 +2291,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-//      m_serial_busy.store(false);
       getAddressSpaceLink()->setDischarge_voltage_kV(m_pump_hv, OpcUa_BadCommunicationError);
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
@@ -2454,12 +2313,7 @@ UaStatus DIoLLaserUnit::callResume (
     // This is a problematic method, since it runs on a separate thread.
     // Therefore it needs to do several checks to make sure it does not enter into race conditions with the normal operation
     // the main issue here is when there is a race condition with the termination
-    //return;
-    //#ifdef DEBUG
-    //    LOG(Log::INF) << log_i("update","Updating...");
-    //#endif
-//    const std::lock_guard<std::mutex> lock(m_serial_mutex);
-    json resp;
+   json resp;
     if (m_laser)
     {
       refresh_status(resp);
@@ -2521,7 +2375,7 @@ UaStatus DIoLLaserUnit::callResume (
     // we seem to be ready to operate
     // depending on the exact state, we want to release all shutters
     // count the appropriate number of pulses and go back to pause state
-    uint32_t n_shots_prev = get_cib_shot_count();
+    uint32_t n_shots_prev = cib_get_shot_count();
     st = resume(resp);
     if (st != OpcUa_Good)
     {
@@ -2531,7 +2385,7 @@ UaStatus DIoLLaserUnit::callResume (
       return st;
     }
     // we are firing, count shots
-    while ((get_cib_shot_count()-n_shots_prev)<num_pulses)
+    while ((cib_get_shot_count()-n_shots_prev)<num_pulses)
     {
       std::this_thread::sleep_for(std::chrono::milliseconds(80));
     }
@@ -2840,16 +2694,6 @@ UaStatus DIoLLaserUnit::callResume (
             return st;
           }
         }
-        //        Removed. Redundant with setQswitch_delay_us
-        //        if (it.key() == "qswitch")
-        //        {
-        //          st = write_qswitch(it.value(),resp);
-        //          if (st != OpcUa_Good)
-        //          {
-        //            getAddressSpaceLink()->setQswitch_us(m_qswitch, st);
-        //            return st;
-        //          }
-        //        }
         if (it.key() == "discharge_voltage")
         {
 #ifdef DEBUG
@@ -3312,6 +3156,11 @@ UaStatus DIoLLaserUnit::callResume (
     {
       return st;
     }
+    st = check_laser_instance(resp);
+    if(st != OpcUa_Good)
+    {
+      return st;
+    }
     // check that we are in a valid state for this call
     if ((m_status != sPause) && (m_status != sStandby))
     {
@@ -3369,7 +3218,7 @@ UaStatus DIoLLaserUnit::callResume (
     update_status(sLasing);
     return st;
   }
-  uint32_t DIoLLaserUnit::get_cib_shot_count()
+  uint32_t DIoLLaserUnit::cib_get_shot_count()
   {
     return 0;
     // not implemented yet.
@@ -3481,13 +3330,7 @@ UaStatus DIoLLaserUnit::callResume (
       {
         return st;
       }
-//     while (m_serial_busy.load())
-//      {
-//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//      }
-//      m_serial_busy.store(true);
       m_laser->shutter_close();
-//      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3515,7 +3358,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-//      m_serial_busy.store(false);
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
 #endif
@@ -3542,13 +3384,7 @@ UaStatus DIoLLaserUnit::callResume (
       {
         return st;
       }
-//      while (m_serial_busy.load())
-//      {
-//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//      }
-//      m_serial_busy.store(true);
       m_laser->shutter_open();
-//      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3576,7 +3412,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-//      m_serial_busy.store(false);
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
 #endif
@@ -3603,13 +3438,7 @@ UaStatus DIoLLaserUnit::callResume (
       {
         return st;
       }
-//      while (m_serial_busy.load())
-//      {
-//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//      }
-//      m_serial_busy.store(true);
       m_laser->fire_start();
-//      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3637,7 +3466,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-//      m_serial_busy.store(false);
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
 #endif
@@ -3663,13 +3491,7 @@ UaStatus DIoLLaserUnit::callResume (
       {
         return st;
       }
-//      while (m_serial_busy.load())
-//      {
-//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//      }
-//      m_serial_busy.store(true);
       m_laser->fire_stop();
-//      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3697,7 +3519,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-//      m_serial_busy.store(false);
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
 #endif
@@ -3723,13 +3544,7 @@ UaStatus DIoLLaserUnit::callResume (
       {
         return st;
       }
-//      while (m_serial_busy.load())
-//      {
-//        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-//      }
-//      m_serial_busy.store(true);
       m_laser->security(code,desc);
-//      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3757,7 +3572,6 @@ UaStatus DIoLLaserUnit::callResume (
     }
     if (got_exception)
     {
-//      m_serial_busy.store(false);
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
 #endif
@@ -3790,7 +3604,7 @@ UaStatus DIoLLaserUnit::callResume (
   }
   UaStatus DIoLLaserUnit::check_not_offline_state(json &resp)
   {
-    const std::string lbl = "check_offline";
+    const std::string lbl = "check_not_offline";
     if (m_status != sOffline)
     {
       std::ostringstream msg("");
@@ -3883,6 +3697,70 @@ UaStatus DIoLLaserUnit::callResume (
       return OpcUa_Good;
     }
   }
+  void DIoLLaserUnit::cib_init_mem()
+  {
+    // force clear anything in the map
+    if (m_reg_map.size() != 0)
+    {
+      cib_free_mem();
+    }
+    // -- there are several registers to be mapped:
+    cib_reg_t tmpreg;
+    tmpreg.id = LASER_REG;
+    tmpreg.paddr = GPIO_LASER_MEM_LOW;
+    tmpreg.size = 0xFFF;
+    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_LASER_MEM_LOW,GPIO_LASER_MEM_HIGH);
+    if (tmpreg.vaddr == 0x0)
+    {
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map LASER CIB memory region. This is going to fail spectacularly!!!\n\n";
+    }
+    m_reg_map[LASER_REG] = tmpreg;
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : LASER_REG mapped to " << std::hex << m_reg_map.at(LASER_REG).vaddr << std::dec;
+#endif
+    tmpreg.id= MISC_REG;
+    tmpreg.paddr = GPIO_MISC_MEM_LOW;
+    tmpreg.size = 0xFFF;
+    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MISC_MEM_LOW,GPIO_MISC_MEM_HIGH);
+    if (tmpreg.vaddr == 0x0)
+    {
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
+    }
+    m_reg_map[MISC_REG] = tmpreg;
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : MISC_REG mapped to " << std::hex << m_reg_map.at(MISC_REG).vaddr << std::dec;
+#endif
+    tmpreg.id= ALIGN_REG;
+    tmpreg.paddr = GPIO_ALIGN_MEM_LOW;
+    tmpreg.size = 0xFFF;
+    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
+    if (tmpreg.vaddr == 0x0)
+    {
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
+    }
+    m_reg_map[ALIGN_REG] = tmpreg;
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : ALIGN_REG mapped to " << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
+#endif
+    if (m_reg_map.size() != 3)
+    {
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map oneor more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
+      m_status = sError;
+    }
+  }
+  void DIoLLaserUnit::cib_free_mem()
+  {
+    // clear up the memory for the CIB
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Unammping CIB memory regions.";
 
+    for (auto entry: m_reg_map)
+    {
+#ifdef DEBUG
+      LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Clearing CIB memory [" << entry.first << "\n";
+#endif
+      cib::util::unmap_mem(entry.second.vaddr,entry.second.size);
+    }
+    close(m_mmap_fd);
 
+  }
 } // namespace
