@@ -2316,13 +2316,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // This is a problematic method, since it runs on a separate thread.
     // Therefore it needs to do several checks to make sure it does not enter into race conditions with the normal operation
     // the main issue here is when there is a race condition with the termination
-    return;
     json resp;
     if (m_laser)
     {
       refresh_status(resp);
-      refresh_shot_count(resp);
-      get_laser_shutter();
+//      refresh_shot_count(resp);
+//      get_laser_shutter();
     }
     UaStatus st;
     //UaStatus st = check_error_state(resp);
