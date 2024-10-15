@@ -800,7 +800,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     //
     // it only reaches here if it is also *not* in the sError state
-    UaStatus st = check_not_offline_state(resp);
+    st = check_not_offline_state(resp);
     if (st != OpcUa_Good)
     {
       return st;
