@@ -1334,10 +1334,10 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // just delete the device and go into offline mode
     // -- now just delete the device
     // FIXME: There is a potential rate condition here... if while we are terminating, other requests sit on a queue
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     update_status(sOffline);
     if (m_laser)
     {
-      const std::lock_guard<std::mutex> lock(m_serial_mutex);
 #ifdef DEBUG
       std::ostringstream msg("");
       msg << log_w(lbl.c_str(),"Deleting the laser pointer");
