@@ -357,7 +357,7 @@ int main()
 
   UA_UInt16 laser_status_code;
   val = UA_Variant_new();
-  UA_Variant * val_desc = UA_Variant_new();
+  //UA_Variant * val_desc = UA_Variant_new();
   retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.L1.laser_status_code"), val);
   if (retval != UA_STATUSCODE_GOOD)
   {

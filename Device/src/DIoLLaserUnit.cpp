@@ -923,7 +923,6 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
           // if we are on standby, don't update, as we don't want to mess the timer
           update_status(sStandby);
           // this is now done on update_status
-          // start_standby_timer();
         }
         // if the external shutter is closed, open it
         // there is redundancy and there is no point
@@ -2327,7 +2326,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       refresh_status(resp);
       refresh_shot_count(resp);
-//      get_laser_shutter();
+      get_laser_shutter();
     }
     UaStatus st;
     //UaStatus st = check_error_state(resp);
@@ -2789,6 +2788,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 #ifdef DEBUG
       LOG(Log::INF) << log_i(lbl.c_str(),"Done with config");
 #endif
+      // update the timers so that they don't complain about Waiting for data
+      getAddressSpaceLink()->setWarmup_timer_s(0,OpcUa_Good);
+      getAddressSpaceLink()->setStandby_timer_s(0,OpcUa_Good);
+      getAddressSpaceLink()->setPause_timer_s(0,OpcUa_Good);
+
       m_config_completed = true;
       // if we reached this point we don't have an exception, so things should be good
       // if we reached this point, things seem to be good
