@@ -28,6 +28,34 @@ using std::string;
 using std::vector;
 using json = nlohmann::json;
 
+static UA_StatusCode
+nodeIter(UA_NodeId childId, UA_Boolean isInverse, UA_NodeId referenceTypeId, void *handle) {
+    if(isInverse)
+        return UA_STATUSCODE_GOOD;
+    UA_NodeId *parent = (UA_NodeId *)handle;
+    spdlog::info("{0},{1} --- {2} ---> {3},{4}",
+                 parent->namespaceIndex, parent->identifier.numeric,
+                 referenceTypeId.identifier.numeric, childId.namespaceIndex,
+                 childId.identifier.numeric);
+//    printf("%d, %d --- %d ---> NodeId %d, %d\n",
+//           parent->namespaceIndex, parent->identifier.numeric,
+//           referenceTypeId.identifier.numeric, childId.namespaceIndex,
+//           childId.identifier.numeric);
+    return UA_STATUSCODE_GOOD;
+}
+
+void browse_nodes(UA_Client *client)
+{
+  /* Same thing, this time using the node iterator... */
+  UA_NodeId *parent = UA_NodeId_new();
+  *parent = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER);
+  spdlog::info("Parent ID --- reference type -- node id");
+
+  UA_Client_forEachChildNodeCall(client, UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER),
+                                 nodeIter, (void *) parent);
+  UA_NodeId_delete(parent);
+}
+
 void parse_method_response_string(std::string &input)
 {
   try
@@ -90,6 +118,9 @@ int main()
   {
     spdlog::info("Connected to server");
   }
+
+  // -- First browse all nodes that are available
+  browse_nodes(client);
 
 
   /**
