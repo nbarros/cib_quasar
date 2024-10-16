@@ -84,7 +84,6 @@
 	}
 ],
 "power_meter" : {
-	"type" : "PowerMeter",
 	"name" : "PM1",
 	"serial_number":"A9XAP6AY",
 	"port":"auto",
@@ -94,7 +93,8 @@
 	"wavelength":266,
 	"energy_threshold":200,
 	"average_setting":1,
-	"pulse_width":2
+	"pulse_width":2,
+	"measurement_interval_ms" : 500
 },
 "attenuator" : {
 	"name":"A1",

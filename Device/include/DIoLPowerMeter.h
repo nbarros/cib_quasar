@@ -145,6 +145,9 @@ private:
     void refresh_average_reading();
     bool validate_config_fragment(json &c, json &r);
     void update_status(Status new_state);
+    void start_readings();
+    UaStatus check_offline_state(json &resp);
+
     // check if there is a new energy reading.
     // update the value if yes
     //void refresh_energy_reading();
@@ -170,10 +173,13 @@ private:
     std::map<Status,std::string> m_status_map;
     std::pair<uint16_t,uint16_t> m_threshold_limits;
     bool m_pause_measurements;
+    std::atomic<bool> m_do_measurements;
     std::string m_name;
     std::string m_serial_number;
     std::string m_id;
     std::atomic<bool> m_serial_busy;
+    uint16_t m_measurement_interval;
+    std::mutex m_serial_mutex;
 };
 
 }

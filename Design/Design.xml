@@ -154,7 +154,8 @@
   	</d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="UaString" name="pulse_length_options" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="invalid">
   	</d:cachevariable>
-    <!-- Operational methods. these are the only ones that are exposed to the operator. Some require specific authentication -->
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt16" name="measurement_interval_ms" nullPolicy="nullForbidden" addressSpaceWrite="regular" initialStatus="OpcUa_Good" initialValue="500">
+  	</d:cachevariable><!-- Operational methods. these are the only ones that are exposed to the operator. Some require specific authentication -->
     <d:method name="init" executionSynchronicity="synchronous">
       <d:returnvalue dataType="UaString" name="response"/>
     </d:method>
@@ -197,6 +198,7 @@
   	<d:method name="terminate" executionSynchronicity="synchronous">
   		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
   	
+
 
   </d:class>  
   <d:class name="IoLCIB">
