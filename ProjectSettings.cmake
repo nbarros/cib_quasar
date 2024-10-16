@@ -7,6 +7,10 @@
 set(CUSTOM_SERVER_MODULES LaserControl LaserUtils)
 include_directories( ${PROJECT_SOURCE_DIR}/LaserUtils/i2c/ )
 include_directories( ${PROJECT_SOURCE_DIR}/LaserUtils/common/ )
+add_subdirectory(${PROJECT_SOURCE_DIR}/Extra/client)
+
+set(BUILD_SPDLOG_FMT_EXTERNAL OFF)
+
 #include_directories( ${PROJECT_SOURCE_DIR}/LaserUtils/i2c/ )
 
 set(EXECUTABLE OpcUaServer)

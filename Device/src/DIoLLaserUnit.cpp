@@ -2326,7 +2326,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     if (m_laser)
     {
       refresh_status(resp);
-//      refresh_shot_count(resp);
+      refresh_shot_count(resp);
 //      get_laser_shutter();
     }
     UaStatus st;
