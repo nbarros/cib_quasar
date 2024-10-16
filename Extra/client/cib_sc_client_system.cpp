@@ -34,9 +34,26 @@ nodeIter(UA_NodeId childId, UA_Boolean isInverse, UA_NodeId referenceTypeId, voi
         return UA_STATUSCODE_GOOD;
     UA_NodeId *parent = (UA_NodeId *)handle;
     spdlog::info("{0},{1} --- {2} ---> {3},{4}",
-                 parent->namespaceIndex, parent->identifier.numeric,
-                 referenceTypeId.identifier.numeric, childId.namespaceIndex,
-                 childId.identifier.numeric);
+                 parent->namespaceIndex, parent->identifier.string.data,
+                 referenceTypeId.identifier.string.data, childId.namespaceIndex,
+                 childId.identifier.string.data);
+
+//    // alternatively, we can maybe do it this way:
+//    spdlog::info("{0},{1} --- {2} ---> {3},{4}",
+//
+//    if(ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_NUMERIC) {
+//        printf("%-9d %-16d %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
+//               ref->nodeId.nodeId.identifier.numeric, (int)ref->browseName.name.length,
+//               ref->browseName.name.data, (int)ref->displayName.text.length,
+//               ref->displayName.text.data);
+//    } else if(ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_STRING) {
+//        printf("%-9d %-16.*s %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
+//               (int)ref->nodeId.nodeId.identifier.string.length,
+//               ref->nodeId.nodeId.identifier.string.data,
+//               (int)ref->browseName.name.length, ref->browseName.name.data,
+//               (int)ref->displayName.text.length, ref->displayName.text.data);
+//    }
+
 //    printf("%d, %d --- %d ---> NodeId %d, %d\n",
 //           parent->namespaceIndex, parent->identifier.numeric,
 //           referenceTypeId.identifier.numeric, childId.namespaceIndex,
@@ -51,7 +68,7 @@ void browse_nodes(UA_Client *client)
   *parent = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER);
   spdlog::info("Parent ID --- reference type -- node id");
 
-  UA_Client_forEachChildNodeCall(client, UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER),
+  UA_Client_forEachChildNodeCall(client, UA_NODEID_NUMERIC(2, UA_NS0ID_OBJECTSFOLDER),
                                  nodeIter, (void *) parent);
   UA_NodeId_delete(parent);
 }
