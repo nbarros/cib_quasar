@@ -102,6 +102,7 @@ DIoLLaserUnit::DIoLLaserUnit (
             ,m_warmup_timer(20) // 30 min
 //            ,m_serial_busy(false)
             ,m_config_completed(false)
+            ,m_is_terminating(false)
 {
     /* fill up constructor body here */
     m_name = config.id();
@@ -1266,6 +1267,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // everything else is secondary
     std::ostringstream msg("");
     const std::string lbl = "terminate";
+    m_is_terminating.store(true);
     // terminate should take on a mutex right away so other methods do nothing during this period
 
 #ifdef DEBUG
@@ -1349,6 +1351,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     m_laser = nullptr;
     m_config_completed = false;
+    m_is_terminating.store(false);
     return OpcUa_Good;
   }
   UaStatus DIoLLaserUnit::stop(json &resp)
@@ -1733,9 +1736,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     bool got_exception = false;
     const std::string lbl = "refresh_status";
     UaStatus st = OpcUa_Good;
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     try
     {
-      const std::lock_guard<std::mutex> lock(m_serial_mutex);
       st = check_laser_instance(resp);
       if (st != OpcUa_Good)
       {
@@ -2322,20 +2325,22 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // Therefore it needs to do several checks to make sure it does not enter into race conditions with the normal operation
     // the main issue here is when there is a race condition with the termination
     json resp;
+    if (m_is_terminating.load())
+    {
+      return;
+    }
+
     if (m_laser)
     {
+      // this could potentially cause a race condition
       refresh_status(resp);
+      // this could potentially cause a race condition
       refresh_shot_count(resp);
+      // this does not cause a crash. Just updates the slow control variable
       get_laser_shutter();
     }
     UaStatus st;
-    //UaStatus st = check_error_state(resp);
-    //if (st != OpcUa_Good)
-    //{
-    //  LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an sError status. Terminating.";
-    //  terminate(resp);
-    //}
-    // do also a refresh of the relevant registers
+    // this should not cause crashes either.
     if ((m_status != sOffline) && m_config_completed)
     {
       st = refresh_registers(resp);
