@@ -128,6 +128,9 @@ public:
       size_t n_bits;
     } cib_param_t;
     //
+    enum Status{sOffline=0x0,sReady=2,sMoving=3,sError=4};
+
+    //
     void update();
     bool is_ready();
 
@@ -212,7 +215,8 @@ private:
     // this one monitors the movement register
     void cib_movement_monitor();
 
-
+    // other aux functions
+    void update_status(Status new_state);
 
     const uint16_t get_refresh_ms() {return m_refresh_ms;}
 
@@ -249,6 +253,9 @@ private:
     std::map<int,cib_gpio_t> m_reg_map;
     std::map<std::string,cib_param_t> m_regs;
     std::mutex m_motor_mtx;
+    std::map<Status,std::string> m_status_map;
+    Status m_status;
+
 };
 
 }

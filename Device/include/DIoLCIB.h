@@ -114,7 +114,9 @@ public:
       uint32_t mask;
       size_t n_bits;
     } conf_param_t;
-
+    //
+    enum Status{sOffline=0x0,sReady=2,sError=3};
+    //
     bool is_ready() {return m_is_ready;}
     void update();
     UaStatus terminate(json &resp);
@@ -157,6 +159,7 @@ private:
     void refresh_registers();
     UaStatus check_cib_mem(json &resp);
     //
+    void update_status(Status new_state);
     // -- internal variable cache
     uint32_t m_align_width;
     uint32_t m_align_period;
@@ -182,6 +185,8 @@ private:
     int m_mmap_fd;
     std::map<int,cib_gpio_t> m_reg_map;
     std::map<std::string,conf_param_t> m_regs;
+    std::map<Status,std::string> m_status_map;
+    Status m_status;
 
     cib::i2c::AD5339 m_dac;
 

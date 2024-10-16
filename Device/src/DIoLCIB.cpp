@@ -72,19 +72,20 @@ namespace Device
       const Configuration::IoLCIB& config,
       Parent_DIoLCIB* parent
   ):
-        Base_DIoLCIB( config, parent)
+            Base_DIoLCIB( config, parent)
 
-        /* fill up constructor initialization list here */
-        , m_is_ready(false)
-        , m_cpu_load(0.0)
-        , m_used_mem(0.0)
-        , m_prev_tot_usr(0)
-        , m_prev_tot_usr_low(0)
-        , m_prev_tot_sys(0)
-        , m_prev_tot_idle(0)
-        , m_total(0)
-        ,m_mmap_fd(0)
-        {
+            /* fill up constructor initialization list here */
+            , m_is_ready(false)
+            , m_cpu_load(0.0)
+            , m_used_mem(0.0)
+            , m_prev_tot_usr(0)
+            , m_prev_tot_usr_low(0)
+            , m_prev_tot_sys(0)
+            , m_prev_tot_idle(0)
+            , m_total(0)
+            ,m_mmap_fd(0)
+            ,m_status(sOffline)
+            {
     /* fill up constructor body here */
     m_id = id();
     // start by initializing the initial counters
@@ -98,7 +99,12 @@ namespace Device
     {
       LOG(Log::ERR) << log_e("constructor","Failed to map CIB memory. This is definitely not good.");
     }
-        }
+
+    m_status_map.insert({sOffline,"offline"});
+    m_status_map.insert({sReady,"ready"});
+    m_status_map.insert({sError,"error"});
+
+            }
 
   /* sample dtr */
   DIoLCIB::~DIoLCIB ()
@@ -289,6 +295,8 @@ namespace Device
     refresh_dac();
     refresh_pdts();
     refresh_registers();
+    UaString ss(m_status_map.at(m_status).c_str());
+    getAddressSpaceLink()->setState(ss,OpcUa_Good);
   }
   UaStatus DIoLCIB::set_dac_threshold(uint16_t &val,json &resp)
   {
@@ -784,6 +792,7 @@ namespace Device
         }
       }
     }
+    update_status(sReady);
     return OpcUa_Good;
   }
   void DIoLCIB::refresh_pdts()
@@ -796,6 +805,7 @@ namespace Device
     }
     else
     {
+      update_status(sError);
       getAddressSpaceLink()->setPdts_state(0xF,OpcUa_Uncertain);
       getAddressSpaceLink()->setPdts_address(0xF,OpcUa_Uncertain);
     }
@@ -1037,12 +1047,18 @@ namespace Device
   {
 #ifdef DEBUG
     LOG(Log::INF) << log_i("cib_set","Writting into ")
-        << " addr 0x" << std::hex << reg.maddr << std::dec
-        << " val " << value
-        << " mask 0x" << std::hex << reg.mask << std::dec
-        << " offset " << reg.bit_low;
+            << " addr 0x" << std::hex << reg.maddr << std::dec
+            << " val " << value
+            << " mask 0x" << std::hex << reg.mask << std::dec
+            << " offset " << reg.bit_low;
 #endif
     cib::util::reg_write_mask_offset(reg.maddr, value, reg.mask, reg.bit_low);
     return OpcUa_Good;
+  }
+  void DIoLCIB::update_status(Status s)
+  {
+    m_status = s;
+    UaString ss(m_status_map.at(m_status).c_str());
+    getAddressSpaceLink()->setState(ss,OpcUa_Good);
   }
 }

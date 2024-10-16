@@ -100,27 +100,22 @@ DIoLMotor::DIoLMotor (
             ,m_range_max(-999999)
             ,m_id("NONE")
             ,m_coordinate_index(0)
+            ,m_alarm_code_motor(0)
             ,m_mmap_fd(0)
+            ,m_status(sOffline)
+
 {
     /* fill up constructor body here */
     // initialize cURL
     curl_global_init(CURL_GLOBAL_ALL);
 
-    // Provide whatever clients a useful, crappy value for
-    // everything else will be processed in contained form
-    //getAddressSpaceLink()->setPositionSetPoint(m_position_setpoint, OpcUa_BadWaitingForInitialData);
-
     // allocate the memory mapped registers
     (void)init_cib_mem();
+    m_status_map.insert({sOffline,"offline"});
+    m_status_map.insert({sReady,"ready"});
+    m_status_map.insert({sMoving,"moving"});
+    m_status_map.insert({sError,"error"});
 
-//    if (m_stats_monitor)
-//    {
-//      if (m_refresh_ms != 0.0)
-//      {
-//        motor_position_monitor();
-//        motor_stats_monitor();
-//      }
-//    }
     m_id = id();
 }
 
@@ -476,7 +471,10 @@ UaStatus DIoLMotor::callClear_alarm (
     getAddressSpaceLink()->setTemperature_C(m_temperature, status);
     getAddressSpaceLink()->setSpeed_readout(m_speed_readout, status);
     getAddressSpaceLink()->setIs_moving(m_is_moving, status);
+    getAddressSpaceLink()->setAlarm_code(m_alarm_code_motor,status);
     //getAddressSpaceLink()->setAcceleration(m_acceleration, OpcUa_Good);
+    UaString ss(m_status_map.at(m_status).c_str());
+    getAddressSpaceLink()->setState(ss,OpcUa_Good);
 
     // now the getters -- for now allow all to be updated, but eventually set limitations
     // these getters are for variables with "regular" writing policy. We can change that
@@ -548,10 +546,12 @@ UaStatus DIoLMotor::callClear_alarm (
         if (m_position_motor == prev_pos)
         {
           m_is_moving = false;
+          update_status(sReady);
         }
         else
         {
           m_is_moving = true;
+          update_status(sMoving);
         }
         getAddressSpaceLink()->setIs_moving(m_is_moving,OpcUa_Good);
         std::this_thread::sleep_until(x);
@@ -1121,6 +1121,7 @@ UaStatus DIoLMotor::callClear_alarm (
         // since by now the registers are mapped, we can initiate the thread
       }
     }
+    update_status(sReady);
     //
     // configuration is done.
     // start by resetting the target position to the current position
@@ -1273,6 +1274,7 @@ UaStatus DIoLMotor::callClear_alarm (
   }
   UaStatus DIoLMotor::terminate(json &resp)
   {
+    update_status(sOffline);
     // the main thing here is to stop the monitors
     m_cib_monitor.store(false);
     m_position_monitor.store(false);
@@ -1509,6 +1511,12 @@ UaStatus DIoLMotor::callClear_alarm (
     {
       return OpcUa_Good;
     }
+  }
+  void DIoLMotor::update_status(Status s)
+  {
+    m_status = s;
+    UaString ss(m_status_map.at(m_status).c_str());
+    getAddressSpaceLink()->setState(ss,OpcUa_Good);
   }
 } // -- namespace
 
