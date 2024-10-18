@@ -73,6 +73,38 @@ void browse_nodes(UA_Client *client)
   UA_NodeId_delete(parent);
 }
 
+void check_motor_positions(UA_Client *client, const std::string node)
+{
+  spdlog::info("Checking position of {0}",node);
+  std::vector<std::string> nodes = {".current_position_motor",".current_position_cib"};
+  for (auto entry : nodes)
+  {
+    UA_Variant *val = UA_Variant_new();
+    std::string vname = node + entry ;
+    int32_t position;
+    UA_StatusCode retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, const_cast<char*>(vname.c_str())), val);
+    if (retval == UA_STATUSCODE_GOOD)
+    {
+      // strings are arrays, therefore
+      if (val->type == &UA_TYPES[UA_TYPES_INT32])
+      {
+        position = *static_cast<UA_Int32*>(val->data);
+        spdlog::info("{0} position : {1}",vname,position);
+      }
+      else
+      {
+        spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
+      }
+    }
+    else
+    {
+      spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
+    }
+    // clear the variant from the query
+    UA_Variant_delete(val);
+  }
+}
+
 void parse_method_response_string(std::string &input)
 {
   try
@@ -100,6 +132,11 @@ void parse_method_response_string(std::string &input)
     spdlog::critical("Caught an unknown exception");
   }
 
+}
+
+void probe_motor_positions(UA_Client *client)
+{
+  UA_StatusCode retval = UA_STATUSCODE_GOOD;
 }
 
 int main()
@@ -448,6 +485,19 @@ int main()
   UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
   UA_Variant_clear(&input);
 
+
+  // -----------
+  // -----------
+  // Get the current motor positions
+  spdlog::info("Querying motor positions");
+  check_motor_positions(client,"LS1.RNN800");
+  check_motor_positions(client,"LS1.RNN600");
+  check_motor_positions(client,"LS1.LSTAGE");
+  spdlog::info("Done querying motor positions");
+
+  // -----------
+  // -----------
+  
   spdlog::info("\n\nStage 4 : Shut down the system\n\n");
 
   UA_Variant_init(&input);
