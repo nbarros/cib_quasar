@@ -37,10 +37,10 @@ nodeIter(UA_NodeId childId, UA_Boolean isInverse, UA_NodeId referenceTypeId, voi
     std::string parentId(parent->identifier.string.data);
     std::string child_id(childId.identifier.string.data);
 
-    spdlog::info("{0},{1} --- {2} ---> {3},{4}",
-                 parent->namespaceIndex, parentId,
-                 referenceTypeId.identifier.string.data, 
-                 childId.namespaceIndex, child_id);
+    // spdlog::info("{0},{1} --- {2} ---> {3},{4}",
+    //              parent->namespaceIndex, parentId,
+    //              referenceTypeId.identifier.string.data, 
+    //              childId.namespaceIndex, child_id);
 
 //    // alternatively, we can maybe do it this way:
 //    spdlog::info("{0},{1} --- {2} ---> {3},{4}",
