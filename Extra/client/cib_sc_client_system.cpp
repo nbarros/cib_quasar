@@ -146,7 +146,7 @@ int main()
 
   UA_StatusCode retval = UA_STATUSCODE_GOOD;
   // CIB2 IP
-  string server = "opc.tcp://10.73.137.148:4841";
+  string server = "opc.tcp://10.73.137.147:4841";
 
   // create a new client, and use the default configuration options
   // for now this is fine
