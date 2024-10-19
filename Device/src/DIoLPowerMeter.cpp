@@ -1376,7 +1376,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e(label.c_str(),"Readings already ongoing");
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      return OpcUa_Good;
+      return OpcUa_Uncertain;
     }
     // check that the refresh interval is not too low or we'll run into troubles for sure
     if (m_measurement_interval < 50)
@@ -1386,7 +1386,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       msg << log_e(label.c_str(),"Refresh interval is too low (should be at least above 50)");
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      return OpcUa_Good;
+      return OpcUa_BadInvalidArgument;
     }
     // if it reached this point, we should be good to go
     update_status(sReading);
