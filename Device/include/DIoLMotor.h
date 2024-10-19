@@ -245,7 +245,7 @@ private:
     int32_t m_range_min;
     int32_t m_range_max;
     std::string m_id;
-    size_t m_coordinate_index;
+    // size_t m_coordinate_index;
     //
     // Variables necessary to map registers in the CIB
     //

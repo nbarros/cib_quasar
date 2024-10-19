@@ -570,7 +570,6 @@ UaStatus DIoLPowerMeter::callTerminate (
     else
     {
       // actually query the device for the
-      bool got_exception = false;
       bool success = false;
       try
       {
@@ -583,11 +582,11 @@ UaStatus DIoLPowerMeter::callTerminate (
       }
       catch(std::exception &e)
       {
-        got_exception = true;
+
       }
       catch(...)
       {
-        got_exception = true;
+
       }
     }
   }
@@ -601,7 +600,6 @@ UaStatus DIoLPowerMeter::callTerminate (
     else
     {
       // actually query the device for the
-      bool got_exception = false;
       bool success = false;
       try
       {
@@ -614,11 +612,9 @@ UaStatus DIoLPowerMeter::callTerminate (
       }
       catch(std::exception &e)
       {
-        got_exception = true;
       }
       catch(...)
       {
-        got_exception = true;
       }
     }
   }
@@ -662,7 +658,6 @@ UaStatus DIoLPowerMeter::callTerminate (
     std::string type,sn,name;
     bool power,energy,freq;
     // actually query the device for the
-    bool got_exception = false;
     if (m_status == sOffline)
     {
       std::string s = util::serialize_map(m_measurement_modes);
@@ -699,11 +694,9 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     catch(std::exception &e)
     {
-      got_exception = true;
     }
     catch(...)
     {
-      got_exception = true;
     }
   }
   void DIoLPowerMeter::refresh_threshold_limits()
@@ -715,7 +708,6 @@ UaStatus DIoLPowerMeter::callTerminate (
       return;
     }
     //
-    bool got_exception = false;
     try
     {
       const std::lock_guard<std::mutex> lock(m_serial_mutex);
@@ -730,11 +722,9 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     catch(std::exception &e)
     {
-      got_exception = true;
     }
     catch(...)
     {
-      got_exception = true;
     }
   }
 
@@ -742,7 +732,6 @@ UaStatus DIoLPowerMeter::callTerminate (
   {
     //
     int16_t v;
-    bool got_exception = false;
     if (m_status == sOffline)
     {
       // do nothing...we are offline
@@ -773,18 +762,15 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     catch(std::exception &e)
     {
-      got_exception = true;
     }
     catch(...)
     {
-      got_exception = true;
     }
   }
 
   void DIoLPowerMeter::refresh_pulse_width_ranges()
   {
     uint16_t a;
-    bool got_exception = false;
     if (m_status == sOffline)
     {
       std::string s = util::serialize_map(m_pulse_widths);
@@ -807,11 +793,9 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     catch(std::exception &e)
     {
-      got_exception = true;
     }
     catch(...)
     {
-      got_exception = true;
     }
   }
 

@@ -41,11 +41,11 @@ using std::vector;
 
 using json = nlohmann::json;
 
-#define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
+#define log_msg(s,dev,met,msg) "[" << s << "]::" << dev << ":" << met << " : " << msg
 
-#define log_e(m,s) log_msg("ERROR",m,s)
-#define log_w(m,s) log_msg("WARN",m,s)
-#define log_i(m,s) log_msg("INFO",m,s)
+#define log_e(m,s) log_msg("ERROR","att",m,s)
+#define log_w(m,s) log_msg("WARN","att",m,s)
+#define log_i(m,s) log_msg("INFO","att",m,s)
 
 //#define DEBUG 1
 
@@ -607,6 +607,7 @@ UaStatus DIoLAttenuator::init_device(json &resp)
     }
     if (m_comport.size() == 0)
     {
+      msg.clear(); msg.str("");
       msg << log_e("init","Port is empty. Aborting");
       resp["messages"].push_back(msg.str());
       return OpcUa_Bad;
