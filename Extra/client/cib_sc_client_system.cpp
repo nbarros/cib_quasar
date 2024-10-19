@@ -34,8 +34,8 @@ nodeIter(UA_NodeId childId, UA_Boolean isInverse, UA_NodeId referenceTypeId, voi
         return UA_STATUSCODE_GOOD;
     UA_NodeId *parent = (UA_NodeId *)handle;
 
-    std::string parentId(static_cast<char*>(parent->identifier.string.data));
-    std::string child_id(static_cast<char*>(childId.identifier.string.data));
+    //std::string parentId(static_cast<char*>(parent->identifier.string.data));
+    //std::string child_id(static_cast<char*>(childId.identifier.string.data));
 
     // spdlog::info("{0},{1} --- {2} ---> {3},{4}",
     //              parent->namespaceIndex, parentId,
@@ -150,7 +150,7 @@ int main()
 
   UA_StatusCode retval = UA_STATUSCODE_GOOD;
   // CIB2 IP
-  string server = "opc.tcp://10.73.137.148:4841";
+  string server = "opc.tcp://10.73.137.147:4841";
 
   // create a new client, and use the default configuration options
   // for now this is fine
