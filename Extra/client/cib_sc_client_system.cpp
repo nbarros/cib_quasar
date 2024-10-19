@@ -138,9 +138,10 @@ void parse_method_response_string(std::string &input)
 
 }
 
-void probe_motor_positions(UA_Client *client)
+void terminate_client(UA_Client *client)
 {
-  UA_StatusCode retval = UA_STATUSCODE_GOOD;
+  UA_Client_disconnect(client);
+  UA_Client_delete(client); 
 }
 
 int main()
@@ -165,19 +166,20 @@ int main()
   spdlog::info("Connecting to CIB server at [{0}]",server);
 
   retval = UA_Client_connect(client, server.c_str());
-
   if(retval != UA_STATUSCODE_GOOD)
   {
     spdlog::error("Failed with code {0}  name {1}",retval,UA_StatusCode_name(retval));
     // we can print a message why
     UA_Client_delete(client);
     return EXIT_FAILURE;
-  } else
+  } 
+  else
   {
     spdlog::info("Connected to server");
   }
 
   // -- First browse all nodes that are available
+  spdlog::info("Browsing available nodes");
   browse_nodes(client);
 
 
@@ -205,7 +207,6 @@ int main()
 
 
   UA_Variant_init(&input);
-
   UA_String argString = UA_String_fromChars(jconf.dump().c_str());
   UA_Variant_setScalarCopy(&input, &argString, &UA_TYPES[UA_TYPES_STRING]);
 
@@ -241,10 +242,16 @@ int main()
   else
   {
     spdlog::error("Method execution failed with code {0} : {1}",retval,UA_StatusCode_name(retval));
+    // clean up
+    UA_Variant_clear(&input);
+    fconf.close();
+    terminate_client(client);
+    return EXIT_FAILURE;
   }
   // clear up the configuration allocated parts
   UA_Variant_clear(&input);
   fconf.close();
+
 
   spdlog::info("\n\nStage 2 : Check the individual node status\n\n");
   spdlog::info("Checking A1");
@@ -523,8 +530,6 @@ int main()
 
   spdlog::info("All done. Shutting down client.");
 
-  UA_Client_disconnect(client);
-  UA_Client_delete(client);
   return EXIT_SUCCESS;
 
 }
