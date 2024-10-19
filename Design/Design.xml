@@ -535,7 +535,7 @@
 		</d:hasobjects>
     <d:hasobjects instantiateUsing="configuration" class="IoLCIB" minOccurs="1" maxOccurs="1">
 		</d:hasobjects>
-    <d:hasobjects instantiateUsing="configuration" class="IoLPowerMeter" minOccurs="1" maxOccurs="2">
+    <d:hasobjects instantiateUsing="configuration" class="IoLPowerMeter" minOccurs="1" maxOccurs="1">
     </d:hasobjects><d:method name="load_config" executionSynchronicity="synchronous">
       <d:argument dataType="UaString" name="conf"/>
       <d:returnvalue dataType="UaString" name="response"/>
@@ -544,7 +544,7 @@
       <d:returnvalue dataType="OpcUa_Boolean" name="ready"/>
     </d:method>
     <d:method name="stop" executionSynchronicity="synchronous">
-      <!--this method sends immediate stop commands for all subsystems, starting by the iris. After this call one should recheck the state of the system as the motors may not be in the right state--><d:returnvalue
+      <!--this method sends immediate stop commands for all subsystems, starting by the shutter. After this call one should recheck the state of the system as the motors may not be in the right state--><d:returnvalue
       	dataType="UaString" name="response">
 </d:returnvalue>
     </d:method>
