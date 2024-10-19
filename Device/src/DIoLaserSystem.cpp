@@ -32,11 +32,11 @@
 #include <string>
 #include <chrono>
 
-#define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
+#define log_msg(s,met,dev,msg) "[" << s << "]::" << dev << ":" << met << " : " << msg
 
-#define log_e(m,s) log_msg("ERROR",m,s)
-#define log_w(m,s) log_msg("WARN",m,s)
-#define log_i(m,s) log_msg("INFO",m,s)
+#define log_e(m,s) log_msg("ERROR","iols",m,s)
+#define log_w(m,s) log_msg("WARN","iols",m,s)
+#define log_i(m,s) log_msg("INFO","iols",m,s)
 
 using std::ostringstream;
 
