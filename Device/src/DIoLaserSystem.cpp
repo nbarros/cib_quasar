@@ -575,7 +575,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       if (!validate_config_fragment(conf,resp))
       {
         reset(msg);
-        msg << log_e("stop","Failed to stop laser unit. See previous messages");
+        msg << log_e("stop","Failed to validate configuration fragment. See previous messages");
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         if (!resp.contains("statuscode"))
@@ -2023,7 +2023,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     const uint32_t overstep = 200;
     std::ostringstream msg("");
     UaStatus st = OpcUa_Good;
-    bool error_moving = false;
+    // bool error_moving = false;
     // before we do anything check the valid approaches
     bool failed_validation = false;
     if ((position.size() != 3) || (approach.size()!= 3))
