@@ -3602,7 +3602,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     return OpcUa_Good;
   }
 
-  UaStatus DIoLLaserUnit::∏check_error_state(json &resp)
+  UaStatus DIoLLaserUnit::check_error_state(json &resp)
   {
     const std::string lbl = "check_error";
     if (m_status == sError)
