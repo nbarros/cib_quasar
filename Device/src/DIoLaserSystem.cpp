@@ -1056,11 +1056,21 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       }
       // at this stage we are done
       // make sure that the laser is in pause state
-      iollaserunit()->pause(resp);
-      for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+      st = iollaserunit()->pause(resp);
+      if (st != OpcUa_Good)
       {
-        st = lmeter->stop_readings(resp);
+        reset(msg);
+        msg << log_e(lbl.c_str(),"Failed to set later in pause mode.");
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["statuscode"] = static_cast<uint32_t>(st);
+        return st;
       }
+      st = iolpowermeter()->stop_readings();
+      // for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+      // {
+      //   st = lmeter->stop_readings(resp);
+      // }
 
     }
     catch(json::exception &e)
