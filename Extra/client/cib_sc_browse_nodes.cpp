@@ -61,7 +61,7 @@ nodeIter(UA_NodeId childId, UA_Boolean isInverse, UA_NodeId referenceTypeId, voi
     return UA_STATUSCODE_GOOD;
 }
 
-void browse_nodes(UA_Client *client)
+void browse_nodes_iter(UA_Client *client)
 {
   /* Same thing, this time using the node iterator... */
   UA_NodeId *parent = UA_NodeId_new();
@@ -73,6 +73,48 @@ void browse_nodes(UA_Client *client)
   UA_NodeId_delete(parent);
 }
 
+void browse_nodes_scan(UA_Client *client)
+{
+  printf("Browsing nodes in objects folder:\n");
+  UA_BrowseRequest bReq;
+  UA_BrowseRequest_init(&bReq);
+  bReq.requestedMaxReferencesPerNode = 0;
+  bReq.nodesToBrowse = UA_BrowseDescription_new();
+  bReq.nodesToBrowseSize = 1;
+  bReq.nodesToBrowse[0].nodeId = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER); /* browse objects folder */
+  bReq.nodesToBrowse[0].resultMask = UA_BROWSERESULTMASK_ALL;                  /* return everything */
+  UA_BrowseResponse bResp = UA_Client_Service_browse(client, bReq);
+  printf("%-9s %-16s %-16s %-16s\n", "NAMESPACE", "NODEID", "BROWSE NAME", "DISPLAY NAME");
+  for (size_t i = 0; i < bResp.resultsSize; ++i)
+  {
+    for (size_t j = 0; j < bResp.results[i].referencesSize; ++j)
+    {
+      UA_ReferenceDescription *ref = &(bResp.results[i].references[j]);
+      if (ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_NUMERIC)
+      {
+        printf("%-9d %-16d %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
+               ref->nodeId.nodeId.identifier.numeric, (int)ref->browseName.name.length,
+               ref->browseName.name.data, (int)ref->displayName.text.length,
+               ref->displayName.text.data);
+      }
+      else if (ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_STRING)
+      {
+        printf("%-9d %-16.*s %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
+               (int)ref->nodeId.nodeId.identifier.string.length,
+               ref->nodeId.nodeId.identifier.string.data,
+               (int)ref->browseName.name.length, ref->browseName.name.data,
+               (int)ref->displayName.text.length, ref->displayName.text.data);
+      }
+      else
+      {
+        printf("Unknown node id type\n");
+      }
+      /* TODO: distinguish further types */
+    }
+  }
+  UA_BrowseRequest_clear(&bReq);
+  UA_BrowseResponse_clear(&bResp);
+}
 void parse_method_response_string(std::string &input)
 {
   try
@@ -122,352 +164,22 @@ int main()
   // retval = UA_Client_connectUsername(client, "opc.tcp://localhost:4840", "user1", "password");
 
   spdlog::info("Connecting to CIB server at [{0}]",server);
-
   retval = UA_Client_connect(client, server.c_str());
-
   if(retval != UA_STATUSCODE_GOOD)
   {
-    spdlog::error("Failed with code {0}  name {1}",retval,UA_StatusCode_name(retval));
+    spdlog::error("Failed to connect with code {0}  name {1}",retval,UA_StatusCode_name(retval));
     // we can print a message why
     UA_Client_delete(client);
     return EXIT_FAILURE;
-  } else
+  } 
+  else
   {
     spdlog::info("Connected to server");
   }
 
   // -- First browse all nodes that are available
-  browse_nodes(client);
+  browse_nodes_scan(client);
 
-
-  /**
-   * Now we're in business. Let's rock!
-   *
-   *
-   */
-  spdlog::info("Let's try a complete sequence of operation.\n\n"
-      "1.Load a configuration and send it to the server\n"
-      "2.Check status of the various systems\n"
-      "3.Check the state of the laser\n"
-      "4.shutdown the system\n");
-
-  std::ifstream fconf("iols_p2_config.json");
-
-  json jconf = json::parse(fconf);
-
-  spdlog::info("\n\nStage 1 : configure IOLS LS1.load_config\n\n");
-  UA_UInt32 state;
-  // pass our configuration argument
-  UA_Variant input;
-  size_t outputSize;
-  UA_Variant *output;
-
-
-  UA_Variant_init(&input);
-
-  UA_String argString = UA_String_fromChars(jconf.dump().c_str());
-  UA_Variant_setScalarCopy(&input, &argString, &UA_TYPES[UA_TYPES_STRING]);
-
-  // prototype of the client call
-  //    UA_StatusCode UA_Client_call(UA_Client * client,
-  //                  const UA_NodeId objectId,
-  //                  const UA_NodeId methodId,
-  //                  size_t inputSize,
-  //                  const UA_Variant *input,
-  //                  size_t *outputSize,
-  //                  UA_Variant **output)
-  //
-  retval = UA_Client_call(client,
-                          UA_NODEID_STRING(2, "LS1"),
-                          UA_NODEID_STRING(2, "LS1.load_config"),
-                          1,
-                          &input,
-                          &outputSize,
-                          &output);
-  if(retval == UA_STATUSCODE_GOOD)
-  {
-    spdlog::info("Method call was successful. received {0} output values with the following output:",outputSize);
-    // All methods in the CIB return a json string
-    std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
-    spdlog::info("{0}",response);
-    parse_method_response_string(response);
-    //    json jresp = json::parse(response);
-    //    spdlog::info("After parsing : {0}",jresp.dump().c_str());
-    // if we want to be more picky:
-    // clear the array
-    UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
-  }
-  else
-  {
-    spdlog::error("Method execution failed with code {0} : {1}",retval,UA_StatusCode_name(retval));
-  }
-  // clear up the configuration allocated parts
-  UA_Variant_clear(&input);
-  fconf.close();
-
-  spdlog::info("\n\nStage 2 : Check the individual node status\n\n");
-  spdlog::info("Checking A1");
-
-  UA_Variant *val = UA_Variant_new();
-  retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.A1.state"), val);
-  if (retval == UA_STATUSCODE_GOOD)
-  {
-    if (UA_Variant_isScalar(val))
-    {
-      spdlog::debug("string reports as a scalar...interesting!");
-    }
-    // strings are arrays, therefore
-    if (val->type == &UA_TYPES[UA_TYPES_STRING])
-    {
-      std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
-      spdlog::info("A1 state : {0}",value);
-    }
-    else
-    {
-      spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
-    }
-  }
-  else
-  {
-    spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-  }
-  // clear the variant from the query
-  UA_Variant_delete(val);
-
-  // repeat for the power meter
-  spdlog::info("Checking PM1");
-  val = UA_Variant_new();
-  retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.PM1.state"), val);
-  if (retval == UA_STATUSCODE_GOOD)
-  {
-    // strings are arrays, therefore
-    if (val->type == &UA_TYPES[UA_TYPES_STRING])
-    {
-      std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
-      spdlog::info("PM1 state : {0}",value);
-    }
-    else
-    {
-      spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
-    }
-  }
-  else
-  {
-    spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-  }
-  // clear the variant from the query
-  UA_Variant_delete(val);
-
-  // repeat for the power meter
-  spdlog::info("Checking CIB1");
-  val = UA_Variant_new();
-  retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.CIB1.state"), val);
-  if (retval == UA_STATUSCODE_GOOD)
-  {
-    // strings are arrays, therefore
-    if (val->type == &UA_TYPES[UA_TYPES_STRING])
-    {
-      std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
-      spdlog::info("CIB1 state : {0}",value);
-    }
-    else
-    {
-      spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
-    }
-  }
-  else
-  {
-    spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-  }
-  // clear the variant from the query
-  UA_Variant_delete(val);
-
-  // repeat for the laser
-  spdlog::info("Checking L1");
-  val = UA_Variant_new();
-  retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.L1.state"), val);
-  if (retval == UA_STATUSCODE_GOOD)
-  {
-    // strings are arrays, therefore
-    if (val->type == &UA_TYPES[UA_TYPES_STRING])
-    {
-      std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
-      spdlog::info("L1 state : {0}",value);
-    }
-    else
-    {
-      spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
-    }
-  }
-  else
-  {
-    spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-  }
-  // clear the variant from the query
-  UA_Variant_delete(val);
-
-  // And finally the motors
-
-  spdlog::info("Checking RNN800");
-  val = UA_Variant_new();
-  retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.RNN800.state"), val);
-  if (retval == UA_STATUSCODE_GOOD)
-  {
-    // strings are arrays, therefore
-    if (val->type == &UA_TYPES[UA_TYPES_STRING])
-    {
-      std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
-      spdlog::info("RNN800 state : {0}",value);
-    }
-    else
-    {
-      spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
-    }
-  }
-  else
-  {
-    spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-  }
-  // clear the variant from the query
-  UA_Variant_delete(val);
-
-  spdlog::info("Checking RNN600");
-  val = UA_Variant_new();
-  retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.RNN600.state"), val);
-  if (retval == UA_STATUSCODE_GOOD)
-  {
-    // strings are arrays, therefore
-    if (val->type == &UA_TYPES[UA_TYPES_STRING])
-    {
-      std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
-      spdlog::info("RNN600 state : {0}",value);
-    }
-    else
-    {
-      spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
-    }
-  }
-  else
-  {
-    spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-  }
-  // clear the variant from the query
-  UA_Variant_delete(val);
-
-  spdlog::info("Checking LSTAGE");
-  val = UA_Variant_new();
-  retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.LSTAGE.state"), val);
-  if (retval == UA_STATUSCODE_GOOD)
-  {
-    // strings are arrays, therefore
-    if (val->type == &UA_TYPES[UA_TYPES_STRING])
-    {
-      std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
-      spdlog::info("LSTAGE state : {0}",value);
-    }
-    else
-    {
-      spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
-    }
-  }
-  else
-  {
-    spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-  }
-  // clear the variant from the query
-  UA_Variant_delete(val);
-
-  // and finally the system as a whole
-  spdlog::info("Checking LS1");
-  val = UA_Variant_new();
-  retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.state"), val);
-  if (retval == UA_STATUSCODE_GOOD)
-  {
-    // strings are arrays, therefore
-    if (val->type == &UA_TYPES[UA_TYPES_STRING])
-    {
-      std::string value((char*)static_cast<UA_String*>(val->data)->data,(size_t)static_cast<UA_String*>(val->data)->length);
-      spdlog::info("LS1 state : {0}",value);
-    }
-    else
-    {
-      spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
-    }
-  }
-  else
-  {
-    spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-  }
-  // clear the variant from the query
-  UA_Variant_delete(val);
-
-  spdlog::info("\n\nStage 3 : Query the security report of the laser\n\n");
-
-  UA_UInt16 laser_status_code;
-  val = UA_Variant_new();
-  //UA_Variant * val_desc = UA_Variant_new();
-  retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.L1.laser_status_code"), val);
-  if (retval != UA_STATUSCODE_GOOD)
-  {
-    spdlog::error("Failed to query for status code");
-  }
-  else
-  {
-    if (UA_Variant_isScalar(val))
-    {
-      if (val->type == &UA_TYPES[UA_TYPES_UINT16])
-      {
-        laser_status_code = *static_cast<UA_Int16*>(val->data);
-        spdlog::info("L1 status code : {0}",laser_status_code);
-      }
-    }
-    else
-    {
-      spdlog::error("Failed type check on val type. Got {0}",(val->type)->typeName);
-    }
-  }
-  // -- an even better way (that also guarantees that there is a result
-  // is to calldirectly the method
-  UA_Variant_init(&input);
-  retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1.L1"),
-      UA_NODEID_STRING(2, "LS1.L1.check_laser_status"), 0, &input, &outputSize, &output);
-  if(retval == UA_STATUSCODE_GOOD)
-  {
-    spdlog::debug("Method call was successful with {0} returned values (expect 2)",outputSize);
-    // the first argument should be the status code
-    // and the second should be the description
-    laser_status_code = *static_cast<UA_Int16*>(output[0].data);
-    std::string desc((char*)static_cast<UA_String*>(output[1].data)->data,(size_t)static_cast<UA_String*>(output[1].data)->length);
-    spdlog::info("Response : {0} ({1})",laser_status_code,desc);
-  }
-  else
-  {
-    spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-  }
-  // clear the variant from the query
-  UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
-  UA_Variant_clear(&input);
-
-  spdlog::info("\n\nStage 4 : Shut down the system\n\n");
-
-  UA_Variant_init(&input);
-  retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1"),
-      UA_NODEID_STRING(2, "LS1.shutdown"), 0, &input, &outputSize, &output);
-  if(retval == UA_STATUSCODE_GOOD)
-  {
-    spdlog::info("Method called successfully. Returned {0} arguments (none expected)",outputSize);
-    // actually, this returns a typical response string
-    std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
-    parse_method_response_string(response);
-  }
-  else
-  {
-    spdlog::error("Failed to execute method. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-  }
-  UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
-  UA_Variant_clear(&input);
-
-  spdlog::info("All done. Shutting down client.");
 
   UA_Client_disconnect(client);
   UA_Client_delete(client);
