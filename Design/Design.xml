@@ -503,7 +503,11 @@
 	<d:method name="get_status" executionSynchronicity="synchronous">
 		<d:returnvalue dataType="UaString" name="response"></d:returnvalue>	
 	</d:method>
-	
+	<d:method name="set_calibration_parameters" executionSynchronicity="synchronous">
+		<d:argument dataType="OpcUa_Double" name="offset"></d:argument>
+		<d:argument dataType="OpcUa_Double" name="scale"></d:argument>
+		<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+
 
   </d:class>
 
