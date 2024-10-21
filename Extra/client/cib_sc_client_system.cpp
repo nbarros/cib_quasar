@@ -33,10 +33,10 @@ nodeIter(UA_NodeId childId, UA_Boolean isInverse, UA_NodeId referenceTypeId, voi
     if(isInverse)
         return UA_STATUSCODE_GOOD;
     UA_NodeId *parent = (UA_NodeId *)handle;
-    spdlog::info("{0},{1} --- {2} ---> {3},{4}",
-                 parent->namespaceIndex, parent->identifier.string.data,
-                 referenceTypeId.identifier.string.data, childId.namespaceIndex,
-                 childId.identifier.string.data);
+//    spdlog::info("{0},{1} --- {2} ---> {3},{4}",
+//                 parent->namespaceIndex, parent->identifier.string.data,
+//                 referenceTypeId.identifier.string.data, childId.namespaceIndex,
+//                 childId.identifier.string.data);
 
 //    // alternatively, we can maybe do it this way:
 //    spdlog::info("{0},{1} --- {2} ---> {3},{4}",
