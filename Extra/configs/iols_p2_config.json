@@ -106,7 +106,7 @@
 	"current_idle":36,
 	"current_move":114,
 	"max_speed":59000,
-	"attenuation"
+	"attenuator_position" : 2100,
 	"resolution":2,
 	"calibration" : {
 		"offset" : 3900,
@@ -120,7 +120,7 @@
 		"baud_rate": 9600,
 		"repetition_rate": 10.0,
 		"repetition_rate_divider": 0,
-		"discharge_voltage": 1.1,
+		"discharge_voltage": 1.19,
 		"pause_timeout_min": 10,
 		"standby_timeout_min": 60,
 		"warmup_timer_min": 20,
