@@ -25,6 +25,7 @@
 #include <json.hpp>
 using json = nlohmann::json;
 #include <atomic>
+#include <mutex>
 namespace device
 {
   class Attenuator;
@@ -89,6 +90,11 @@ public:
         UaString& response
     ) ;
     UaStatus callGet_status (
+        UaString& response
+    ) ;
+    UaStatus callSet_calibration_parameters (
+        OpcUa_Double offset,
+        OpcUa_Double scale,
         UaString& response
     ) ;
 
@@ -160,7 +166,8 @@ private:
     //
     Status m_status;
     std::string m_id;
-    std::atomic<bool> m_serial_busy;
+//    std::atomic<bool> m_serial_busy;
+    std::mutex m_serial_mutex;
 };
 
 }
