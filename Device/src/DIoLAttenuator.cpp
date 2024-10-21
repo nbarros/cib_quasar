@@ -666,6 +666,70 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
     }
     return ret;
   }
+  UaStatus  DIoLAttenuator::validate_config_fragment(json &conf, json &resp)
+  {
+    // this is just a validation check for the available keys.
+    // it will only check the mandatory keys.
+    const std::string lbl = "validate_config";
+    std::vector<std::string> mandatory_keys = {
+        "name","port","serial_number","baud_rate",
+        "acceleration","deceleration","current_idle","current_move",
+        "max_speed","resolution", "calibration"
+    };
+    std::vector<std::string> optional_keys = {
+        "attenuator_position"
+    };
+    //
+    // actually, check for all entries and report all missing ones
+    std::vector<std::string> missing;
+    //
+    for (auto entry: mandatory_keys)
+    {
+      if (!conf.contains(entry))
+      {
+        missing.push_back(entry);
+      }
+    }
+    if (missing.size() > 0)
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Missing mandatory entries in Attenuator config fragment [");
+      for (auto e : missing)
+      {
+        msg << "(" <<  e << "),";
+      }
+      msg << "]";
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
+      return OpcUa_Bad;
+    }
+    //
+    missing.clear();
+    // check the optional keys
+    for (auto entry: optional_keys)
+    {
+      if (!conf.contains(entry))
+      {
+        missing.push_back(entry);
+      }
+    }
+    if (missing.size() > 0)
+    {
+      std::ostringstream msg("");
+      msg.clear(); msg.str("");
+      msg << log_w(lbl.c_str(),"Missing optional entries in LaserUnit config fragment [");
+      for (auto e : missing)
+      {
+        msg << "(" <<  e << "),";
+      }
+      msg << "]";
+      resp["messages"].push_back(msg.str());
+    }
+    // all good, return true
+    return OpcUa_Good;
+  }
 
   UaStatus DIoLAttenuator::config(json config, json &resp)
   {
@@ -674,6 +738,7 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
 
     // first look up for "port" and "baud_rate"
     // since those are mandatory
+    const std::string lbl = "config";
     bool got_exception = false;
     ostringstream msg("");
     UaStatus ret = OpcUa_Good;
@@ -681,7 +746,7 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
     if (m_att)
     {
       msg.clear(); msg.str("");
-      msg << log_w("config","There is already a connected device. Closing and resetting connection.");
+      msg << log_w(lbl.c_str(),"There is already a connected device. Closing and resetting connection.");
       resp["messages"].push_back(msg.str());
       delete m_att;
       set_status(sOffline);
@@ -697,7 +762,7 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
       if (!(name == m_name))
       {
         msg.clear(); msg.str("");
-        msg << log_e("config","Device mismatch (name,sn) = (") << name << "," << sn
+        msg << log_e(lbl.c_str(),"Device mismatch (name,sn) = (") << name << "," << sn
             << ") expected (" << m_name << "," << m_sn << ")";
         resp["messages"].push_back(msg.str());
         return OpcUa_BadInvalidArgument;
@@ -712,7 +777,7 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
       if (s != OpcUa_Good)
       {
         msg.clear(); msg.str("");
-        msg << log_e("config","Failed to initialize   device. Correct your configuration.");
+        msg << log_e(lbl.c_str(),"Failed to initialize   device. Correct your configuration.");
         resp["messages"].push_back(msg.str());
         set_status(sOffline);
         return OpcUa_BadInvalidArgument;
@@ -762,6 +827,47 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
         {
           uint16_t v = it.value();
           ret = ret | set_resolution(v,resp);
+        }
+        if (it.key() == "attenuator_position")
+        {
+          int32_t v = it.value();
+          ret = ret | set_position(v,resp);
+        }
+        if (it.key() == "calibration")
+        {
+          json calconf= it.value();
+          int cal_offset;
+          double cal_scale;
+
+          if (!calconf.contains("offset"))
+          {
+            msg.clear(); msg.str("");
+            msg << log_e((lbl.c_str()),"Malformed configuration. Can't find calibration offset parameter");
+            resp["status"] = "ERROR";
+            resp["messages"].push_back(msg.str());
+            resp["statuscode"] = OpcUa_BadInvalidArgument;
+            LOG(Log::ERR) << msg.str();
+            return OpcUa_BadInvalidArgument;
+          }
+          else
+          {
+            cal_offset = calconf.at("offset").get<int>();
+          }
+          if (!calconf.contains("scale"))
+          {
+            msg.clear(); msg.str("");
+            msg << log_e((lbl.c_str()),"Malformed configuration. Can't find calibration scale parameter");
+            resp["status"] = "ERROR";
+            resp["messages"].push_back(msg.str());
+            resp["statuscode"] = OpcUa_BadInvalidArgument;
+            LOG(Log::ERR) << msg.str();
+            return OpcUa_BadInvalidArgument;
+          }
+          else
+          {
+            cal_scale = calconf.at("scale").get<double>();
+          }
+          m_att->set_cal_parameters(cal_offset,cal_scale);
         }
       }
       LOG(Log::INF) << "All done configuring the Attenuator\n";
@@ -1375,7 +1481,72 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
     }
     return OpcUa_Good;
   }
+  UaStatus DIoLAttenuator::set_position(const int32_t v,json &resp)
+  {
+    const char* label = "set_position";
+    ostringstream msg("");
+    bool got_exception = false;
+    if (!m_att)
+    {
+      // bad range
+      msg.clear(); msg.str("");
+      msg << log_e(label,"Device is not connected yet.");
+      resp["messages"].push_back(msg.str());
+      return OpcUa_BadInvalidState;
+    }
+    int32_t position;
+    // FIXME: Should check the range
+    //    if (v > 0xFF)
+    //    {
+    //      // invalid argument
+    //      msg.clear(); msg.str("");
+    //      msg << log_e(label,"Invalid argument. Valid range ]0,255].");
+    //      resp["messages"].push_back(msg.str());
+    //      return OpcUa_BadInvalidArgument;
+    //    }
+    // all should be good now
+    try
+    {
 
+      {
+        const std::lock_guard<std::mutex> lock(m_serial_mutex);
+        m_att->go(v,position,true);
+      }
+      m_position = position;
+      getAddressSpaceLink()->setPosition(m_position, OpcUa_Good);
+    }
+    catch(serial::PortNotOpenedException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label,"Port not open : ") << e.what();
+      got_exception = true;
+    }
+    catch(serial::SerialException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label,"Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label,"STL exception :") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label,"Unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["messages"].push_back(msg.str());
+      getAddressSpaceLink()->setDeceleration(m_position, OpcUa_Bad);
+      return OpcUa_Bad;
+    }
+    return OpcUa_Good;
+  }
   void DIoLAttenuator::update()
   {
     refresh_position();

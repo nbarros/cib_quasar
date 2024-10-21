@@ -223,6 +223,7 @@ UaStatus DIoLaserSystem::callFire_at_position (
     UaString& answer
 )
 {
+  const std::string lbl = "fire_at_pos";
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -695,7 +696,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         {
           // there is only 1
           json pconf = it.value();
-          st = iolpowermeter()->config(aconf,resp);
+          st = iolpowermeter()->config(pconf,resp);
             if (st != OpcUa_Good)
             {
               reset(msg);
@@ -1066,7 +1067,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         resp["statuscode"] = static_cast<uint32_t>(st);
         return st;
       }
-      st = iolpowermeter()->stop_readings();
+      st = iolpowermeter()->stop_readings(resp);
       // for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
       // {
       //   st = lmeter->stop_readings(resp);
