@@ -36,11 +36,11 @@
 
 using json = nlohmann::json;
 //
-#define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
+#define log_msg(s,dev,met,msg) "[" << s << "]::" << dev << ":" << met << " : " << msg
 //
-#define log_e(m,s) log_msg("ERROR",m,s)
-#define log_w(m,s) log_msg("WARN",m,s)
-#define log_i(m,s) log_msg("INFO",m,s)
+#define log_e(m,s) log_msg("ERROR","laser",m,s)
+#define log_w(m,s) log_msg("WARN","laser",m,s)
+#define log_i(m,s) log_msg("INFO","laser",m,s)
 //
 #define DEBUG 1
 using std::ostringstream;
@@ -793,10 +793,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   {
     std::ostringstream msg("");
     const std::string lbl = "set_conn";
-    //FIXME: how do we get out of the error state?
     UaStatus st = check_error_state(resp);
     if (st != OpcUa_Good)
     {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"System in error state. Aborting.");
+      LOG(Log::ERR) << msg.str();
       return st;
     }
     //
@@ -804,6 +806,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     st = check_not_offline_state(resp);
     if (st != OpcUa_Good)
     {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Laser instance found. This is unexpected and therefore a failure.");
+      LOG(Log::ERR) << msg.str();
       return st;
     }
     // do a second cross-check. At this stage there should not be any instantiated object
@@ -814,9 +819,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Laser instance found. This is unexpected and therefore a termination will be forced first.");
-#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
-#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -832,14 +835,13 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 #ifdef DEBUG
       LOG(Log::INF) << msg.str();
 #endif
-      resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_Good;
     }
     else
     {
       m_comport = port;
     }
+    //
     if (m_comport.size() == 0)
     {
       // the port is invalid. Something failed.
@@ -853,6 +855,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       resp["statuscode"] = OpcUa_BadInvalidArgument;
       return OpcUa_BadInvalidArgument;
     }
+    // if we reached this point we have something apparently valid
     UaString ss(m_comport.c_str());
     getAddressSpaceLink()->setPort(ss,OpcUa_Good);
     //
@@ -862,13 +865,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       // just leave what it is presently set
       msg.clear(); msg.str("");
-      msg << log_i(lbl.c_str(),"Baud rate kept to current value[") << m_baud_rate << "]";
+      msg << log_w(lbl.c_str(),"Baud rate kept to current value[") << m_baud_rate << "]";
 #ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::WRN) << msg.str();
 #endif
-      resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_Good;
     }
     else
     {
@@ -2627,9 +2628,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       if ( st != OpcUa_Good)
       {
         // just fail
-#ifdef DEBUG
-        LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to establish connection to device");
-#endif
+        LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to determine device connection settings");
         return st;
       }
       // all good so far, so lets initiate the connection by creating an instance of the laser system
@@ -2638,8 +2637,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       if (st != OpcUa_Good)
       {
 #ifdef DEBUG
-      LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to create a laser instance");
+        LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to create a laser instance");
 #endif
+        // cleaning up the 
         terminate(resp);
         return st;
       }
@@ -2833,8 +2833,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i(lbl.c_str(),"System configured");
-      resp["status"] = "SUCCESS";
+      msg << log_i(lbl.c_str(),"Laser system configured");
+      resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
       return OpcUa_Good;

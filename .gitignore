@@ -61,3 +61,4 @@ Documentation/DoxygenGenerated/
 Test/json.hpp
 Cacophony
 FrameworkInternals/quasar-modules
+.vscode

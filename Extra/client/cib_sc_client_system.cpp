@@ -33,10 +33,14 @@ nodeIter(UA_NodeId childId, UA_Boolean isInverse, UA_NodeId referenceTypeId, voi
     if(isInverse)
         return UA_STATUSCODE_GOOD;
     UA_NodeId *parent = (UA_NodeId *)handle;
-//    spdlog::info("{0},{1} --- {2} ---> {3},{4}",
-//                 parent->namespaceIndex, parent->identifier.string.data,
-//                 referenceTypeId.identifier.string.data, childId.namespaceIndex,
-//                 childId.identifier.string.data);
+
+    //std::string parentId(static_cast<char*>(parent->identifier.string.data));
+    //std::string child_id(static_cast<char*>(childId.identifier.string.data));
+
+    // spdlog::info("{0},{1} --- {2} ---> {3},{4}",
+    //              parent->namespaceIndex, parentId,
+    //              referenceTypeId.identifier.string.data, 
+    //              childId.namespaceIndex, child_id);
 
 //    // alternatively, we can maybe do it this way:
 //    spdlog::info("{0},{1} --- {2} ---> {3},{4}",
@@ -73,6 +77,38 @@ void browse_nodes(UA_Client *client)
   UA_NodeId_delete(parent);
 }
 
+void check_motor_positions(UA_Client *client, const std::string node)
+{
+  spdlog::info("Checking position of {0}",node);
+  std::vector<std::string> nodes = {".current_position_motor",".current_position_cib"};
+  for (auto entry : nodes)
+  {
+    UA_Variant *val = UA_Variant_new();
+    std::string vname = node + entry ;
+    int32_t position;
+    UA_StatusCode retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, const_cast<char*>(vname.c_str())), val);
+    if (retval == UA_STATUSCODE_GOOD)
+    {
+      // strings are arrays, therefore
+      if (val->type == &UA_TYPES[UA_TYPES_INT32])
+      {
+        position = *static_cast<UA_Int32*>(val->data);
+        spdlog::info("{0} position : {1}",vname,position);
+      }
+      else
+      {
+        spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
+      }
+    }
+    else
+    {
+      spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
+    }
+    // clear the variant from the query
+    UA_Variant_delete(val);
+  }
+}
+
 void parse_method_response_string(std::string &input)
 {
   try
@@ -102,6 +138,12 @@ void parse_method_response_string(std::string &input)
 
 }
 
+void terminate_client(UA_Client *client)
+{
+  UA_Client_disconnect(client);
+  UA_Client_delete(client); 
+}
+
 int main()
 {
   spdlog::set_pattern("cib : [%^%L%$] %v");
@@ -109,7 +151,7 @@ int main()
 
   UA_StatusCode retval = UA_STATUSCODE_GOOD;
   // CIB2 IP
-  string server = "opc.tcp://10.73.137.148:4841";
+  string server = "opc.tcp://10.73.137.147:4841";
 
   // create a new client, and use the default configuration options
   // for now this is fine
@@ -124,19 +166,20 @@ int main()
   spdlog::info("Connecting to CIB server at [{0}]",server);
 
   retval = UA_Client_connect(client, server.c_str());
-
   if(retval != UA_STATUSCODE_GOOD)
   {
     spdlog::error("Failed with code {0}  name {1}",retval,UA_StatusCode_name(retval));
     // we can print a message why
     UA_Client_delete(client);
     return EXIT_FAILURE;
-  } else
+  } 
+  else
   {
     spdlog::info("Connected to server");
   }
 
   // -- First browse all nodes that are available
+  spdlog::info("Browsing available nodes");
   browse_nodes(client);
 
 
@@ -164,7 +207,6 @@ int main()
 
 
   UA_Variant_init(&input);
-
   UA_String argString = UA_String_fromChars(jconf.dump().c_str());
   UA_Variant_setScalarCopy(&input, &argString, &UA_TYPES[UA_TYPES_STRING]);
 
@@ -200,10 +242,16 @@ int main()
   else
   {
     spdlog::error("Method execution failed with code {0} : {1}",retval,UA_StatusCode_name(retval));
+    // clean up
+    UA_Variant_clear(&input);
+    fconf.close();
+    terminate_client(client);
+    return EXIT_FAILURE;
   }
   // clear up the configuration allocated parts
   UA_Variant_clear(&input);
   fconf.close();
+
 
   spdlog::info("\n\nStage 2 : Check the individual node status\n\n");
   spdlog::info("Checking A1");
@@ -448,6 +496,19 @@ int main()
   UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
   UA_Variant_clear(&input);
 
+
+  // -----------
+  // -----------
+  // Get the current motor positions
+  spdlog::info("Querying motor positions");
+  check_motor_positions(client,"LS1.RNN800");
+  check_motor_positions(client,"LS1.RNN600");
+  check_motor_positions(client,"LS1.LSTAGE");
+  spdlog::info("Done querying motor positions");
+
+  // -----------
+  // -----------
+  
   spdlog::info("\n\nStage 4 : Shut down the system\n\n");
 
   UA_Variant_init(&input);
@@ -469,8 +530,6 @@ int main()
 
   spdlog::info("All done. Shutting down client.");
 
-  UA_Client_disconnect(client);
-  UA_Client_delete(client);
   return EXIT_SUCCESS;
 
 }

@@ -1,0 +1,5 @@
+source=$1
+binary=`basename -s .cpp $1`
+echo "g++ -std=c++11 -DSPDLOG_FMT_EXTERNAL -Wno-literal-suffix -Wno-write-strings -I./ open62541.c ${source} -o ${binary}"
+g++ -std=c++11 -DSPDLOG_FMT_EXTERNAL -Wno-literal-suffix -Wno-write-strings -I./ open62541.c ${source} -o ${binary} -lspdlog -lfmt
+#g++ -std=c++11 -DSPDLOG_FMT_EXTERNAL -Wno-literal-suffix -Wno-write-strings -I./ open62541.c ${source} -o ${binary}

@@ -41,11 +41,11 @@ using std::vector;
 
 using json = nlohmann::json;
 
-#define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
+#define log_msg(s,dev,met,msg) "[" << s << "]::" << dev << ":" << met << " : " << msg
 
-#define log_e(m,s) log_msg("ERROR",m,s)
-#define log_w(m,s) log_msg("WARN",m,s)
-#define log_i(m,s) log_msg("INFO",m,s)
+#define log_e(m,s) log_msg("ERROR","att",m,s)
+#define log_w(m,s) log_msg("WARN","att",m,s)
+#define log_i(m,s) log_msg("INFO","att",m,s)
 
 //#define DEBUG 1
 
