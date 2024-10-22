@@ -184,7 +184,7 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
         {
           // this is an argument
           // try to fetch its data type exactly
-          printf("\t\t %-16.*s \n",
+          printf(",,%-16.*s\n",
                  (int)ref->browseName.name.length, ref->browseName.name.data
                  );
           //(int)ref->browseName.name.length, ref->browseName.name.data,
@@ -193,7 +193,7 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
         {
         // query the data type
         //UA_Client_readValueAttribute(UA_Client *client, const UA_NodeId nodeId, UA_Variant *outValue)
-          printf("%-16.*s\tVAR\t%s \n",
+          printf("%-16.*s,VAR,%s \n",
                  (int)ref->nodeId.nodeId.identifier.string.length,
                  ref->nodeId.nodeId.identifier.string.data,
                  output.type->typeName
@@ -221,7 +221,7 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
       {
         // in this case we need to figure out whether they have arguments
         // so we should also fetch their arguments
-        printf("%-16.*s\tMETHOD\n",
+        printf("%-16.*s,METHOD\n",
                (int)ref->nodeId.nodeId.identifier.string.length,
                ref->nodeId.nodeId.identifier.string.data
                );
@@ -236,7 +236,7 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
       }
       else
       {
-        printf("%-16.*s\t%d\n",
+        printf("%-16.*s,%d\n",
                (int)ref->nodeId.nodeId.identifier.string.length,
                ref->nodeId.nodeId.identifier.string.data,
                (int)ref->nodeClass
