@@ -178,11 +178,6 @@ int main()
     spdlog::info("Connected to server");
   }
 
-  // -- First browse all nodes that are available
-  spdlog::info("Browsing available nodes");
-  browse_nodes(client);
-
-
   /**
    * Now we're in business. Let's rock!
    *
@@ -260,10 +255,10 @@ int main()
   retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.A1.state"), val);
   if (retval == UA_STATUSCODE_GOOD)
   {
-    if (UA_Variant_isScalar(val))
-    {
-      spdlog::debug("string reports as a scalar...interesting!");
-    }
+//    if (UA_Variant_isScalar(val))
+//    {
+//      spdlog::debug("string reports as a scalar...interesting!");
+//    }
     // strings are arrays, therefore
     if (val->type == &UA_TYPES[UA_TYPES_STRING])
     {
@@ -508,7 +503,57 @@ int main()
 
   // -----------
   // -----------
+  // -----------
+  // -----------
+  // Commented examples
+  // example 0: setting the attenuator calibration parameters
+  //LS1.A1.set_calibration_parameters
+  // arguments are two doubles
+//  UA_Variant in_arg1, in_arg2;
+//  UA_Variant_init(&in_arg1);
+//  UA_Variant_init(&in_arg2);
+  UA_Double offset = 3900;
+  UA_Double scale = -43.3333;
+//  UA_Variant_setScalarCopy(&in_arg1, &offset, &UA_TYPES[UA_TYPES_DOUBLE]);
+//  UA_Variant_setScalarCopy(&in_arg2, &scale, &UA_TYPES[UA_TYPES_DOUBLE]);
+  UA_Variant *in_args = new UA_Variant[2];
+  //UA_Variant_copy(in_args[0]
+  UA_Variant_setScalarCopy(&(in_args[0]),&scale,&UA_TYPES[UA_TYPES_DOUBLE]);
+  UA_Variant_setScalarCopy(&(in_args[1]),&offset,&UA_TYPES[UA_TYPES_DOUBLE]);
+  retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1.A1"),
+      UA_NODEID_STRING(2, "LS1.A1.set_calibration_parameters"), 2, &in_args, &outputSize, &output);
+  if(retval == UA_STATUSCODE_GOOD)
+  {
+    spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
+    // actually, this returns a typical response string
+    std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
+    parse_method_response_string(response);
+  }
+  else
+  {
+    spdlog::error("Failed to execute method. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
+  }
+  UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
+  UA_Variant_clear(&(in_args[0]));
+  UA_Variant_clear(&(in_args[1]));
+  delete [] in_args;
+
+  // example 1: Suppose that we wanted to move the motors to some position
+//  spdlog::info("Moving periscope to target position");
+//  json target;
+  // order is *always* RNN800, RNN600, LSTAGE
+//  target["target"] = std::vector<int32_t>({121345,1233,112});
+//  std::string approach = "ud-"; // u : approach from higher steps; d: approach from lower steps; - : approach from shortest path
+//  UA_Variant input_args;
+//  UA_Variant_init(&input_args);
+//  UA_String argString = UA_String_fromChars(target.dump().c_str());
+//  UA_Variant_setScalarCopy(&input_args, &argString, &UA_TYPES[UA_TYPES_STRING]);
+
+
   
+  // -----------
+  // -----------
+
   spdlog::info("\n\nStage 4 : Shut down the system\n\n");
 
   UA_Variant_init(&input);
@@ -516,7 +561,7 @@ int main()
       UA_NODEID_STRING(2, "LS1.shutdown"), 0, &input, &outputSize, &output);
   if(retval == UA_STATUSCODE_GOOD)
   {
-    spdlog::info("Method called successfully. Returned {0} arguments (none expected)",outputSize);
+    spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
     // actually, this returns a typical response string
     std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
     parse_method_response_string(response);
