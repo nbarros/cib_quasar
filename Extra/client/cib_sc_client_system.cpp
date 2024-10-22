@@ -558,6 +558,13 @@ int main()
   else
   {
     spdlog::error("Failed to execute method. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
+    spdlog::info("Method returned {0} arguments (1 expected)",outputSize);
+    if (outputSize)
+    {
+      // actually, this returns a typical response string
+      std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
+      parse_method_response_string(response);
+    }
   }
   UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
   UA_Variant_clear(&input_args);

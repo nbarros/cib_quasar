@@ -438,7 +438,7 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
   if (ret != OpcUa_Good)
   {
     msg.clear(); msg.str("");
-    msg << log_e("set_speed","Operation failed!");
+    msg << log_e("set_cal_params","Operation failed!");
     resp["status"] = "ERROR";
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Bad;
@@ -446,7 +446,7 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
   else
   {
     msg.clear(); msg.str("");
-    msg << log_i("set_speed","Operation successful!");
+    msg << log_i("set_cal_params","Operation successful!");
     resp["status"] = "OK";
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
