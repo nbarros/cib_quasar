@@ -114,6 +114,7 @@ void parse_method_response_string(std::string &input)
   try
   {
     json jresp = json::parse(input);
+    spdlog::debug("Returned [{0}]",jresp.dump());
     spdlog::info("Returned status : {0}",jresp["status"].get<std::string>());
     spdlog::info("Returned statuscode : {0}",jresp["statuscode"].get<uint32_t>());
     spdlog::info("Returned messages :");
@@ -121,7 +122,6 @@ void parse_method_response_string(std::string &input)
     {
       spdlog::info("--> [{0}]",e.get<std::string>());
     }
-
   }
   catch(json::exception &e)
   {
@@ -547,7 +547,7 @@ int main()
   UA_String newargString = UA_String_fromChars(args.dump().c_str());
   UA_Variant_setScalarCopy(&input_args, &newargString, &UA_TYPES[UA_TYPES_STRING]);
   retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1"),
-      UA_NODEID_STRING(2, "LS1.move_to_pos"), 1, input_args, &outputSize, &output);
+      UA_NODEID_STRING(2, "LS1.move_to_pos"), 1, &input_args, &outputSize, &output);
   if(retval == UA_STATUSCODE_GOOD)
   {
     spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
