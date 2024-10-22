@@ -210,9 +210,12 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
       }
       else if (ref->nodeClass == UA_NODECLASS_OBJECTTYPE)
       {
-        printf("\t\t\t\t%-16.*s\n",
+        printf("\t\t\t\t%-16.*s --> %-16.*s\n",
                (int)ref->browseName.name.length,
-               ref->browseName.name.data
+               ref->browseName.name.data,
+               (int)ref->nodeId.nodeId.identifier.string.length,
+               ref->nodeId.nodeId.identifier.string.data
+
         );
       }
       else if (ref->nodeClass == UA_NODECLASS_METHOD)
