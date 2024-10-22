@@ -86,8 +86,7 @@ public:
         UaString& response
     ) ;
     UaStatus callMove_to_pos (
-        const std::vector<OpcUa_Int32>&  position,
-        const UaString&  approach,
+        const UaString&  arguments,
         UaString& response
     ) ;
 

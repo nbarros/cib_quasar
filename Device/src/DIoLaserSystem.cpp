@@ -413,6 +413,7 @@ UaStatus DIoLaserSystem::callPause (
     UaString& answer
 )
 {
+  //FIXME: Implement this!
     return OpcUa_BadNotImplemented;
 }
 UaStatus DIoLaserSystem::callStandby (
@@ -572,20 +573,57 @@ UaStatus DIoLaserSystem::callShutdown (
     return OpcUa_Good;
 }
 UaStatus DIoLaserSystem::callMove_to_pos (
-    const std::vector<OpcUa_Int32>&  position,
-    const UaString&  approach,
+    const UaString&  arguments,
     UaString& response
 )
 {
+    const std::string lbl = "move_to_pos";
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
     UaStatus st;
     try
     {
+      // parse the json here
+      json config= json::parse(arguments.toUtf8());
+      std::vector<int32_t> target_pos;
+      std::string approach;
+
+      if (!config.contains("target"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'target'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        target_pos = config.at("start_position").get<std::vector<int32_t>>();
+        if (target_pos.size() != 3)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Malformed start position. Three coordinates are expected (got ") << target_pos.size() << ")";
+          throw std::runtime_error(msg.str());
+        }
+      }
+      if (!config.contains("approach"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'approach'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        approach = config.at("approach").get<std::string>();
+        if (approach.length() != 3)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Malformed approach string. Three coordinates are expected (got ") << approach.length() << ")";
+          throw std::runtime_error(msg.str());
+        }
+      }
       // convert to an array that
-      std::string appr(approach.toUtf8());
-      st = move_to_pos(position,appr,resp);
+      //std::string appr(approach.toUtf8());
+      st = move_to_pos(target_pos,approach,resp);
     }
     catch(json::exception &e)
     {

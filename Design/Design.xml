@@ -577,9 +577,7 @@
     <d:method name="shutdown" executionSynchronicity="synchronous">
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
     <d:method name="move_to_pos" executionSynchronicity="synchronous">
-    	<d:argument dataType="OpcUa_Int32" name="position">
-    		<d:array minimumSize="3" maximumSize="3"></d:array></d:argument>
-    	<d:argument dataType="UaString" name="approach"></d:argument>
+    	<d:argument dataType="UaString" name="arguments"></d:argument>
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
     
 
