@@ -597,7 +597,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       }
       else
       {
-        target_pos = config.at("start_position").get<std::vector<int32_t>>();
+        target_pos = config.at("target").get<std::vector<int32_t>>();
         if (target_pos.size() != 3)
         {
           msg.clear(); msg.str("");
