@@ -218,16 +218,13 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
                ref->nodeId.nodeId.identifier.string.data
                );
 
-        // in this case we want to check one further to figure out the method's arguments
-        browse_nodes_scan(client,&(ref->nodeId.nodeId));
-
-
+        browse_nodes_scan_cib(client,&(ref->nodeId.nodeId));
 
       }
       else if (ref->nodeClass == UA_NODECLASS_OBJECT)
       {
         // browse one further
-        browse_nodes_scan(client,&(ref->nodeId.nodeId));
+        browse_nodes_scan_cib(client,&(ref->nodeId.nodeId));
       }
       else
       {
