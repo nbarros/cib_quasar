@@ -28,86 +28,6 @@ using std::string;
 using std::vector;
 using json = nlohmann::json;
 
-static UA_StatusCode
-nodeIter(UA_NodeId childId, UA_Boolean isInverse, UA_NodeId referenceTypeId, void *handle) {
-    if(isInverse)
-        return UA_STATUSCODE_GOOD;
-    UA_NodeId *parent = (UA_NodeId *)handle;
-
-    //std::string parentId(static_cast<char*>(parent->identifier.string.data));
-    //std::string child_id(static_cast<char*>(childId.identifier.string.data));
-
-    // spdlog::info("{0},{1} --- {2} ---> {3},{4}",
-    //              parent->namespaceIndex, parentId,
-    //              referenceTypeId.identifier.string.data, 
-    //              childId.namespaceIndex, child_id);
-
-//    // alternatively, we can maybe do it this way:
-//    spdlog::info("{0},{1} --- {2} ---> {3},{4}",
-//
-//    if(ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_NUMERIC) {
-//        printf("%-9d %-16d %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
-//               ref->nodeId.nodeId.identifier.numeric, (int)ref->browseName.name.length,
-//               ref->browseName.name.data, (int)ref->displayName.text.length,
-//               ref->displayName.text.data);
-//    } else if(ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_STRING) {
-//        printf("%-9d %-16.*s %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
-//               (int)ref->nodeId.nodeId.identifier.string.length,
-//               ref->nodeId.nodeId.identifier.string.data,
-//               (int)ref->browseName.name.length, ref->browseName.name.data,
-//               (int)ref->displayName.text.length, ref->displayName.text.data);
-//    }
-
-//    printf("%d, %d --- %d ---> NodeId %d, %d\n",
-//           parent->namespaceIndex, parent->identifier.numeric,
-//           referenceTypeId.identifier.numeric, childId.namespaceIndex,
-//           childId.identifier.numeric);
-    return UA_STATUSCODE_GOOD;
-}
-
-void browse_nodes(UA_Client *client)
-{
-  /* Same thing, this time using the node iterator... */
-  UA_NodeId *parent = UA_NodeId_new();
-  *parent = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER);
-  spdlog::info("Parent ID --- reference type -- node id");
-
-  UA_Client_forEachChildNodeCall(client, UA_NODEID_NUMERIC(2, UA_NS0ID_OBJECTSFOLDER),
-                                 nodeIter, (void *) parent);
-  UA_NodeId_delete(parent);
-}
-
-void check_motor_positions(UA_Client *client, const std::string node)
-{
-  spdlog::info("Checking position of {0}",node);
-  std::vector<std::string> nodes = {".current_position_motor",".current_position_cib"};
-  for (auto entry : nodes)
-  {
-    UA_Variant *val = UA_Variant_new();
-    std::string vname = node + entry ;
-    int32_t position;
-    UA_StatusCode retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, const_cast<char*>(vname.c_str())), val);
-    if (retval == UA_STATUSCODE_GOOD)
-    {
-      // strings are arrays, therefore
-      if (val->type == &UA_TYPES[UA_TYPES_INT32])
-      {
-        position = *static_cast<UA_Int32*>(val->data);
-        spdlog::info("{0} position : {1}",vname,position);
-      }
-      else
-      {
-        spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
-      }
-    }
-    else
-    {
-      spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-    }
-    // clear the variant from the query
-    UA_Variant_delete(val);
-  }
-}
 
 void parse_method_response_string(std::string &input)
 {
@@ -141,8 +61,120 @@ void parse_method_response_string(std::string &input)
 void terminate_client(UA_Client *client)
 {
   UA_Client_disconnect(client);
-  UA_Client_delete(client); 
+  UA_Client_delete(client);
 }
+void check_motor_positions(UA_Client *client, const std::string node, int32_t &pos_motor, int32_t &pos_cib)
+{
+  spdlog::info("Checking position of {0}",node);
+  std::vector<std::string> nodes = {".current_position_motor",".current_position_cib"};
+  std::vector<int32_t> positions({0,0});
+  //for (auto entry : nodes)
+  for (size_t i=0; i < 2; i++ )
+  {
+    UA_Variant *val = UA_Variant_new();
+    std::string vname = node + nodes.at(i);
+    int32_t position;
+    UA_StatusCode retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, const_cast<char*>(vname.c_str())), val);
+    if (retval == UA_STATUSCODE_GOOD)
+    {
+      // strings are arrays, therefore
+      if (val->type == &UA_TYPES[UA_TYPES_INT32])
+      {
+        position = *static_cast<UA_Int32*>(val->data);
+        spdlog::info("{0} position : {1}",vname,position);
+        positions[i] = position;
+      }
+      else
+      {
+        spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
+      }
+    }
+    else
+    {
+      spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
+    }
+    // clear the variant from the query
+    UA_Variant_delete(val);
+  }
+  pos_motor = positions.at(0);
+  pos_cib = positions.at(1);
+}
+
+void move_motor(UA_Client *client, std::vector<int32_t> &target_pos)
+{
+  UA_Variant input;
+  size_t outputSize;
+  UA_Variant *output;
+
+
+
+  //
+  // example 1: Suppose that we wanted to move the motors to some position
+  //
+  //std::vector<int32_t> target_pos(init_position);
+  //target_pos[3] = target_pos[3] + 1000;
+  spdlog::info("Moving periscope to target position ({0},{1},{2})",target_pos.at(0),target_pos.at(1),target_pos.at(2));
+  json args;
+  // order is *always* RNN800, RNN600, LSTAGE
+  args["target"] = target_pos;
+  args["approach"] = "---"; // we want the motor to go there the shortest way
+  args["lbls"] = false;
+  spdlog::debug("Input arguments : {0}",args.dump());
+  UA_Variant input_args;
+  UA_Variant_init(&input_args);
+  UA_String newargString = UA_String_fromChars(args.dump().c_str());
+  UA_Variant_setScalarCopy(&input_args, &newargString, &UA_TYPES[UA_TYPES_STRING]);
+  UA_StatusCode retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1"),
+      UA_NODEID_STRING(2, "LS1.move_to_pos"), 1, &input_args, &outputSize, &output);
+  if(retval == UA_STATUSCODE_GOOD)
+  {
+    spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
+    // actually, this returns a typical response string
+    std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
+    parse_method_response_string(response);
+  }
+  else
+  {
+    spdlog::error("Failed to execute method. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
+    spdlog::info("Method returned {0} arguments (1 expected)",outputSize);
+    if (outputSize)
+    {
+      // actually, this returns a typical response string
+      std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
+      parse_method_response_string(response);
+    }
+  }
+  UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
+  UA_Variant_clear(&input_args);
+
+  spdlog::info("Waiting for 10 s so that the motor reaches position");
+  size_t i = 0;
+  for (i = 0; i < 10; i++)
+  {
+    int32_t pos_m, pos_c;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    spdlog::info("Querying motor positions");
+    check_motor_positions(client,"LS1.RNN800",pos_m,pos_c);
+    check_motor_positions(client,"LS1.RNN600",pos_m,pos_c);
+    check_motor_positions(client,"LS1.LSTAGE",pos_m,pos_c);
+  }
+  // -----------
+  // -----------
+  // -----------
+  // -----------
+  // Get again the current motor positions
+  spdlog::info("Querying final motor positions");
+  check_motor_positions(client,"LS1.RNN800",pos_m,pos_c);
+  check_motor_positions(client,"LS1.RNN600",pos_m,pos_c);
+  check_motor_positions(client,"LS1.LSTAGE",pos_m,pos_c);
+  spdlog::info("Done querying motor positions");
+  //
+  // -- repeat the process back to the init position
+  //
+
+
+}
+
 
 int main()
 {
@@ -495,107 +527,58 @@ int main()
   UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
   UA_Variant_clear(&input);
 
+  // -----------
+   // -----------
+   // -----------
+   // -----------
+   // Commented examples
+   // example 0: setting the attenuator calibration parameters
+   // this shows how methods with multiple arguments should be called
+   //LS1.A1.set_calibration_parameters
+   spdlog::info("Calling LS1.A1.set_calibration_parameters");
+   UA_Double offset = 3900;
+   UA_Double scale = -43.3333;
+   UA_Variant *in_args = new UA_Variant[2];
+   UA_Variant_setScalarCopy(&(in_args[0]),&scale,&UA_TYPES[UA_TYPES_DOUBLE]);
+   UA_Variant_setScalarCopy(&(in_args[1]),&offset,&UA_TYPES[UA_TYPES_DOUBLE]);
+   retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1.A1"),
+       UA_NODEID_STRING(2, "LS1.A1.set_calibration_parameters"), 2, in_args, &outputSize, &output);
+   if(retval == UA_STATUSCODE_GOOD)
+   {
+     spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
+     // actually, this returns a typical response string
+     std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
+     parse_method_response_string(response);
+   }
+   else
+   {
+     spdlog::error("Failed to execute method. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
+   }
+   UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
+   UA_Variant_clear(&(in_args[0]));
+   UA_Variant_clear(&(in_args[1]));
+   delete [] in_args;
 
-  // -----------
-  // -----------
-  // Get the current motor positions
-  spdlog::info("Querying present motor positions");
-  int32_t pos;
-  check_motor_positions(client,"LS1.RNN800",pos);
-  check_motor_positions(client,"LS1.RNN600");
-  check_motor_positions(client,"LS1.LSTAGE");
-  spdlog::info("Done querying motor positions");
+   // -----------
+   // -----------
+   // Get the current motor positions
+   spdlog::info("Querying present motor positions");
+   std::vector<int32_t> init_position({0,0,0});
+   int32_t pos_m, pos_c;
+   check_motor_positions(client,"LS1.RNN800",pos_m, pos_c);
+   init_position[0] = pos_m;
+   check_motor_positions(client,"LS1.RNN600",pos_m, pos_c);
+   init_position[1] = pos_m;
+   check_motor_positions(client,"LS1.LSTAGE",pos_m, pos_c);
+   init_position[2] = pos_m;
+   spdlog::info("Done querying motor positions. Current position : [{0},{1},{2}]",init_position.at(0),init_position.at(1),init_position.at(2));
 
-  // -----------
-  // -----------
-  // -----------
-  // -----------
-  // Commented examples
-  // example 0: setting the attenuator calibration parameters
-  // this shows how methods with multiple arguments should be called
-  //LS1.A1.set_calibration_parameters
-  spdlog::info("Calling LS1.A1.set_calibration_parameters");
-  UA_Double offset = 3900;
-  UA_Double scale = -43.3333;
-  UA_Variant *in_args = new UA_Variant[2];
-  UA_Variant_setScalarCopy(&(in_args[0]),&scale,&UA_TYPES[UA_TYPES_DOUBLE]);
-  UA_Variant_setScalarCopy(&(in_args[1]),&offset,&UA_TYPES[UA_TYPES_DOUBLE]);
-  retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1.A1"),
-      UA_NODEID_STRING(2, "LS1.A1.set_calibration_parameters"), 2, in_args, &outputSize, &output);
-  if(retval == UA_STATUSCODE_GOOD)
-  {
-    spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
-    // actually, this returns a typical response string
-    std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
-    parse_method_response_string(response);
-  }
-  else
-  {
-    spdlog::error("Failed to execute method. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-  }
-  UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
-  UA_Variant_clear(&(in_args[0]));
-  UA_Variant_clear(&(in_args[1]));
-  delete [] in_args;
+   std::vector<int32_t> target_position(init_position);
+   target_position[3] = target_position.at(3) + 1000;
+   move_motor(client,target_position);
+   spdlog::info("Moving back to previous position");
+   move_motor(client,init_position);
 
-  //
-  // example 1: Suppose that we wanted to move the motors to some position
-  //
-  spdlog::info("Moving periscope to target position");
-  json args;
-  // order is *always* RNN800, RNN600, LSTAGE
-  args["target"] = std::vector<int32_t>({86996,609978,16092});
-  args["approach"] = "---"; // we want the motor to go there the shortest way
-  args["lbls"] = false;
-  spdlog::debug("Input arguments : {0}",args.dump());
-  UA_Variant input_args;
-  UA_Variant_init(&input_args);
-  UA_String newargString = UA_String_fromChars(args.dump().c_str());
-  UA_Variant_setScalarCopy(&input_args, &newargString, &UA_TYPES[UA_TYPES_STRING]);
-  retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1"),
-      UA_NODEID_STRING(2, "LS1.move_to_pos"), 1, &input_args, &outputSize, &output);
-  if(retval == UA_STATUSCODE_GOOD)
-  {
-    spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
-    // actually, this returns a typical response string
-    std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
-    parse_method_response_string(response);
-  }
-  else
-  {
-    spdlog::error("Failed to execute method. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
-    spdlog::info("Method returned {0} arguments (1 expected)",outputSize);
-    if (outputSize)
-    {
-      // actually, this returns a typical response string
-      std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
-      parse_method_response_string(response);
-    }
-  }
-  UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
-  UA_Variant_clear(&input_args);
-  
-  spdlog::info("Waiting for 10 s so that the motor reaches position");
-  size_t i = 0;
-  for (i = 0; i < 10; i++)
-  {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    spdlog::info("Querying motor positions");
-    check_motor_positions(client,"LS1.RNN800");
-    check_motor_positions(client,"LS1.RNN600");
-    check_motor_positions(client,"LS1.LSTAGE");
-  }
-  // -----------
-  // -----------
-  // -----------
-  // -----------
-  // Get again the current motor positions
-  spdlog::info("Querying final motor positions");
-  check_motor_positions(client,"LS1.RNN800");
-  check_motor_positions(client,"LS1.RNN600");
-  check_motor_positions(client,"LS1.LSTAGE");
-  spdlog::info("Done querying motor positions");
-  //
 
   spdlog::info("\n\nStage 4 : Shut down the system\n\n");
 
