@@ -337,7 +337,6 @@ namespace Device
       // parse the json here
       json config= json::parse(arguments.toUtf8());
       std::vector<int32_t> start_pos, end_pos;
-      uint16_t num_pulses;
 
       if (!config.contains("start_position"))
       {
