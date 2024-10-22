@@ -518,10 +518,11 @@ int main()
 //  UA_Variant_setScalarCopy(&in_arg2, &scale, &UA_TYPES[UA_TYPES_DOUBLE]);
   UA_Variant *in_args = new UA_Variant[2];
   //UA_Variant_copy(in_args[0]
+  spdlog::info("Calling LS1.A1.set_calibration_parameters");
   UA_Variant_setScalarCopy(&(in_args[0]),&scale,&UA_TYPES[UA_TYPES_DOUBLE]);
   UA_Variant_setScalarCopy(&(in_args[1]),&offset,&UA_TYPES[UA_TYPES_DOUBLE]);
   retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1.A1"),
-      UA_NODEID_STRING(2, "LS1.A1.set_calibration_parameters"), 2, &in_args, &outputSize, &output);
+      UA_NODEID_STRING(2, "LS1.A1.set_calibration_parameters"), 2, in_args, &outputSize, &output);
   if(retval == UA_STATUSCODE_GOOD)
   {
     spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
