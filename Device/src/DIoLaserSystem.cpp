@@ -707,6 +707,7 @@ namespace Device
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadInvalidState;
+        LOG(Log::ERR) << msg.str();
         return OpcUa_BadInvalidState;
       }
       // validate the config fragment
@@ -792,7 +793,7 @@ namespace Device
         }
         if (it.key() == "attenuator")
         {
-          // there is only 1 laser
+          // there is only 1 attenuator
           json aconf = it.value();
           st = iolattenuator()->config(aconf,resp);
           if (st != OpcUa_Good)
@@ -2176,6 +2177,7 @@ namespace Device
     //        trouble = true;
     //      }
     //    }
+    update_state(sOffline);
     if (trouble)
     {
       return OpcUa_Uncertain;

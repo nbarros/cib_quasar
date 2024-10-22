@@ -769,7 +769,9 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
       msg.clear(); msg.str("");
       msg << log_w(lbl.c_str(),"There is already a connected device. Closing and resetting connection.");
       resp["messages"].push_back(msg.str());
-      delete m_att;
+      LOG(Log::ERR) << msg.str();
+      //if (m_att) delete m_att;
+      m_att = nullptr;
       set_status(sOffline);
     }
     try
