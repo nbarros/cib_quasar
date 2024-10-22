@@ -547,7 +547,7 @@ int main()
   UA_String newargString = UA_String_fromChars(args.dump().c_str());
   UA_Variant_setScalarCopy(&input_args, &newargString, &UA_TYPES[UA_TYPES_STRING]);
   retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1"),
-      UA_NODEID_STRING(2, "LS1.move_to_pos"), 1, in_args, &outputSize, &output);
+      UA_NODEID_STRING(2, "LS1.move_to_pos"), 1, input_args, &outputSize, &output);
   if(retval == UA_STATUSCODE_GOOD)
   {
     spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
