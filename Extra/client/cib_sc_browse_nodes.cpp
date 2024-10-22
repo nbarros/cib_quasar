@@ -73,15 +73,22 @@ void browse_nodes_iter(UA_Client *client)
   UA_NodeId_delete(parent);
 }
 
-void browse_nodes_scan(UA_Client *client)
+void browse_nodes_scan(UA_Client *client, UA_NodeId *node)
 {
   printf("Browsing nodes in objects folder:\n");
   UA_BrowseRequest bReq;
   UA_BrowseRequest_init(&bReq);
-  bReq.requestedMaxReferencesPerNode = 0;
+  bReq.requestedMaxReferencesPerNode = 10;
   bReq.nodesToBrowse = UA_BrowseDescription_new();
   bReq.nodesToBrowseSize = 1;
-  bReq.nodesToBrowse[0].nodeId = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER); /* browse objects folder */
+  if (node == nullptr)
+  {
+    bReq.nodesToBrowse[0].nodeId = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER); /* browse objects folder */
+  }
+  else
+  {
+    bReq.nodesToBrowse[0].nodeId = *node; /* browse objects folder */
+  }
   bReq.nodesToBrowse[0].resultMask = UA_BROWSERESULTMASK_ALL;                  /* return everything */
   UA_BrowseResponse bResp = UA_Client_Service_browse(client, bReq);
   printf("%-9s %-16s %-16s %-16s\n", "NAMESPACE", "NODEID", "BROWSE NAME", "DISPLAY NAME");
@@ -104,6 +111,12 @@ void browse_nodes_scan(UA_Client *client)
                ref->nodeId.nodeId.identifier.string.data,
                (int)ref->browseName.name.length, ref->browseName.name.data,
                (int)ref->displayName.text.length, ref->displayName.text.data);
+        // repeat for this node
+        std::string nodeid_str = std::string(reinterpret_cast<char*>(ref->nodeId.nodeId.identifier.string.data));
+        if (nodeid_str.find("LS1") != std::string::npos)
+        {
+          browse_nodes_scan(client,&(ref->nodeId.nodeId));
+        }
       }
       else
       {
@@ -115,6 +128,51 @@ void browse_nodes_scan(UA_Client *client)
   UA_BrowseRequest_clear(&bReq);
   UA_BrowseResponse_clear(&bResp);
 }
+void browse_node_path(UA_Client *client )
+{
+  std::vector<string> browse_path;
+
+  UA_BrowsePath browsePath;
+  UA_BrowsePath_init (&browsePath);
+  browsePath.startingNode = UA_NODEID_NUMERIC (0, UA_NS0ID_OBJECTSFOLDER);
+  browsePath.relativePath.elements = (UA_RelativePathElement *)UA_Array_new(browse_path.size (), &UA_TYPES[UA_TYPES_RELATIVEPATHELEMENT]);
+  browsePath.relativePath.elementsSize = browse_path.size ();
+
+  for (int i = 0; i < browse_path.size (); i++)
+  {
+    UA_RelativePathElement *elem = &browsePath.relativePath.elements[i];
+    elem->targetName = UA_QUALIFIEDNAME_ALLOC (1, browse_path.at (i).c_str ()); // Create in server namespace (1), not UA namespace (0)!
+  }
+  UA_TranslateBrowsePathsToNodeIdsRequest request;
+  UA_TranslateBrowsePathsToNodeIdsRequest_init (&request);
+  request.browsePaths = &browsePath;
+  request.browsePathsSize = 1;
+
+  UA_TranslateBrowsePathsToNodeIdsResponse response;
+  response = UA_Client_Service_translateBrowsePathsToNodeIds (client, request);
+  if (UA_STATUSCODE_GOOD == response.responseHeader.serviceResult && response.resultsSize > 0)
+  {
+    UA_BrowsePathResult *first = response.results;
+    if (first->targetsSize >= 1)
+    {
+      UA_NodeId id = first->targets[0].targetId.nodeId;
+      std::cout << "Found ID";
+    }
+    else
+    {
+      std::cout << "OK response but no results";
+    }
+  }
+  else
+  {
+    std::cout << "Error in translate browsename";
+  }
+
+  UA_BrowsePath_deleteMembers (&browsePath); // Marked as deprecated, but UA_BrowsePath_delete() expects a heap-allocated pointer.
+  UA_TranslateBrowsePathsToNodeIdsResponse_deleteMembers (&response); // Idem
+
+}
+
 void parse_method_response_string(std::string &input)
 {
   try
@@ -178,7 +236,7 @@ int main()
   }
 
   // -- First browse all nodes that are available
-  browse_nodes_scan(client);
+  browse_nodes_scan(client,nullptr);
 
 
   UA_Client_disconnect(client);
