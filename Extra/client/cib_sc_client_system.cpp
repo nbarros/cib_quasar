@@ -186,7 +186,11 @@ int main()
   spdlog::info("Let's try a complete sequence of operation.\n\n"
       "1.Load a configuration and send it to the server\n"
       "2.Check status of the various systems\n"
-      "3.Check the state of the laser\n"
+      "3. Check the state of the laser (security command)\n"
+      "4. Set calibration parameters for the attenuator\n"
+      "5. Move the LSTAGE by 1000 steps\n"
+      "6. Move the LSTAGE back to previous position\n"
+      "7. Wait for the movements to be done\n"
       "4.shutdown the system\n");
 
   std::ifstream fconf("iols_p2_config.json");
@@ -495,8 +499,9 @@ int main()
   // -----------
   // -----------
   // Get the current motor positions
-  spdlog::info("Querying motor positions");
-  check_motor_positions(client,"LS1.RNN800");
+  spdlog::info("Querying present motor positions");
+  int32_t pos;
+  check_motor_positions(client,"LS1.RNN800",pos);
   check_motor_positions(client,"LS1.RNN600");
   check_motor_positions(client,"LS1.LSTAGE");
   spdlog::info("Done querying motor positions");
