@@ -507,18 +507,12 @@ int main()
   // -----------
   // Commented examples
   // example 0: setting the attenuator calibration parameters
+  // this shows how methods with multiple arguments should be called
   //LS1.A1.set_calibration_parameters
-  // arguments are two doubles
-//  UA_Variant in_arg1, in_arg2;
-//  UA_Variant_init(&in_arg1);
-//  UA_Variant_init(&in_arg2);
+  spdlog::info("Calling LS1.A1.set_calibration_parameters");
   UA_Double offset = 3900;
   UA_Double scale = -43.3333;
-//  UA_Variant_setScalarCopy(&in_arg1, &offset, &UA_TYPES[UA_TYPES_DOUBLE]);
-//  UA_Variant_setScalarCopy(&in_arg2, &scale, &UA_TYPES[UA_TYPES_DOUBLE]);
   UA_Variant *in_args = new UA_Variant[2];
-  //UA_Variant_copy(in_args[0]
-  spdlog::info("Calling LS1.A1.set_calibration_parameters");
   UA_Variant_setScalarCopy(&(in_args[0]),&scale,&UA_TYPES[UA_TYPES_DOUBLE]);
   UA_Variant_setScalarCopy(&(in_args[1]),&offset,&UA_TYPES[UA_TYPES_DOUBLE]);
   retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1.A1"),
@@ -539,18 +533,34 @@ int main()
   UA_Variant_clear(&(in_args[1]));
   delete [] in_args;
 
+  //
   // example 1: Suppose that we wanted to move the motors to some position
-//  spdlog::info("Moving periscope to target position");
-//  json target;
+  //
+  spdlog::info("Moving periscope to target position");
+  json args;
   // order is *always* RNN800, RNN600, LSTAGE
-//  target["target"] = std::vector<int32_t>({121345,1233,112});
-//  std::string approach = "ud-"; // u : approach from higher steps; d: approach from lower steps; - : approach from shortest path
-//  UA_Variant input_args;
-//  UA_Variant_init(&input_args);
-//  UA_String argString = UA_String_fromChars(target.dump().c_str());
-//  UA_Variant_setScalarCopy(&input_args, &argString, &UA_TYPES[UA_TYPES_STRING]);
-
-
+  args["target"] = std::vector<int32_t>({86996,609978,15092});
+  args["approach"] = "---"; // we want the motor to go there the shortest way
+  args["lbls"] = false;
+  UA_Variant input_args;
+  UA_Variant_init(&input_args);
+  UA_String argString = UA_String_fromChars(args.dump().c_str());
+  UA_Variant_setScalarCopy(&input_args, &argString, &UA_TYPES[UA_TYPES_STRING]);
+  retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1"),
+      UA_NODEID_STRING(2, "LS1.move_to_pos"), 1, in_args, &outputSize, &output);
+  if(retval == UA_STATUSCODE_GOOD)
+  {
+    spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
+    // actually, this returns a typical response string
+    std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
+    parse_method_response_string(response);
+  }
+  else
+  {
+    spdlog::error("Failed to execute method. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
+  }
+  UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
+  UA_Variant_clear(&input_args);
   
   // -----------
   // -----------
