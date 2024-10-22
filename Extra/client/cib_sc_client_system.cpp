@@ -28,6 +28,87 @@ using std::string;
 using std::vector;
 using json = nlohmann::json;
 
+static UA_StatusCode
+nodeIter(UA_NodeId childId, UA_Boolean isInverse, UA_NodeId referenceTypeId, void *handle) {
+    if(isInverse)
+        return UA_STATUSCODE_GOOD;
+    UA_NodeId *parent = (UA_NodeId *)handle;
+
+    //std::string parentId(static_cast<char*>(parent->identifier.string.data));
+    //std::string child_id(static_cast<char*>(childId.identifier.string.data));
+
+    // spdlog::info("{0},{1} --- {2} ---> {3},{4}",
+    //              parent->namespaceIndex, parentId,
+    //              referenceTypeId.identifier.string.data, 
+    //              childId.namespaceIndex, child_id);
+
+//    // alternatively, we can maybe do it this way:
+//    spdlog::info("{0},{1} --- {2} ---> {3},{4}",
+//
+//    if(ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_NUMERIC) {
+//        printf("%-9d %-16d %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
+//               ref->nodeId.nodeId.identifier.numeric, (int)ref->browseName.name.length,
+//               ref->browseName.name.data, (int)ref->displayName.text.length,
+//               ref->displayName.text.data);
+//    } else if(ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_STRING) {
+//        printf("%-9d %-16.*s %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
+//               (int)ref->nodeId.nodeId.identifier.string.length,
+//               ref->nodeId.nodeId.identifier.string.data,
+//               (int)ref->browseName.name.length, ref->browseName.name.data,
+//               (int)ref->displayName.text.length, ref->displayName.text.data);
+//    }
+
+//    printf("%d, %d --- %d ---> NodeId %d, %d\n",
+//           parent->namespaceIndex, parent->identifier.numeric,
+//           referenceTypeId.identifier.numeric, childId.namespaceIndex,
+//           childId.identifier.numeric);
+    return UA_STATUSCODE_GOOD;
+}
+
+void browse_nodes(UA_Client *client)
+{
+  /* Same thing, this time using the node iterator... */
+  UA_NodeId *parent = UA_NodeId_new();
+  *parent = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER);
+  spdlog::info("Parent ID --- reference type -- node id");
+
+  UA_Client_forEachChildNodeCall(client, UA_NODEID_NUMERIC(2, UA_NS0ID_OBJECTSFOLDER),
+                                 nodeIter, (void *) parent);
+  UA_NodeId_delete(parent);
+}
+
+void check_motor_positions(UA_Client *client, const std::string node)
+{
+  spdlog::info("Checking position of {0}",node);
+  std::vector<std::string> nodes = {".current_position_motor",".current_position_cib"};
+  for (auto entry : nodes)
+  {
+    UA_Variant *val = UA_Variant_new();
+    std::string vname = node + entry ;
+    int32_t position;
+    UA_StatusCode retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, const_cast<char*>(vname.c_str())), val);
+    if (retval == UA_STATUSCODE_GOOD)
+    {
+      // strings are arrays, therefore
+      if (val->type == &UA_TYPES[UA_TYPES_INT32])
+      {
+        position = *static_cast<UA_Int32*>(val->data);
+        spdlog::info("{0} position : {1}",vname,position);
+      }
+      else
+      {
+        spdlog::error("Failed type check on val. Got {0}",(val->type)->typeName);
+      }
+    }
+    else
+    {
+      spdlog::error("Failed to request value. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
+    }
+    // clear the variant from the query
+    UA_Variant_delete(val);
+  }
+}
+
 void parse_method_response_string(std::string &input)
 {
   try
@@ -57,6 +138,12 @@ void parse_method_response_string(std::string &input)
 
 }
 
+void terminate_client(UA_Client *client)
+{
+  UA_Client_disconnect(client);
+  UA_Client_delete(client); 
+}
+
 int main()
 {
   spdlog::set_pattern("cib : [%^%L%$] %v");
@@ -79,18 +166,17 @@ int main()
   spdlog::info("Connecting to CIB server at [{0}]",server);
 
   retval = UA_Client_connect(client, server.c_str());
-
   if(retval != UA_STATUSCODE_GOOD)
   {
     spdlog::error("Failed with code {0}  name {1}",retval,UA_StatusCode_name(retval));
     // we can print a message why
     UA_Client_delete(client);
     return EXIT_FAILURE;
-  } else
+  } 
+  else
   {
     spdlog::info("Connected to server");
   }
-
 
   /**
    * Now we're in business. Let's rock!
@@ -116,7 +202,6 @@ int main()
 
 
   UA_Variant_init(&input);
-
   UA_String argString = UA_String_fromChars(jconf.dump().c_str());
   UA_Variant_setScalarCopy(&input, &argString, &UA_TYPES[UA_TYPES_STRING]);
 
@@ -152,10 +237,16 @@ int main()
   else
   {
     spdlog::error("Method execution failed with code {0} : {1}",retval,UA_StatusCode_name(retval));
+    // clean up
+    UA_Variant_clear(&input);
+    fconf.close();
+    terminate_client(client);
+    return EXIT_FAILURE;
   }
   // clear up the configuration allocated parts
   UA_Variant_clear(&input);
   fconf.close();
+
 
   spdlog::info("\n\nStage 2 : Check the individual node status\n\n");
   spdlog::info("Checking A1");
@@ -164,10 +255,10 @@ int main()
   retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.A1.state"), val);
   if (retval == UA_STATUSCODE_GOOD)
   {
-    if (UA_Variant_isScalar(val))
-    {
-      spdlog::debug("string reports as a scalar...interesting!");
-    }
+//    if (UA_Variant_isScalar(val))
+//    {
+//      spdlog::debug("string reports as a scalar...interesting!");
+//    }
     // strings are arrays, therefore
     if (val->type == &UA_TYPES[UA_TYPES_STRING])
     {
@@ -357,7 +448,7 @@ int main()
 
   UA_UInt16 laser_status_code;
   val = UA_Variant_new();
-  UA_Variant * val_desc = UA_Variant_new();
+  //UA_Variant * val_desc = UA_Variant_new();
   retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "LS1.L1.laser_status_code"), val);
   if (retval != UA_STATUSCODE_GOOD)
   {
@@ -400,6 +491,96 @@ int main()
   UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
   UA_Variant_clear(&input);
 
+
+  // -----------
+  // -----------
+  // Get the current motor positions
+  spdlog::info("Querying motor positions");
+  check_motor_positions(client,"LS1.RNN800");
+  check_motor_positions(client,"LS1.RNN600");
+  check_motor_positions(client,"LS1.LSTAGE");
+  spdlog::info("Done querying motor positions");
+
+  // -----------
+  // -----------
+  // -----------
+  // -----------
+  // Commented examples
+  // example 0: setting the attenuator calibration parameters
+  // this shows how methods with multiple arguments should be called
+  //LS1.A1.set_calibration_parameters
+  spdlog::info("Calling LS1.A1.set_calibration_parameters");
+  UA_Double offset = 3900;
+  UA_Double scale = -43.3333;
+  UA_Variant *in_args = new UA_Variant[2];
+  UA_Variant_setScalarCopy(&(in_args[0]),&scale,&UA_TYPES[UA_TYPES_DOUBLE]);
+  UA_Variant_setScalarCopy(&(in_args[1]),&offset,&UA_TYPES[UA_TYPES_DOUBLE]);
+  retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1.A1"),
+      UA_NODEID_STRING(2, "LS1.A1.set_calibration_parameters"), 2, in_args, &outputSize, &output);
+  if(retval == UA_STATUSCODE_GOOD)
+  {
+    spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
+    // actually, this returns a typical response string
+    std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
+    parse_method_response_string(response);
+  }
+  else
+  {
+    spdlog::error("Failed to execute method. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
+  }
+  UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
+  UA_Variant_clear(&(in_args[0]));
+  UA_Variant_clear(&(in_args[1]));
+  delete [] in_args;
+
+  //
+  // example 1: Suppose that we wanted to move the motors to some position
+  //
+  spdlog::info("Moving periscope to target position");
+  json args;
+  // order is *always* RNN800, RNN600, LSTAGE
+  args["target"] = std::vector<int32_t>({86996,609978,15092});
+  args["approach"] = "---"; // we want the motor to go there the shortest way
+  args["lbls"] = false;
+  UA_Variant input_args;
+  UA_Variant_init(&input_args);
+  UA_String newargString = UA_String_fromChars(args.dump().c_str());
+  UA_Variant_setScalarCopy(&input_args, &newargString, &UA_TYPES[UA_TYPES_STRING]);
+  retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1"),
+      UA_NODEID_STRING(2, "LS1.move_to_pos"), 1, input_args, &outputSize, &output);
+  if(retval == UA_STATUSCODE_GOOD)
+  {
+    spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
+    // actually, this returns a typical response string
+    std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
+    parse_method_response_string(response);
+  }
+  else
+  {
+    spdlog::error("Failed to execute method. Got error {0} : {1} ",retval,UA_StatusCode_name(retval));
+    spdlog::info("Method returned {0} arguments (1 expected)",outputSize);
+    if (outputSize)
+    {
+      // actually, this returns a typical response string
+      std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
+      parse_method_response_string(response);
+    }
+  }
+  UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
+  UA_Variant_clear(&input_args);
+  
+  // -----------
+  // -----------
+  // -----------
+  // -----------
+  // Get again the current motor positions
+  spdlog::info("Querying motor positions");
+  check_motor_positions(client,"LS1.RNN800");
+  check_motor_positions(client,"LS1.RNN600");
+  check_motor_positions(client,"LS1.LSTAGE");
+  spdlog::info("Done querying motor positions");
+  //
+
   spdlog::info("\n\nStage 4 : Shut down the system\n\n");
 
   UA_Variant_init(&input);
@@ -407,7 +588,7 @@ int main()
       UA_NODEID_STRING(2, "LS1.shutdown"), 0, &input, &outputSize, &output);
   if(retval == UA_STATUSCODE_GOOD)
   {
-    spdlog::info("Method called successfully. Returned {0} arguments (none expected)",outputSize);
+    spdlog::info("Method called successfully. Returned {0} arguments (1 expected)",outputSize);
     // actually, this returns a typical response string
     std::string response((char*)static_cast<UA_String*>(output[0].data)->data,(size_t)static_cast<UA_String*>(output[0].data)->length);
     parse_method_response_string(response);
@@ -421,8 +602,6 @@ int main()
 
   spdlog::info("All done. Shutting down client.");
 
-  UA_Client_disconnect(client);
-  UA_Client_delete(client);
   return EXIT_SUCCESS;
 
 }

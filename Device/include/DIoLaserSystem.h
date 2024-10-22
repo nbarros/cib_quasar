@@ -59,20 +59,15 @@ public:
         UaString& response
     ) ;
     UaStatus callFire_at_position (
-        const std::vector<OpcUa_Int32>&  target_pos,
-        OpcUa_UInt16 num_pulses,
-        OpcUa_Boolean enable_lbls_trigger,
+        const UaString&  arguments,
         UaString& answer
     ) ;
     UaStatus callFire_segment (
-        const std::vector<OpcUa_Int32>&  start_pos,
-        const std::vector<OpcUa_Int32>&  last_pos,
-        OpcUa_Boolean enable_lbls_trigger,
+        const UaString&  arguments,
         UaString& answer
     ) ;
     UaStatus callExecute_scan (
         const UaString&  plan,
-        OpcUa_Boolean enable_lbls_trigger,
         UaString& answer
     ) ;
     UaStatus callPause (
@@ -91,8 +86,7 @@ public:
         UaString& response
     ) ;
     UaStatus callMove_to_pos (
-        const std::vector<OpcUa_Int32>&  position,
-        const UaString&  approach,
+        const UaString&  arguments,
         UaString& response
     ) ;
 
@@ -144,12 +138,14 @@ private:
     void get_message_queue(json &resp, bool clear);
     bool validate_scan_plan(json &plan, json &resp);
 public:
+
     // makes a roll call for each system to update itself
     void update();
     // makes a status call over all subsystems
     bool is_ready();
     // really initializes the DAC readout
 private:
+
     std::map<State,std::string> m_state_map;
     State m_state;
     json m_task_message_queue;

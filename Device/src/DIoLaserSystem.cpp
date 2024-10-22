@@ -32,11 +32,11 @@
 #include <string>
 #include <chrono>
 
-#define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
+#define log_msg(s,met,dev,msg) "[" << s << "]::" << dev << ":" << met << " : " << msg
 
-#define log_e(m,s) log_msg("ERROR",m,s)
-#define log_w(m,s) log_msg("WARN",m,s)
-#define log_i(m,s) log_msg("INFO",m,s)
+#define log_e(m,s) log_msg("ERROR","iols",m,s)
+#define log_w(m,s) log_msg("WARN","iols",m,s)
+#define log_i(m,s) log_msg("INFO","iols",m,s)
 
 using std::ostringstream;
 
@@ -217,36 +217,67 @@ UaStatus DIoLaserSystem::callStop (
     return OpcUa_Good;
 }
 UaStatus DIoLaserSystem::callFire_at_position (
-    const std::vector<OpcUa_Int32>&  target_pos,
-    OpcUa_UInt16 num_pulses,
-    OpcUa_Boolean enable_lbls_trigger,
+    const UaString&  arguments,
     UaString& answer
 )
 {
+  const std::string lbl = "fire_at_pos";
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
     UaStatus st;
     try
     {
+      // parse the json here
+      json config= json::parse(arguments.toUtf8());
+      std::vector<int32_t> target_pos;
+      uint16_t num_pulses;
+
+      if (!config.contains("target"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'target'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        target_pos = config.at("target").get<std::vector<int32_t>>();
+        if (target_pos.size() != 3)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Malformed position. Three coordinates are expected (got ") << target_pos.size() << ")";
+          throw std::runtime_error(msg.str());
+        }
+      }
+      if (!config.contains("num_pulses"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'num_pulses'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        num_pulses = config.at("target").get<uint16_t>();
+      }
+      //FIXME: Implement the lbls part (not setting it yet)
       st = fire_at_position(target_pos,num_pulses,resp);
     }
     catch(json::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("fire_at_position","Caught JSON exception : ") << e.what();
+      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("fire_at_position","Caught JSON exception : ") << e.what();
+      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e("fire_at_position","Caught an unknown exception");
+      msg << log_e(lbl.c_str(),"Caught an unknown exception");
       got_exception = true;
     }
     if (got_exception)
@@ -259,19 +290,55 @@ UaStatus DIoLaserSystem::callFire_at_position (
     return OpcUa_Good;
 }
 UaStatus DIoLaserSystem::callFire_segment (
-    const std::vector<OpcUa_Int32>&  start_pos,
-    const std::vector<OpcUa_Int32>&  last_pos,
-    OpcUa_Boolean enable_lbls_trigger,
+    const UaString&  arguments,
     UaString& answer
 )
 {
+  const std::string lbl = "fire_segment";
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
     UaStatus st;
     try
     {
-      st = fire_segment(start_pos,last_pos,resp);
+      // parse the json here
+      json config= json::parse(arguments.toUtf8());
+      std::vector<int32_t> start_pos, end_pos;
+      uint16_t num_pulses;
+
+      if (!config.contains("start_position"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'start_position'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        start_pos = config.at("start_position").get<std::vector<int32_t>>();
+        if (start_pos.size() != 3)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Malformed start position. Three coordinates are expected (got ") << start_pos.size() << ")";
+          throw std::runtime_error(msg.str());
+        }
+      }
+      if (!config.contains("end_position"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'end_position'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        end_pos = config.at("end_position").get<std::vector<int32_t>>();
+        if (end_pos.size() != 3)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Malformed end position. Three coordinates are expected (got ") << end_pos.size() << ")";
+          throw std::runtime_error(msg.str());
+        }
+      }
+      st = fire_segment(start_pos,end_pos,resp);
     }
     catch(json::exception &e)
     {
@@ -302,7 +369,6 @@ UaStatus DIoLaserSystem::callFire_segment (
 }
 UaStatus DIoLaserSystem::callExecute_scan (
     const UaString&  plan,
-    OpcUa_Boolean enable_lbls_trigger,
     UaString& answer
 )
 {
@@ -347,6 +413,7 @@ UaStatus DIoLaserSystem::callPause (
     UaString& answer
 )
 {
+  //FIXME: Implement this!
     return OpcUa_BadNotImplemented;
 }
 UaStatus DIoLaserSystem::callStandby (
@@ -506,20 +573,57 @@ UaStatus DIoLaserSystem::callShutdown (
     return OpcUa_Good;
 }
 UaStatus DIoLaserSystem::callMove_to_pos (
-    const std::vector<OpcUa_Int32>&  position,
-    const UaString&  approach,
+    const UaString&  arguments,
     UaString& response
 )
 {
+    const std::string lbl = "move_to_pos";
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
     UaStatus st;
     try
     {
+      // parse the json here
+      json config= json::parse(arguments.toUtf8());
+      std::vector<int32_t> target_pos;
+      std::string approach;
+
+      if (!config.contains("target"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'target'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        target_pos = config.at("start_position").get<std::vector<int32_t>>();
+        if (target_pos.size() != 3)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Malformed start position. Three coordinates are expected (got ") << target_pos.size() << ")";
+          throw std::runtime_error(msg.str());
+        }
+      }
+      if (!config.contains("approach"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'approach'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        approach = config.at("approach").get<std::string>();
+        if (approach.length() != 3)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Malformed approach string. Three coordinates are expected (got ") << approach.length() << ")";
+          throw std::runtime_error(msg.str());
+        }
+      }
       // convert to an array that
-      std::string appr(approach.toUtf8());
-      st = move_to_pos(position,appr,resp);
+      //std::string appr(approach.toUtf8());
+      st = move_to_pos(target_pos,approach,resp);
     }
     catch(json::exception &e)
     {
@@ -575,7 +679,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       if (!validate_config_fragment(conf,resp))
       {
         reset(msg);
-        msg << log_e("stop","Failed to stop laser unit. See previous messages");
+        msg << log_e("stop","Failed to validate configuration fragment. See previous messages");
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         if (!resp.contains("statuscode"))
@@ -695,9 +799,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         {
           // there is only 1
           json pconf = it.value();
-          for (auto meter : iolpowermeters())
-          {
-            st = meter->config(pconf,resp);
+          st = iolpowermeter()->config(pconf,resp);
             if (st != OpcUa_Good)
             {
               reset(msg);
@@ -710,7 +812,23 @@ UaStatus DIoLaserSystem::callMove_to_pos (
               }
               return OpcUa_BadInvalidArgument;
             }
-          }
+
+          // for (auto meter : iolpowermeters())
+          // {
+          //   st = meter->config(pconf,resp);
+          //   if (st != OpcUa_Good)
+          //   {
+          //     reset(msg);
+          //     msg << log_e("config","Failed to configure power meter.");
+          //     resp["status"] = "ERROR";
+          //     resp["messages"].push_back(msg.str());
+          //     if (!resp.contains("statuscode"))
+          //     {
+          //       resp["statuscode"] = OpcUa_BadInvalidArgument;
+          //     }
+          //     return OpcUa_BadInvalidArgument;
+          //   }
+          // }
         }
       } // loop json
       // if we reached this point, the configurations are all good
@@ -808,22 +926,35 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       // none of the other systems are actually critical
       // however, if we stop the laser, there is little point in
       // keeping the power meter reading
-      for (auto meter : iolpowermeters())
+      st = iolpowermeter()->stop_readings(resp);
+      if (st != OpcUa_Good)
       {
-        st = meter->stop_readings(resp);
-        if (st != OpcUa_Good)
+        reset(msg);
+        msg << log_e("stop","Failed to stop power meter ") << iolpowermeter()->getFullName() << ". See previous messages.";
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        if (!resp.contains("statuscode"))
         {
-          reset(msg);
-          msg << log_e("stop","Failed to stop power meter ") << meter->getFullName() << ". See previous messages.";
-          resp["status"] = "ERROR";
-          resp["messages"].push_back(msg.str());
-          if (!resp.contains("statuscode"))
-          {
-            resp["statuscode"] = OpcUa_Bad;
-          }
-          return st;
+          resp["statuscode"] = OpcUa_Bad;
         }
+        return st;
       }
+      // for (auto meter : iolpowermeters())
+      // {
+      //   st = meter->stop_readings(resp);
+      //   if (st != OpcUa_Good)
+      //   {
+      //     reset(msg);
+      //     msg << log_e("stop","Failed to stop power meter ") << meter->getFullName() << ". See previous messages.";
+      //     resp["status"] = "ERROR";
+      //     resp["messages"].push_back(msg.str());
+      //     if (!resp.contains("statuscode"))
+      //     {
+      //       resp["statuscode"] = OpcUa_Bad;
+      //     }
+      //     return st;
+      //   }
+      // }
       // if it reached this point we are currently stopped
     }
     catch(json::exception &e)
@@ -871,6 +1002,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
 
   UaStatus DIoLaserSystem::fire_at_position(const std::vector<int32_t>&  target_pos, uint16_t num_pulses, json &resp)
   {
+    const std::string lbl = "fire_at_position";
     UaStatus st;
     std::ostringstream msg("");
     bool got_exception = false;
@@ -888,7 +1020,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       {
         reset(msg);
         resp["status"] = "ERROR";
-        msg << log_e("fire_at_position","System is not ready to operate. Check the status of the various subsystems.");
+        msg << log_e(lbl.c_str(),"System is not ready to operate. Check the status of the various subsystems.");
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
@@ -901,7 +1033,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       {
         reset(msg);
         resp["status"] = "ERROR";
-        msg << log_e("fire_at_position","Laser is not in the right state.");
+        msg << log_e(lbl.c_str(),"Laser is not in the right state.");
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
@@ -918,7 +1050,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         // different number of position coordinates and motors
         resp["status"] = "ERROR";
         reset(msg);
-        msg << log_e("fire_at_position","Different number of coordinates (")
+        msg << log_e(lbl.c_str(),"Different number of coordinates (")
                                                           << target_pos.size() << ") and available motors ("
                                                           << iolmotors().size() << "). Refusing to operate.";
         resp["messages"].push_back(msg.str());
@@ -930,7 +1062,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       {
         resp["status"] = "ERROR";
         std::ostringstream msg("");
-        msg << log_e("fire_at_position","Invalid number of pulses (")
+        msg << log_e(lbl.c_str(),"Invalid number of pulses (")
                                                           << num_pulses << "). Value must be at least 1.";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadInvalidArgument;
@@ -956,7 +1088,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
             {
               resp["status"] = "ERROR";
               std::ostringstream msg("");
-              msg << log_e("fire_at_position","Failed to set target position for motor (id : ")
+              msg << log_e(lbl.c_str(),"Failed to set target position for motor (id : ")
                                                                 << lmotor->get_id() << ").";
               resp["messages"].push_back(msg.str());
               resp["statuscode"] = static_cast<uint32_t>(st);
@@ -968,7 +1100,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
             {
               resp["status"] = "ERROR";
               std::ostringstream msg("");
-              msg << log_e("fire_at_position","Failed to initiate motor movement on motor (id : ")
+              msg << log_e(lbl.c_str(),"Failed to initiate motor movement on motor (id : ")
                                                                 << lmotor->get_id() << ").";
               resp["messages"].push_back(msg.str());
               resp["statuscode"] = static_cast<uint32_t>(st);
@@ -998,17 +1130,28 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       //
       // we have reached the destination
       // step 2.0 : start power meter readings
-      for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+      st = iolpowermeter()->start_readings(resp);
+      if (st != OpcUa_Good)
       {
-        st = lmeter->start_readings(resp);
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Failed to start power meter");
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["statuscode"] = static_cast<uint32_t>(st);
+        LOG(Log::ERR) << msg.str();
+        return st;
       }
+      // for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+      // {
+      //   st = lmeter->start_readings(resp);
+      // }
       // step 2: resume operation of the laser unit
       st = iollaserunit()->fire_discrete_shots(num_pulses,resp);
       if (st != OpcUa_Good)
       {
         reset(msg);
         resp["status"] = "ERROR";
-        msg << log_e("fire_at_position","Failed to fire laser. Check previous messages.");
+        msg << log_e(lbl.c_str(),"Failed to fire laser. Check previous messages.");
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = static_cast<uint32_t>(st);
         // force a pause (again)
@@ -1017,11 +1160,21 @@ UaStatus DIoLaserSystem::callMove_to_pos (
       }
       // at this stage we are done
       // make sure that the laser is in pause state
-      iollaserunit()->pause(resp);
-      for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+      st = iollaserunit()->pause(resp);
+      if (st != OpcUa_Good)
       {
-        st = lmeter->stop_readings(resp);
+        reset(msg);
+        msg << log_e(lbl.c_str(),"Failed to set later in pause mode.");
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["statuscode"] = static_cast<uint32_t>(st);
+        return st;
       }
+      st = iolpowermeter()->stop_readings(resp);
+      // for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+      // {
+      //   st = lmeter->stop_readings(resp);
+      // }
 
     }
     catch(json::exception &e)
@@ -2023,7 +2176,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     const uint32_t overstep = 200;
     std::ostringstream msg("");
     UaStatus st = OpcUa_Good;
-    bool error_moving = false;
+    // bool error_moving = false;
     // before we do anything check the valid approaches
     bool failed_validation = false;
     if ((position.size() != 3) || (approach.size()!= 3))

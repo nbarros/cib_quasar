@@ -36,11 +36,11 @@
 
 using json = nlohmann::json;
 //
-#define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
+#define log_msg(s,dev,met,msg) "[" << s << "]::" << dev << ":" << met << " : " << msg
 //
-#define log_e(m,s) log_msg("ERROR",m,s)
-#define log_w(m,s) log_msg("WARN",m,s)
-#define log_i(m,s) log_msg("INFO",m,s)
+#define log_e(m,s) log_msg("ERROR","laser",m,s)
+#define log_w(m,s) log_msg("WARN","laser",m,s)
+#define log_i(m,s) log_msg("INFO","laser",m,s)
 //
 #define DEBUG 1
 using std::ostringstream;
@@ -102,6 +102,7 @@ DIoLLaserUnit::DIoLLaserUnit (
             ,m_warmup_timer(20) // 30 min
 //            ,m_serial_busy(false)
             ,m_config_completed(false)
+            ,m_is_terminating(false)
 {
     /* fill up constructor body here */
     m_name = config.id();
@@ -792,10 +793,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   {
     std::ostringstream msg("");
     const std::string lbl = "set_conn";
-    //FIXME: how do we get out of the error state?
     UaStatus st = check_error_state(resp);
     if (st != OpcUa_Good)
     {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"System in error state. Aborting.");
+      LOG(Log::ERR) << msg.str();
       return st;
     }
     //
@@ -803,6 +806,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     st = check_not_offline_state(resp);
     if (st != OpcUa_Good)
     {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Laser instance found. This is unexpected and therefore a failure.");
+      LOG(Log::ERR) << msg.str();
       return st;
     }
     // do a second cross-check. At this stage there should not be any instantiated object
@@ -813,9 +819,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Laser instance found. This is unexpected and therefore a termination will be forced first.");
-#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
-#endif
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -831,14 +835,13 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 #ifdef DEBUG
       LOG(Log::INF) << msg.str();
 #endif
-      resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_Good;
     }
     else
     {
       m_comport = port;
     }
+    //
     if (m_comport.size() == 0)
     {
       // the port is invalid. Something failed.
@@ -852,6 +855,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       resp["statuscode"] = OpcUa_BadInvalidArgument;
       return OpcUa_BadInvalidArgument;
     }
+    // if we reached this point we have something apparently valid
     UaString ss(m_comport.c_str());
     getAddressSpaceLink()->setPort(ss,OpcUa_Good);
     //
@@ -861,13 +865,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       // just leave what it is presently set
       msg.clear(); msg.str("");
-      msg << log_i(lbl.c_str(),"Baud rate kept to current value[") << m_baud_rate << "]";
+      msg << log_w(lbl.c_str(),"Baud rate kept to current value[") << m_baud_rate << "]";
 #ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::WRN) << msg.str();
 #endif
-      resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_Good;
     }
     else
     {
@@ -923,7 +925,6 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
           // if we are on standby, don't update, as we don't want to mess the timer
           update_status(sStandby);
           // this is now done on update_status
-          // start_standby_timer();
         }
         // if the external shutter is closed, open it
         // there is redundancy and there is no point
@@ -1267,6 +1268,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // everything else is secondary
     std::ostringstream msg("");
     const std::string lbl = "terminate";
+    m_is_terminating.store(true);
     // terminate should take on a mutex right away so other methods do nothing during this period
 
 #ifdef DEBUG
@@ -1350,6 +1352,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     m_laser = nullptr;
     m_config_completed = false;
+    m_is_terminating.store(false);
     return OpcUa_Good;
   }
   UaStatus DIoLLaserUnit::stop(json &resp)
@@ -1734,9 +1737,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     bool got_exception = false;
     const std::string lbl = "refresh_status";
     UaStatus st = OpcUa_Good;
+    const std::lock_guard<std::mutex> lock(m_serial_mutex);
     try
     {
-      const std::lock_guard<std::mutex> lock(m_serial_mutex);
       st = check_laser_instance(resp);
       if (st != OpcUa_Good)
       {
@@ -2323,20 +2326,22 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // Therefore it needs to do several checks to make sure it does not enter into race conditions with the normal operation
     // the main issue here is when there is a race condition with the termination
     json resp;
+    if (m_is_terminating.load())
+    {
+      return;
+    }
+
     if (m_laser)
     {
+      // this could potentially cause a race condition
       refresh_status(resp);
+      // this could potentially cause a race condition
       refresh_shot_count(resp);
-//      get_laser_shutter();
+      // this does not cause a crash. Just updates the slow control variable
+      get_laser_shutter();
     }
     UaStatus st;
-    //UaStatus st = check_error_state(resp);
-    //if (st != OpcUa_Good)
-    //{
-    //  LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an sError status. Terminating.";
-    //  terminate(resp);
-    //}
-    // do also a refresh of the relevant registers
+    // this should not cause crashes either.
     if ((m_status != sOffline) && m_config_completed)
     {
       st = refresh_registers(resp);
@@ -2623,9 +2628,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       if ( st != OpcUa_Good)
       {
         // just fail
-#ifdef DEBUG
-        LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to establish connection to device");
-#endif
+        LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to determine device connection settings");
         return st;
       }
       // all good so far, so lets initiate the connection by creating an instance of the laser system
@@ -2634,8 +2637,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       if (st != OpcUa_Good)
       {
 #ifdef DEBUG
-      LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to create a laser instance");
+        LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to create a laser instance");
 #endif
+        // cleaning up the 
         terminate(resp);
         return st;
       }
@@ -2789,6 +2793,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 #ifdef DEBUG
       LOG(Log::INF) << log_i(lbl.c_str(),"Done with config");
 #endif
+      // update the timers so that they don't complain about Waiting for data
+      getAddressSpaceLink()->setWarmup_timer_s(0,OpcUa_Good);
+      getAddressSpaceLink()->setStandby_timer_s(0,OpcUa_Good);
+      getAddressSpaceLink()->setPause_timer_s(0,OpcUa_Good);
+
       m_config_completed = true;
       // if we reached this point we don't have an exception, so things should be good
       // if we reached this point, things seem to be good
@@ -2824,8 +2833,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i(lbl.c_str(),"System configured");
-      resp["status"] = "SUCCESS";
+      msg << log_i(lbl.c_str(),"Laser system configured");
+      resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
       return OpcUa_Good;

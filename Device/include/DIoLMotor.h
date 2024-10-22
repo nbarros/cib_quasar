@@ -232,6 +232,7 @@ private:
     uint32_t m_speed_setpoint;
     uint32_t m_speed_readout; // current speed reported by the motor
     int32_t  m_alarm_code_motor;
+    int32_t  m_coordinate_index;
     double m_torque;
     double m_temperature;
     uint32_t m_refresh_ms;
@@ -245,7 +246,7 @@ private:
     int32_t m_range_min;
     int32_t m_range_max;
     std::string m_id;
-    size_t m_coordinate_index;
+    // size_t m_coordinate_index;
     //
     // Variables necessary to map registers in the CIB
     //

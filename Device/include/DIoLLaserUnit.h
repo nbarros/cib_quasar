@@ -366,6 +366,7 @@ private:
 //    std::atomic<bool> m_serial_busy;
     bool m_config_completed;
     std::mutex m_serial_mutex;
+    std::atomic<bool> m_is_terminating;
 };
 
 }

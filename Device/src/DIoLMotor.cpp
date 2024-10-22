@@ -602,11 +602,10 @@ UaStatus DIoLMotor::callClear_alarm (
     m_cib_monitor.store(true);
     std::thread([this]()
                 {
-      int32_t prev_pos = 0;
       while (m_cib_monitor.load())
       {
         auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_refresh_cib_ms);
-        prev_pos =m_position_cib;
+        //prev_pos =m_position_cib;
         int32_t cpos;
         UaStatus st = cib_get_position(cpos);
 #ifdef DEBUG
