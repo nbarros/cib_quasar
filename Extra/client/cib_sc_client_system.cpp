@@ -539,9 +539,10 @@ int main()
   spdlog::info("Moving periscope to target position");
   json args;
   // order is *always* RNN800, RNN600, LSTAGE
-  args["target"] = std::vector<int32_t>({86996,609978,15092});
+  args["target"] = std::vector<int32_t>({86996,609978,16092});
   args["approach"] = "---"; // we want the motor to go there the shortest way
   args["lbls"] = false;
+  spdlog::debug("Input arguments : {0}",args.dump());
   UA_Variant input_args;
   UA_Variant_init(&input_args);
   UA_String newargString = UA_String_fromChars(args.dump().c_str());
@@ -569,12 +570,22 @@ int main()
   UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
   UA_Variant_clear(&input_args);
   
+  spdlog::info("Waiting for 10 s so that the motor reaches position");
+  size_t i = 0;
+  for (i = 0; i < 10; i++)
+  {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    spdlog::info("Querying motor positions");
+    check_motor_positions(client,"LS1.RNN800");
+    check_motor_positions(client,"LS1.RNN600");
+    check_motor_positions(client,"LS1.LSTAGE");
+  }
   // -----------
   // -----------
   // -----------
   // -----------
   // Get again the current motor positions
-  spdlog::info("Querying motor positions");
+  spdlog::info("Querying final motor positions");
   check_motor_positions(client,"LS1.RNN800");
   check_motor_positions(client,"LS1.RNN600");
   check_motor_positions(client,"LS1.LSTAGE");
