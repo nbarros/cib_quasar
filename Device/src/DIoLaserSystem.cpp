@@ -665,8 +665,9 @@ UaStatus DIoLaserSystem::callMove_to_pos (
     bool got_exception = false;
     try
     {
-      // first thing is to check that we are either in sInit or sReady states
-      if ((m_state != sOffline) and (m_state != sReady))
+      // first thing is to check that we are in offline state
+      // configure should never be called in any other situation
+      if ((m_state != sOffline))
       {
         reset(msg);
         msg << log_e("config","System is operating. Can only configure when stopped.");

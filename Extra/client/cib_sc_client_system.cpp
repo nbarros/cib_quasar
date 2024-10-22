@@ -172,7 +172,6 @@ void move_motor(UA_Client *client, std::vector<int32_t> &target_pos)
   // -- repeat the process back to the init position
   //
 
-
 }
 
 
