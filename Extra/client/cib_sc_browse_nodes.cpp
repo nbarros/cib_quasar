@@ -171,18 +171,29 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
       // if it is in namespace 0, it is a descriptor of the previous node
       if (ref->nodeClass == UA_NODECLASS_VARIABLE)
       {
-        // no need to further browse. Just show the name
-//        printf("%-16.*s --> Variable \n",
-//               (int)ref->nodeId.nodeId.identifier.string.length,
-//               ref->nodeId.nodeId.identifier.string.data);
-        // query the data type
-        //UA_Client_readValueAttribute(UA_Client *client, const UA_NodeId nodeId, UA_Variant *outValue)
         UA_Variant output;
         UA_Variant_init(&output);
 
         retval = UA_Client_readValueAttribute(client, ref->nodeId.nodeId, &output);
-        if (retval == UA_STATUSCODE_GOOD)
+
+        if (output.type == &UA_TYPES[UA_TYPES_EXTENSIONOBJECT])
         {
+          // this is an argument
+          // try to fetch its data type exactly
+          printf("\t\t %-16.*s \n",
+                 (int)ref->browseName.name.length, ref->browseName.name.data
+                 );
+          printf("%-9d %-16d %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
+                 ref->nodeId.nodeId.identifier.numeric, (int)ref->browseName.name.length,
+                 ref->browseName.name.data, (int)ref->displayName.text.length,
+                 ref->displayName.text.data);
+
+          //(int)ref->browseName.name.length, ref->browseName.name.data,
+        }
+        else
+        {
+        // query the data type
+        //UA_Client_readValueAttribute(UA_Client *client, const UA_NodeId nodeId, UA_Variant *outValue)
           printf("%-16.*s --> VAR : %s \n",
                  (int)ref->nodeId.nodeId.identifier.string.length,
                  ref->nodeId.nodeId.identifier.string.data,
@@ -192,6 +203,9 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
           //UA_Datatype *tp = &UA_TYPES[output.type]
         }
         UA_Variant_clear(&output);
+
+        // there is a special case here. method arguments also report as variables
+
 
         // do we need to go further?
       }
@@ -203,6 +217,10 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
                (int)ref->nodeId.nodeId.identifier.string.length,
                ref->nodeId.nodeId.identifier.string.data
                );
+
+        // in this case we want to check one further to figure out the method's arguments
+        browse_nodes_scan(client,&(ref->nodeId.nodeId));
+
 
 
       }
