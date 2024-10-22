@@ -208,6 +208,13 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
 
         // do we need to go further?
       }
+      else if (ref->nodeClass == UA_NODECLASS_OBJECTTYPE)
+      {
+        printf("\t\t\t\t%-16.*s\n",
+               (int)ref->browseName.name.length,
+               ref->browseName.name.data
+        );
+      }
       else if (ref->nodeClass == UA_NODECLASS_METHOD)
       {
         // in this case we need to figure out whether they have arguments
