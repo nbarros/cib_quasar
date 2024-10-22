@@ -117,7 +117,7 @@ public:
     //
     enum Status{sOffline=0x0,sReady=2,sError=3};
     //
-    bool is_ready() {return m_is_ready;}
+    bool is_ready() {return (m_status == sReady);}
     void update();
     UaStatus terminate(json &resp);
     UaStatus set_id(const std::string &id);
