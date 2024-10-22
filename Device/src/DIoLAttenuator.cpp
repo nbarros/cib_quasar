@@ -431,7 +431,28 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
     UaString& response
 )
 {
-    return OpcUa_BadNotImplemented;
+  LOG(Log::INF) << log_i("set_cal_params","Setting calibration parameters to ") << offset << " scale " << scale;
+  json resp;
+  ostringstream msg("");
+  UaStatus ret = set_calibration_params(offset,scale,resp);
+  if (ret != OpcUa_Good)
+  {
+    msg.clear(); msg.str("");
+    msg << log_e("set_speed","Operation failed!");
+    resp["status"] = "ERROR";
+    resp["messages"].push_back(msg.str());
+    resp["statuscode"] = OpcUa_Bad;
+  }
+  else
+  {
+    msg.clear(); msg.str("");
+    msg << log_i("set_speed","Operation successful!");
+    resp["status"] = "OK";
+    resp["messages"].push_back(msg.str());
+    resp["statuscode"] = OpcUa_Good;
+  }
+  response = UaString(resp.dump().c_str());
+  return OpcUa_Good;
 }
 
 // 3333333333333333333333333333333333333333333333333333333333333333333333333
@@ -1542,11 +1563,66 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
     if (got_exception)
     {
       resp["messages"].push_back(msg.str());
-      getAddressSpaceLink()->setDeceleration(m_position, OpcUa_Bad);
+      getAddressSpaceLink()->setPosition(m_position, OpcUa_Bad);
       return OpcUa_Bad;
     }
     return OpcUa_Good;
   }
+  UaStatus DIoLAttenuator::set_calibration_params(const double offset, const double scale, json &resp)
+  {
+    const char* label = "set_cal_params";
+    ostringstream msg("");
+    bool got_exception = false;
+    if (!m_att)
+    {
+      // no object
+      msg.clear(); msg.str("");
+      msg << log_e(label,"Device is not connected yet.");
+      resp["messages"].push_back(msg.str());
+      return OpcUa_BadInvalidState;
+    }
+    try
+    {
+
+      {
+        //const std::lock_guard<std::mutex> lock(m_serial_mutex);
+        m_att->set_cal_parameters(static_cast<int>(offset),scale);
+      }
+      //getAddressSpaceLink()>setPosition(m_position, OpcUa_Good);
+    }
+    catch(serial::PortNotOpenedException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label,"Port not open : ") << e.what();
+      got_exception = true;
+    }
+    catch(serial::SerialException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label,"Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch(std::exception &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label,"STL exception :") << e.what();
+      got_exception = true;
+    }
+    catch(...)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label,"Unknown exception");
+      got_exception = true;
+    }
+    if (got_exception)
+    {
+      resp["messages"].push_back(msg.str());
+      //getAddressSpaceLink()->setDeceleration(m_position, OpcUa_Bad);
+      return OpcUa_Bad;
+    }
+    return OpcUa_Good;
+  }
+
   void DIoLAttenuator::update()
   {
     refresh_position();

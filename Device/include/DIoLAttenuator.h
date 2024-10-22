@@ -138,6 +138,8 @@ private:
     UaStatus set_deceleration(const uint16_t v, json &resp);
     UaStatus set_max_speed(const uint32_t v, json &resp);
     UaStatus set_position(const int32_t v, json &resp);
+    UaStatus set_calibration_params(const double offset, const double scale, json &resp);
+
     //
     UaStatus  validate_config_fragment(json &conf, json &resp);
     //
