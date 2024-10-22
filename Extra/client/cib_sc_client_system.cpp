@@ -544,8 +544,8 @@ int main()
   args["lbls"] = false;
   UA_Variant input_args;
   UA_Variant_init(&input_args);
-  UA_String argString = UA_String_fromChars(args.dump().c_str());
-  UA_Variant_setScalarCopy(&input_args, &argString, &UA_TYPES[UA_TYPES_STRING]);
+  UA_String newargString = UA_String_fromChars(args.dump().c_str());
+  UA_Variant_setScalarCopy(&input_args, &newargString, &UA_TYPES[UA_TYPES_STRING]);
   retval = UA_Client_call(client, UA_NODEID_STRING(2, "LS1"),
       UA_NODEID_STRING(2, "LS1.move_to_pos"), 1, in_args, &outputSize, &output);
   if(retval == UA_STATUSCODE_GOOD)
