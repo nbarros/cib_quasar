@@ -141,7 +141,7 @@ void browse_nodes_scan(UA_Client *client, UA_NodeId *node)
 }
 void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
 {
-  printf("Browsing nodes in objects folder:\n");
+  //printf("Browsing nodes in objects folder:\n");
   UA_StatusCode retval = UA_STATUSCODE_GOOD;
   UA_BrowseRequest bReq;
   UA_BrowseRequest_init(&bReq);
@@ -199,13 +199,26 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
       {
         // in this case we need to figure out whether they have arguments
         // so we should also fetch their arguments
+        printf("%-16.*s --> METHOD \n",
+               (int)ref->nodeId.nodeId.identifier.string.length,
+               ref->nodeId.nodeId.identifier.string.data
+               );
 
 
       }
-      else
+      else if (ref->nodeClass == UA_NODECLASS_OBJECT)
       {
         // browse one further
         browse_nodes_scan(client,&(ref->nodeId.nodeId));
+      }
+      else
+      {
+        printf("%-16.*s --> %d \n",
+               (int)ref->nodeId.nodeId.identifier.string.length,
+               ref->nodeId.nodeId.identifier.string.data,
+               (int)ref->nodeClass
+               );
+
       }
       // we only care for nodes with namespace 2
 //      if (ref->nodeId.nodeId.namespaceIndex == 2)
@@ -245,10 +258,10 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
       /* TODO: distinguish further types */
     }
   }
-  printf("Clearing\n");
+  //printf("Clearing\n");
   UA_BrowseRequest_clear(&bReq);
   //UA_BrowseResponse_clear(&bResp);
-  printf("Done clearing\n");
+  //printf("Done clearing\n");
 }
 
 void browse_node_path(UA_Client *client )
