@@ -567,7 +567,7 @@ int main()
 
    std::vector<int32_t> target_position(init_position);
    target_position[3] = target_position.at(3) + 1000;
-   spdlog::info("Moving motor to position [{0},{1},{2}]",target_position.at(0),target_position.at(1),target_position.at(2))
+   spdlog::info("Moving motor to position [{0},{1},{2}]",target_position.at(0),target_position.at(1),target_position.at(2));
    move_motor(client,target_position);
    spdlog::info("Moving back to previous position : [{0},{1},{2}]",init_position.at(0),init_position.at(1),init_position.at(2));
    move_motor(client,init_position);
