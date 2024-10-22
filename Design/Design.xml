@@ -553,32 +553,17 @@
 </d:returnvalue>
     </d:method>
     <d:method name="fire_at_position" executionSynchronicity="synchronous">
-      <d:argument dataType="OpcUa_Int32" name="target_pos">
-        <d:array minimumSize="3" maximumSize="3"/>
+      <d:argument dataType="UaString" name="arguments">
       </d:argument>
-      <d:argument dataType="OpcUa_UInt16" name="num_pulses"/>
-      <d:argument dataType="OpcUa_Boolean" name="enable_lbls_trigger">
-      	<!--this argument indicates whether the triggers should be sent to the  LBLS system-->
-	  </d:argument>
     	<d:returnvalue dataType="UaString" name="answer"/>
     </d:method>
     <d:method name="fire_segment" executionSynchronicity="synchronous">
-      <d:argument dataType="OpcUa_Int32" name="start_pos">
-        <d:array minimumSize="3" maximumSize="3"/>
+      <d:argument dataType="UaString" name="arguments">
       </d:argument>
-      <d:argument dataType="OpcUa_Int32" name="last_pos">
-        <d:array maximumSize="3" minimumSize="3"/>
-      </d:argument>
-      <d:argument dataType="OpcUa_Boolean" name="enable_lbls_trigger">
-      	<!--this argument indicates whether the triggers should be sent to the  LBLS system-->
-	  </d:argument>
       <d:returnvalue dataType="UaString" name="answer"/>
     </d:method>
     <d:method name="execute_scan" executionSynchronicity="synchronous">
       <d:argument dataType="UaString" name="plan"/>
-      <d:argument dataType="OpcUa_Boolean" name="enable_lbls_trigger">
-      	<!--this argument indicates whether the triggers should be sent to the  LBLS system-->
-	  </d:argument>
       <d:returnvalue dataType="UaString" name="answer"/>
     </d:method>
     <d:method name="pause" executionSynchronicity="synchronous">

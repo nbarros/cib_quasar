@@ -217,9 +217,7 @@ UaStatus DIoLaserSystem::callStop (
     return OpcUa_Good;
 }
 UaStatus DIoLaserSystem::callFire_at_position (
-    const std::vector<OpcUa_Int32>&  target_pos,
-    OpcUa_UInt16 num_pulses,
-    OpcUa_Boolean enable_lbls_trigger,
+    const UaString&  arguments,
     UaString& answer
 )
 {
@@ -230,6 +228,38 @@ UaStatus DIoLaserSystem::callFire_at_position (
     UaStatus st;
     try
     {
+      // parse the json here
+      json config= json::parse(arguments.toUtf8());
+      std::vector<int32_t> target_pos;
+      uint16_t num_pulses;
+
+      if (!config.contains("target"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'target'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        target_pos = config.at("target").get<std::vector<int32_t>>();
+        if (target_pos.size() != 3)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Malformed position. Three coordinates are expected (got ") << target_pos.size() << ")";
+          throw std::runtime_error(msg.str());
+        }
+      }
+      if (!config.contains("num_pulses"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'num_pulses'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        num_pulses = config.at("target").get<uint16_t>();
+      }
+      //FIXME: Implement the lbls part (not setting it yet)
       st = fire_at_position(target_pos,num_pulses,resp);
     }
     catch(json::exception &e)
@@ -260,19 +290,55 @@ UaStatus DIoLaserSystem::callFire_at_position (
     return OpcUa_Good;
 }
 UaStatus DIoLaserSystem::callFire_segment (
-    const std::vector<OpcUa_Int32>&  start_pos,
-    const std::vector<OpcUa_Int32>&  last_pos,
-    OpcUa_Boolean enable_lbls_trigger,
+    const UaString&  arguments,
     UaString& answer
 )
 {
+  const std::string lbl = "fire_segment";
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
     UaStatus st;
     try
     {
-      st = fire_segment(start_pos,last_pos,resp);
+      // parse the json here
+      json config= json::parse(arguments.toUtf8());
+      std::vector<int32_t> start_pos, end_pos;
+      uint16_t num_pulses;
+
+      if (!config.contains("start_position"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'start_position'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        start_pos = config.at("start_position").get<std::vector<int32_t>>();
+        if (start_pos.size() != 3)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Malformed start position. Three coordinates are expected (got ") << start_pos.size() << ")";
+          throw std::runtime_error(msg.str());
+        }
+      }
+      if (!config.contains("end_position"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing mandatory field 'end_position'");
+        throw std::runtime_error(msg.str());
+      }
+      else
+      {
+        end_pos = config.at("end_position").get<std::vector<int32_t>>();
+        if (end_pos.size() != 3)
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Malformed end position. Three coordinates are expected (got ") << end_pos.size() << ")";
+          throw std::runtime_error(msg.str());
+        }
+      }
+      st = fire_segment(start_pos,end_pos,resp);
     }
     catch(json::exception &e)
     {
@@ -303,7 +369,6 @@ UaStatus DIoLaserSystem::callFire_segment (
 }
 UaStatus DIoLaserSystem::callExecute_scan (
     const UaString&  plan,
-    OpcUa_Boolean enable_lbls_trigger,
     UaString& answer
 )
 {
