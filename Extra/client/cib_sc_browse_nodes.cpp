@@ -175,19 +175,18 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
         UA_Variant_init(&output);
 
         retval = UA_Client_readValueAttribute(client, ref->nodeId.nodeId, &output);
-
+        if (retval != UA_STATUSCODE_GOOD)
+        {
+          UA_Variant_clear(&output);
+          continue;
+        }
         if (output.type == &UA_TYPES[UA_TYPES_EXTENSIONOBJECT])
         {
           // this is an argument
           // try to fetch its data type exactly
-          printf("\t\t %-16.*s \n",
+          printf("\t\t\t\t %-16.*s \n",
                  (int)ref->browseName.name.length, ref->browseName.name.data
                  );
-          printf("%-9d %-16d %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
-                 ref->nodeId.nodeId.identifier.numeric, (int)ref->browseName.name.length,
-                 ref->browseName.name.data, (int)ref->displayName.text.length,
-                 ref->displayName.text.data);
-
           //(int)ref->browseName.name.length, ref->browseName.name.data,
         }
         else
@@ -235,42 +234,6 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
                );
 
       }
-      // we only care for nodes with namespace 2
-//      if (ref->nodeId.nodeId.namespaceIndex == 2)
-//      {
-//        printf("%-16.*s %-16.*s\n",
-//               (int)ref->nodeId.nodeId.identifier.string.length,
-//               ref->nodeId.nodeId.identifier.string.data,
-//               (int)ref->browseName.name.length, ref->browseName.name.data
-//                );
-//      }
-//
-//      if (ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_NUMERIC)
-//      {
-//        printf("%-9d %-16d %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
-//               ref->nodeId.nodeId.identifier.numeric, (int)ref->browseName.name.length,
-//               ref->browseName.name.data, (int)ref->displayName.text.length,
-//               ref->displayName.text.data);
-//      }
-//      else if (ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_STRING)
-//      {
-//        printf("%-9d %-16.*s %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
-//               (int)ref->nodeId.nodeId.identifier.string.length,
-//               ref->nodeId.nodeId.identifier.string.data,
-//               (int)ref->browseName.name.length, ref->browseName.name.data,
-//               (int)ref->displayName.text.length, ref->displayName.text.data);
-//        // repeat for this node
-//        std::string nodeid_str = std::string(reinterpret_cast<char*>(ref->nodeId.nodeId.identifier.string.data));
-//        if (nodeid_str.find("LS1") != std::string::npos)
-//        {
-//          browse_nodes_scan(client,&(ref->nodeId.nodeId));
-//        }
-//      }
-//      else
-//      {
-//        printf("Unknown node id type\n");
-//      }
-      /* TODO: distinguish further types */
     }
   }
   //printf("Clearing\n");
