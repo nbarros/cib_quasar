@@ -146,12 +146,12 @@ void move_motor(UA_Client *client, std::vector<int32_t> &target_pos)
   }
   UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
   UA_Variant_clear(&input_args);
+  int32_t pos_m, pos_c;
 
   spdlog::info("Waiting for 10 s so that the motor reaches position");
   size_t i = 0;
   for (i = 0; i < 10; i++)
   {
-    int32_t pos_m, pos_c;
     std::this_thread::sleep_for(std::chrono::seconds(1));
     spdlog::info("Querying motor positions");
     check_motor_positions(client,"LS1.RNN800",pos_m,pos_c);
