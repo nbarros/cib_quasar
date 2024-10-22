@@ -564,6 +564,15 @@ int main()
   
   // -----------
   // -----------
+  // -----------
+  // -----------
+  // Get again the current motor positions
+  spdlog::info("Querying motor positions");
+  check_motor_positions(client,"LS1.RNN800");
+  check_motor_positions(client,"LS1.RNN600");
+  check_motor_positions(client,"LS1.LSTAGE");
+  spdlog::info("Done querying motor positions");
+  //
 
   spdlog::info("\n\nStage 4 : Shut down the system\n\n");
 
