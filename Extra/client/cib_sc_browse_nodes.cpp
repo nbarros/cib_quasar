@@ -78,7 +78,7 @@ void browse_nodes_scan(UA_Client *client, UA_NodeId *node)
   printf("Browsing nodes in objects folder:\n");
   UA_BrowseRequest bReq;
   UA_BrowseRequest_init(&bReq);
-  bReq.requestedMaxReferencesPerNode = 10;
+  bReq.requestedMaxReferencesPerNode = 0;
   bReq.nodesToBrowse = UA_BrowseDescription_new();
   bReq.nodesToBrowseSize = 1;
   if (node == nullptr)
@@ -91,12 +91,21 @@ void browse_nodes_scan(UA_Client *client, UA_NodeId *node)
   }
   bReq.nodesToBrowse[0].resultMask = UA_BROWSERESULTMASK_ALL;                  /* return everything */
   UA_BrowseResponse bResp = UA_Client_Service_browse(client, bReq);
-  printf("%-9s %-16s %-16s %-16s\n", "NAMESPACE", "NODEID", "BROWSE NAME", "DISPLAY NAME");
   for (size_t i = 0; i < bResp.resultsSize; ++i)
   {
     for (size_t j = 0; j < bResp.results[i].referencesSize; ++j)
     {
       UA_ReferenceDescription *ref = &(bResp.results[i].references[j]);
+      // we only care for nodes with namespace 2
+//      if (ref->nodeId.nodeId.namespaceIndex == 2)
+//      {
+//        printf("%-16.*s %-16.*s\n",
+//               (int)ref->nodeId.nodeId.identifier.string.length,
+//               ref->nodeId.nodeId.identifier.string.data,
+//               (int)ref->browseName.name.length, ref->browseName.name.data
+//                );
+//      }
+
       if (ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_NUMERIC)
       {
         printf("%-9d %-16d %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
@@ -125,9 +134,123 @@ void browse_nodes_scan(UA_Client *client, UA_NodeId *node)
       /* TODO: distinguish further types */
     }
   }
+  printf("Clearing\n");
   UA_BrowseRequest_clear(&bReq);
-  UA_BrowseResponse_clear(&bResp);
+  //UA_BrowseResponse_clear(&bResp);
+  printf("Done clearing\n");
 }
+void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
+{
+  printf("Browsing nodes in objects folder:\n");
+  UA_StatusCode retval = UA_STATUSCODE_GOOD;
+  UA_BrowseRequest bReq;
+  UA_BrowseRequest_init(&bReq);
+  bReq.requestedMaxReferencesPerNode = 0;
+  bReq.nodesToBrowse = UA_BrowseDescription_new();
+  bReq.nodesToBrowseSize = 1;
+  // if no parent is specified, start from the root folder
+  if (node == nullptr)
+  {
+    //bReq.nodesToBrowse[0].nodeId = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER); /* browse objects folder */
+    bReq.nodesToBrowse[0].nodeId = UA_NODEID_STRING(2, "LS1"); /* browse objects folder */
+  }
+  else
+  {
+    bReq.nodesToBrowse[0].nodeId = *node; /* browse objects folder */
+  }
+  bReq.nodesToBrowse[0].resultMask = UA_BROWSERESULTMASK_ALL;                  /* return everything */
+  UA_BrowseResponse bResp = UA_Client_Service_browse(client, bReq);
+  // now loop the results
+  for (size_t i = 0; i < bResp.resultsSize; ++i)
+  {
+    for (size_t j = 0; j < bResp.results[i].referencesSize; ++j)
+    {
+      // grab a reference
+      UA_ReferenceDescription *ref = &(bResp.results[i].references[j]);
+      // if the node is in namespace 2, it is something we care.
+      // if it is in namespace 0, it is a descriptor of the previous node
+      if (ref->nodeClass == UA_NODECLASS_VARIABLE)
+      {
+        // no need to further browse. Just show the name
+//        printf("%-16.*s --> Variable \n",
+//               (int)ref->nodeId.nodeId.identifier.string.length,
+//               ref->nodeId.nodeId.identifier.string.data);
+        // query the data type
+        //UA_Client_readValueAttribute(UA_Client *client, const UA_NodeId nodeId, UA_Variant *outValue)
+        UA_Variant output;
+        UA_Variant_init(&output);
+
+        retval = UA_Client_readValueAttribute(client, ref->nodeId.nodeId, &output);
+        if (retval == UA_STATUSCODE_GOOD)
+        {
+          printf("%-16.*s --> VAR : %s \n",
+                 (int)ref->nodeId.nodeId.identifier.string.length,
+                 ref->nodeId.nodeId.identifier.string.data,
+                 output.type->typeName
+                 );
+
+          //UA_Datatype *tp = &UA_TYPES[output.type]
+        }
+        UA_Variant_clear(&output);
+
+        // do we need to go further?
+      }
+      else if (ref->nodeClass == UA_NODECLASS_METHOD)
+      {
+        // in this case we need to figure out whether they have arguments
+        // so we should also fetch their arguments
+
+
+      }
+      else
+      {
+        // browse one further
+        browse_nodes_scan(client,&(ref->nodeId.nodeId));
+      }
+      // we only care for nodes with namespace 2
+//      if (ref->nodeId.nodeId.namespaceIndex == 2)
+//      {
+//        printf("%-16.*s %-16.*s\n",
+//               (int)ref->nodeId.nodeId.identifier.string.length,
+//               ref->nodeId.nodeId.identifier.string.data,
+//               (int)ref->browseName.name.length, ref->browseName.name.data
+//                );
+//      }
+//
+//      if (ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_NUMERIC)
+//      {
+//        printf("%-9d %-16d %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
+//               ref->nodeId.nodeId.identifier.numeric, (int)ref->browseName.name.length,
+//               ref->browseName.name.data, (int)ref->displayName.text.length,
+//               ref->displayName.text.data);
+//      }
+//      else if (ref->nodeId.nodeId.identifierType == UA_NODEIDTYPE_STRING)
+//      {
+//        printf("%-9d %-16.*s %-16.*s %-16.*s\n", ref->nodeId.nodeId.namespaceIndex,
+//               (int)ref->nodeId.nodeId.identifier.string.length,
+//               ref->nodeId.nodeId.identifier.string.data,
+//               (int)ref->browseName.name.length, ref->browseName.name.data,
+//               (int)ref->displayName.text.length, ref->displayName.text.data);
+//        // repeat for this node
+//        std::string nodeid_str = std::string(reinterpret_cast<char*>(ref->nodeId.nodeId.identifier.string.data));
+//        if (nodeid_str.find("LS1") != std::string::npos)
+//        {
+//          browse_nodes_scan(client,&(ref->nodeId.nodeId));
+//        }
+//      }
+//      else
+//      {
+//        printf("Unknown node id type\n");
+//      }
+      /* TODO: distinguish further types */
+    }
+  }
+  printf("Clearing\n");
+  UA_BrowseRequest_clear(&bReq);
+  //UA_BrowseResponse_clear(&bResp);
+  printf("Done clearing\n");
+}
+
 void browse_node_path(UA_Client *client )
 {
   std::vector<string> browse_path;
@@ -236,7 +359,8 @@ int main()
   }
 
   // -- First browse all nodes that are available
-  browse_nodes_scan(client,nullptr);
+  printf("%-9s %-16s %-16s %-16s\n", "NAMESPACE", "NODEID", "BROWSE NAME", "DISPLAY NAME");
+  browse_nodes_scan_cib(client,nullptr);
 
 
   UA_Client_disconnect(client);
