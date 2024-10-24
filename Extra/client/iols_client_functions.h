@@ -1,7 +1,10 @@
 #ifndef IOLS_CLIENT_FUNCTIONS_H
 #define IOLS_CLIENT_FUNCTIONS_H
 
-#define UA_LOGLEVEL 30
+#ifdef UA_LOGLEVEL
+#undef UA_LOGLEVEL
+#endif
+#define UA_LOGLEVEL 3
 
 extern "C"
 {

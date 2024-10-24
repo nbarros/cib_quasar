@@ -6,14 +6,23 @@
 #include <chrono>
 #include <deque>
 #include <atomic>
+// extern "C"
+// {
+// #include <readline/readline.h>
+// #include <readline/history.h>
+// #include <unistd.h>
+// };
+
 #include "iols_client_functions.h"
 #include "iols_manager.h"
-extern "C"
-{
-#include <readline/readline.h>
-#include <readline/history.h>
-#include <unistd.h>
-};
+#include "toolbox.h"
+#include "IoLSMonitor.h"
+/*
+  Global variables to be manipulated
+*/
+int g_height;
+IoLSMonitor *g_monitor;
+std::deque<std::string> g_feedback;
 
 void initialize_pane(WINDOW *&pane, int height, int width, int starty, int startx, const std::string &title)
 {
@@ -113,12 +122,19 @@ void reset_right_pane(WINDOW *right_pane)
 
 void print_help()
 {
-  //FIXME: Replace this for something useful
-  std::cout << "Available commands:" << std::endl;
-  std::cout << "  help: Print this help message" << std::endl;
-  std::cout << "  exit: Exit the program" << std::endl;
+  update_feedback("Available commands:");
+  update_feedback("  connect <server>");
+  update_feedback("     Connect to a server. Options are:");
+  update_feedback("         cib1 : connects to P1");
+  update_feedback("         cib2 : connects to P2");
+  update_feedback("         opc.tcp://11.22.33.44:5555 : connects to a server in another location");
+  update_feedback("  help");
+  update_feedback("     Prints this help");
+  update_feedback("  exit");
+  update_feedback("     Exit the program");
 }
-int run_command(int argc, char**argv, std::deque<std::string> &feedback, int height)
+
+int run_command(int argc, char**argv)
 {
   if (argc < 1)
   {
@@ -128,7 +144,64 @@ int run_command(int argc, char**argv, std::deque<std::string> &feedback, int hei
   // check command request
   if (cmd == "exit")
   {
+    if (g_monitor != nullptr)
+    {
+      json resp;
+      g_monitor->shutdown(resp);
+      g_monitor->disconnect();
+      delete g_monitor;
+      g_monitor = nullptr;
+    }
     return 255;
+  }
+  else if (cmd == "connect")
+  {
+    if (g_monitor != nullptr)
+    {
+      update_feedback("Already connected to a server. Disconnect first.");
+      return 0;
+    }
+    if (argc < 2)
+    {
+      update_feedback("Usage: connect <server>");
+      return 0;
+    }
+    else
+    {
+      std::string server(argv[1]);
+      if (server == "cib1")
+      {
+        server = "opc.tcp://10.73.137.147:4841";
+      }
+      else if (server == "cib2")
+      {
+        server = "opc.tcp://10.73.137.148:4841";
+      }
+      update_feedback("Connecting to server: " + server);
+      g_monitor = new IoLSMonitor(server);
+      // start connection
+      return 0;
+    }
+  }
+  else if (cmd == "disconnect")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    iols_monitor_t status;
+    g_monitor->get_status(status);
+    if (status.iols_state != "offline")
+    {
+      update_feedback("Cannot disconnect while the system is running. Call 'shutdown' first.");
+      return 0;
+    }
+    g_monitor->disconnect();
+    update_feedback("Disconnecting from server.");
+    delete g_monitor;
+    g_monitor = nullptr;
+    return 0;
   }
   else if (cmd == "help")
   {
@@ -137,15 +210,15 @@ int run_command(int argc, char**argv, std::deque<std::string> &feedback, int hei
   }
   else
   {
-    update_feedback(feedback, "Unknown command", height);
+    update_feedback("Unknown command");
     return 0;
   }
-  update_feedback(feedback, "Did something interesting", height);
+  update_feedback("Did something interesting");
   // do something with the command
   return 0;
 }
 
-void refresh_left_panel(WINDOW *pane, int height, std::deque<std::string> &feedback)
+void refresh_left_panel(WINDOW *pane, int height)
 {
   werase(pane);
   box(pane, 0, 0);
@@ -153,7 +226,7 @@ void refresh_left_panel(WINDOW *pane, int height, std::deque<std::string> &feedb
 
   // Display feedback starting from the third line from the bottom
   int line = height - 4;
-  for (const auto &msg : feedback)
+  for (const auto &msg : g_feedback)
   {
     write_to_pane(pane, line--, 1, msg);
   }
@@ -163,17 +236,20 @@ void refresh_left_panel(WINDOW *pane, int height, std::deque<std::string> &feedb
   wrefresh(pane);
 }
 
-void update_feedback(std::deque<std::string> &feedback, const std::string &msg, int height)
+void update_feedback(const std::string &msg)
 {
-  feedback.push_front(msg);
-  if (feedback.size() > height - 4)
+  g_feedback.push_front(msg);
+  if (g_feedback.size() > static_cast<size_t>(g_height - 4))
   {
-    feedback.pop_back();
+    g_feedback.pop_back();
   }
 }
 
 int main(int argc, char** argv)
 {
+
+  // initialize globals
+  g_monitor = nullptr;
 
   //
   // Initialize the ncurses window
@@ -195,18 +271,18 @@ int main(int argc, char** argv)
   init_pair(2, COLOR_BLACK, COLOR_GREEN);
   init_pair(3, COLOR_BLACK, COLOR_YELLOW);
 
-  int height = LINES - 2;
+  //int height = LINES - 2;
+  g_height = LINES - 2;
   int left_width = (COLS * 3) / 5 - 1;
   int right_width = (COLS * 2) / 5 - 1;
 
   WINDOW *left_pane = nullptr;
   WINDOW *right_pane = nullptr;
 
-  initialize_pane(left_pane, height, left_width, 1, 0, "Command Terminal");
-  initialize_pane(right_pane, height, right_width, 1, left_width + 2, "IoLS Monitoring");
+  initialize_pane(left_pane, g_height, left_width, 1, 0, "Command Terminal");
+  initialize_pane(right_pane, g_height, right_width, 1, left_width + 2, "IoLS Monitoring");
 
   std::atomic<bool> run_monitor(true);
-  std::deque<std::string> feedback;
 
   std::string input;
   std::string statuses[5] = {"offline", "ready", "warmup", "pause", "standby"};
@@ -232,71 +308,110 @@ int main(int argc, char** argv)
   status.att.state = "offline";
 
   // start the monitoring thread
-  std::thread right_pane_thread(update_right_pane, right_pane, std::ref(run_monitor), height, std::ref(status));
+  std::thread right_pane_thread(update_right_pane, right_pane, std::ref(run_monitor), g_height, std::ref(status));
   // this part is similar to the cib_manager, but with the
   // ncurse interface
   // -- now start the real work
   // Get user input from the last line of the left pane
   std::atomic<bool> stop;
   stop = false;
-  while(!stop.load())
+  while(true)
   {
     // Get user input from the last line of the left pane
+    refresh_left_panel(left_pane, g_height);
     char buffer[256];
-    //mvwprintw(left_pane, height - 2, 1, ">> ");
-    mvwgetstr(left_pane, height - 2, 4, buffer);
+    // mvwprintw(left_pane, height - 2, 1, ">> ");
+    mvwgetstr(left_pane, g_height - 2, 4, buffer);
+    // if (buffer[0] == '\n')
+    // {
+    //   // repeat
+    //   continue;
+    // }
+    // printf("Passed here\n");
     input = buffer;
-    if (input.length() > 0)
+    //readline(input.c_str());
+    // if (input.length() > 0)
+    // {
+    //   add_history(input.c_str()); 
+    // }
+
+    std::vector<std::string> tokens;
+    tokens = toolbox::split_string(input,' ');
+    std::ostringstream msg;
+    msg << "Got " << tokens.size() << " tokens";
+    update_feedback(msg.str());
+    if (tokens.size() > 0)
     {
-      add_history(input.c_str()); 
-    }
-    char *delim = (char *)" ";
-    int count = 1;
-    char *ptr = const_cast<char*>(input.c_str());
-    while ((ptr = strchr(ptr, delim[0])) != NULL)
-    {
-      count++;
-      ptr++;
-    }
-    if (count > 0)
-    {
-      char **cmd = new char *[count];
-      cmd[0] = strtok(const_cast<char*>(input.c_str()), delim);
-      int i;
-      for (i = 1; cmd[i - 1] != NULL && i < count; i++)
+      char **cmd = new char *[tokens.size()];
+      for (size_t i = 0; i < tokens.size(); i++)
       {
-        cmd[i] = strtok(NULL, delim);
+        cmd[i] = const_cast<char*>(tokens[i].c_str());
       }
-      if (cmd[i - 1] == NULL)
-        i--;
-      // FIXME: Implement this function
-      //  Add the input to the feedback deque
-      update_feedback(feedback, ">> " + input, height);
-      // feedback.push_front(">> " + input);
-      // if (feedback.size() > height - 4) // Keep the feedback within the pane height
-      // {
-      //   feedback.pop_back();
-      // }
-      // run the command
-      int ret = run_command(i, cmd, feedback,height);
-      refresh_left_panel(left_pane,height,feedback);
+      int ret = run_command(tokens.size(), cmd);
+      refresh_left_panel(left_pane, g_height);
       delete[] cmd;
       if (ret == 255)
       {
         goto leave;
         return 0;
       }
-      if (ret != 0)
-      {
-        goto leave;
-        return ret;
-      }
     }
     else
     {
-      goto leave;
-      return 0;
+      // if there are no commands, just continue
+      continue;
+      // goto leave;
+      // return 0;
     }
+    // char *delim = (char *)" ";
+    // int count = 1;
+    // char *ptr = const_cast<char*>(input.c_str());
+    // while ((ptr = strchr(ptr, delim[0])) != NULL)
+    // {
+    //   count++;
+    //   ptr++;
+    // }
+    // if (count > 0)
+    // {
+    //   update_feedback(">> " + input);
+    //   char **cmd = new char *[count];
+    //   cmd[0] = strtok(const_cast<char*>(input.c_str()), delim);
+    //   int i;
+    //   for (i = 1; cmd[i - 1] != NULL && i < count; i++)
+    //   {
+    //     cmd[i] = strtok(NULL, delim);
+    //   }
+    //   if (cmd[i - 1] == NULL)
+    //     i--;
+    //   // FIXME: Implement this function
+    //   //  Add the input to the feedback deque
+    //   // feedback.push_front(">> " + input);
+    //   // if (feedback.size() > height - 4) // Keep the feedback within the pane height
+    //   // {
+    //   //   feedback.pop_back();
+    //   // }
+    //   // run the command
+    //   int ret = run_command(i, cmd);
+    //   refresh_left_panel(left_pane, g_height);
+    //   delete[] cmd;
+    //   if (ret == 255)
+    //   {
+    //     goto leave;
+    //     return 0;
+    //   }
+    //   // if (ret != 0)
+    //   // {
+    //   //   goto leave;
+    //   //   return ret;
+    //   // }
+    // }
+    // else
+    // {
+    //   // if there are no commands, just continue
+    //   continue;
+    //   // goto leave;
+    //   // return 0;
+    // }
 
   }
 

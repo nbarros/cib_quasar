@@ -30,7 +30,7 @@ else()
 endif(${BUILD_SPDLOG_FMT_EXTERNAL})
 
 
-add_library(iols_functions EXCLUDE_FROM_ALL SHARED iols_client_functions.cpp open62541.c)
+add_library(iols_functions EXCLUDE_FROM_ALL SHARED Open62541Client.cpp  IoLSMonitor.cpp  toolbox.cpp open62541.c)
 target_compile_features(iols_functions PUBLIC cxx_std_11)
 target_include_directories(iols_functions PUBLIC ${PROJECT_SOURCE_DIR}/Extra/client)
 target_compile_options(iols_functions PUBLIC -Wno-literal-suffix -Wno-write-strings)
