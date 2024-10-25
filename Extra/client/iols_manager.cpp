@@ -673,6 +673,7 @@ void update_feedback(const std::string &msg)
 
 void update_feedback(json &resp)
 {
+  printf("Dumping %s\n", resp.dump().c_str());
   if (resp.contains("messages"))
   {
     for (const auto &msg : resp["messages"])
