@@ -210,7 +210,7 @@ int run_command(int argc, char**argv)
       }
       update_feedback("Connecting to server: " + server);
       g_monitor = new IoLSMonitor(server);
-      if (g_monitor->is_connected())
+      if (g_monitor->connect())
       {
         update_feedback("Connected to server.");
       }
