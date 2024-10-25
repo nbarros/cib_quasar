@@ -162,29 +162,28 @@ void IoLSMonitor::monitor_server()
       {
         try
         {
-          UA_Variant value;
-          UA_Variant_init(&value);
-          m_client.read_variable(item.first, value);
+          std::unique_ptr<UA_Variant, void(*)(UA_Variant*)> value(new UA_Variant, [](UA_Variant* v) { UA_Variant_clear(v); delete v; });
+          UA_Variant_init(value.get());
+          m_client.read_variable(item.first, *value);
 
-          if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_STRING]))
+          if (UA_Variant_hasScalarType(value.get(), &UA_TYPES[UA_TYPES_STRING]))
           {
-            UA_String *uaString = static_cast<UA_String *>(value.data);
+            UA_String *uaString = static_cast<UA_String *>(value->data);
             m_monitored_items[item.first] = std::string(reinterpret_cast<char *>(uaString->data), uaString->length);
           }
-          else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_INT32]))
+          else if (UA_Variant_hasScalarType(value.get(), &UA_TYPES[UA_TYPES_INT32]))
           {
-            m_monitored_items[item.first] = *static_cast<UA_Int32 *>(value.data);
+            m_monitored_items[item.first] = *static_cast<UA_Int32 *>(value->data);
           }
-          else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_DOUBLE]))
+          else if (UA_Variant_hasScalarType(value.get(), &UA_TYPES[UA_TYPES_DOUBLE]))
           {
-            m_monitored_items[item.first] = *static_cast<UA_Double *>(value.data);
+            m_monitored_items[item.first] = *static_cast<UA_Double *>(value->data);
           }
-
-          UA_Variant_clear(&value);
         }
         catch (const std::exception &e)
         {
-          spdlog::error("Failed to read variable {}: {}", item.first, e.what());
+          // don't print anything here, 
+          //spdlog::error("Failed to read variable {}: {}", item.first, e.what());
         }
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
