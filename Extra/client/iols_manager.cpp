@@ -582,7 +582,8 @@ int run_command(int argc, char**argv)
     if (value.type == &UA_TYPES[UA_TYPES_STRING])
     {
       update_feedback("String type");
-      msg << std::string(reinterpret_cast<char *>(value.data));
+      std::string str((char*)static_cast<UA_String*>(value.data)->data,(size_t)static_cast<UA_String*>(value.data)->length);
+      msg << str;
     }
     else if (value.type == &UA_TYPES[UA_TYPES_DOUBLE])
     {
