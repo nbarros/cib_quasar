@@ -568,6 +568,8 @@ int run_command(int argc, char**argv)
     }
     std::string variable(argv[1]);
     UA_Variant value;
+    UA_Variant_init(&value);
+
     g_monitor->read_variable(variable, value);
     auto v = g_monitor->get_feedback_messages();
     for (const auto &msg : v)
@@ -607,6 +609,7 @@ int run_command(int argc, char**argv)
       msg << "Unknown type";
     }
     update_feedback(msg.str());
+    UA_Variant_clear(&value);
   }
   else if (cmd == "add_monitor")
   {

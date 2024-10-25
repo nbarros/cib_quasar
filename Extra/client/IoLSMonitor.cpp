@@ -174,6 +174,8 @@ bool IoLSMonitor::config(std::string location, json &response)
 
 void IoLSMonitor::monitor_server()
 {
+  return;
+  
   try
   {
     while (m_running)
