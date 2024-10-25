@@ -310,9 +310,10 @@ private:
     double us_to_clock() {return 1000.0/16.0;}
     uint32_t conv_to_clock(const uint32_t us) {return static_cast<uint32_t>(static_cast<double>(us)*us_to_clock());}
 
+    void set_warmup_timer(uint32_t timer, json &resp);
 
     UaStatus map_registers(json &reginfo, json &resp);
-//    UaStatus unmap_registers();
+    //    UaStatus unmap_registers();
     uint32_t cib_get_shot_count();
     void cib_init_mem();
     void cib_free_mem();

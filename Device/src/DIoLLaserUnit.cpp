@@ -1142,6 +1142,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     return OpcUa_Good;
   }
+  void DIoLLaserUnit::set_warmup_timer(uint32_t timer, json &resp)
+  {
+    m_warmup_timer = timer;
+  }
+
   void DIoLLaserUnit::start_standby_timer()
   {
     // initate a timer that will check for the status of the internal shutter every second
@@ -2755,6 +2760,13 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
             terminate(resp);
             return st;
           }
+        }
+        if (it.key() == "warmup_timer_min")
+        {
+#ifdef DEBUG
+          LOG(Log::INF) << log_i(lbl.c_str(), "Setting warmup timer to ") << it.value();
+#endif
+        set_warmup_timer(it.value(), resp);
         }
         if (it.key() == "qswitch_width_us")
         {
