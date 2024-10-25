@@ -1,9 +1,8 @@
 #include "IoLSMonitor.h"
-#include <spdlog/spdlog.h>
 #include <json.hpp>
 #include <fstream>
 #include <regex>
-
+#include <chrono>
 using json = nlohmann::json;
 
 IoLSMonitor::IoLSMonitor(const std::string &serverUrl)
@@ -28,8 +27,7 @@ bool IoLSMonitor::connect()
 {
   try
   {
-    m_client.connect(m_serverUrl);
-    m_connected = m_client.is_connected();
+    m_connected = m_client.connect(m_serverUrl);
     if (m_connected)
     {
       m_running = true;
@@ -38,12 +36,13 @@ bool IoLSMonitor::connect()
     }
     else
     {
+      m_feedback_messages.push_back("Failed to connect to server.");
       return false;
     }
   }
   catch (const std::exception &e)
   {
-    spdlog::critical("Failed to connect to server: {}", e.what());
+    m_feedback_messages.push_back("Failed to connect to server : " + std::string(e.what()));
     return false;
   }
 }
@@ -57,6 +56,7 @@ void IoLSMonitor::disconnect()
   }
   m_client.disconnect();
   m_connected = false;
+  m_feedback_messages.push_back("Disconnected from server.");
 }
 
 bool IoLSMonitor::is_connected() const
@@ -68,6 +68,12 @@ bool IoLSMonitor::config(std::string location, json &response)
 {
   try
   {
+    // Check that the client is connected
+    if (!m_client.is_connected())
+    {
+      response["messages"].push_back("Client is not connected.");
+      return false;
+    }
     // Initialize the response JSON with a messages array
     response["messages"] = json::array();
 
@@ -80,6 +86,7 @@ bool IoLSMonitor::config(std::string location, json &response)
 
     json jconf = json::parse(file); // parse the file
     response["messages"].push_back("Configuration file loaded successfully.");
+    file.close();
 
     // now we have the json object, we can send it to the server
     std::string node_base = "LS1";
@@ -94,19 +101,32 @@ bool IoLSMonitor::config(std::string location, json &response)
     UA_String_clear(&uaConfigString);
     std::vector<UA_Variant> outputArguments;
 
-    m_client.call_method(node_base, method, {configVariant}, outputArguments);
+    try
+    {
+      m_client.call_method(node_base, method, {configVariant}, outputArguments);
+    }
+    catch(const std::exception& e)
+    {
+      // the method somehow may have failed. 
+      // append the feedback to the ongoing response
+    }
+    auto feedback_messages = m_client.get_feedback_messages();
+    for (const auto &msg : feedback_messages)
+    {
+      response["messages"].push_back(msg);
+    }
 
     std::string reply;
     if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
     {
       UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
       reply = std::string(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
-      response["messages"].push_back("Reply from server: " + reply);
+      //response["messages"].push_back("Reply from server: " + reply);
     }
     else
     {
       response["messages"].push_back("No valid response received from server.");
-      response.clear();
+      // Do not clear the response
     }
 
     // Parse the server's reply and merge the messages and other keys
@@ -165,7 +185,6 @@ void IoLSMonitor::monitor_server()
           std::unique_ptr<UA_Variant, void(*)(UA_Variant*)> value(new UA_Variant, [](UA_Variant* v) { UA_Variant_clear(v); delete v; });
           UA_Variant_init(value.get());
           m_client.read_variable(item.first, *value);
-
           if (UA_Variant_hasScalarType(value.get(), &UA_TYPES[UA_TYPES_STRING]))
           {
             UA_String *uaString = static_cast<UA_String *>(value->data);
@@ -182,8 +201,7 @@ void IoLSMonitor::monitor_server()
         }
         catch (const std::exception &e)
         {
-          // don't print anything here, 
-          //spdlog::error("Failed to read variable {}: {}", item.first, e.what());
+          // don't print anything here, just silently ignore the call
         }
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -191,7 +209,11 @@ void IoLSMonitor::monitor_server()
   }
   catch (const std::exception &e)
   {
-    spdlog::critical("Failed to monitor server: {}", e.what());
+    m_feedback_messages.push_back(std::string("Exception in monitor_server: ") + e.what());
+  }
+  catch (...)
+  {
+    m_feedback_messages.push_back("Unknown exception in monitor_server");
   }
 }
 
@@ -204,6 +226,12 @@ bool IoLSMonitor::move_to_position(const std::string &position, const std::strin
 {
   try
   {
+    // Check that the client is connected
+    if (!m_client.is_connected())
+    {
+      response["messages"].push_back("Client is not connected.");
+      return false;
+    }
     // Initialize the response JSON with a messages array
     response["messages"] = json::array();
 
@@ -239,19 +267,51 @@ bool IoLSMonitor::move_to_position(const std::string &position, const std::strin
 
     // Call the method under node "LS1.move_to_pos"
     std::vector<UA_Variant> outputArguments;
+    try
+    {
+      m_client.call_method("LS1", "LS1.move_to_pos", {requestVariant}, outputArguments);
+    }
+    catch (const std::exception &e)
+    {
+      response["messages"].push_back("Exception in move_to_position: " + std::string(e.what()));
+      return false;
+    }
+    auto feedback_messages = m_client.get_feedback_messages();
+    for (const auto &msg : feedback_messages)
+    {
+      response["messages"].push_back(msg);
+    }
+
     m_client.call_method("LS1", "LS1.move_to_pos", {requestVariant}, outputArguments);
 
     // Convert the single output argument into a string and parse it into the response JSON variable
+    std::string reply;
     if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
     {
       UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
       std::string responseString(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
-      response = json::parse(responseString);
+      reply = json::parse(responseString);
     }
     else
     {
       response["messages"].push_back("No valid response received from server.");
-      response.clear();
+    }
+
+    // Parse the server's reply and merge the messages and other keys
+    json server_response = json::parse(reply);
+    if (server_response.contains("messages"))
+    {
+      for (const auto &msg : server_response["messages"])
+      {
+        response["messages"].push_back(msg);
+      }
+    }
+    for (auto it = server_response.begin(); it != server_response.end(); ++it)
+    {
+      if (it.key() != "messages")
+      {
+        response[it.key()] = it.value();
+      }
     }
 
     // Clean up the UA_Variant
@@ -284,6 +344,12 @@ bool IoLSMonitor::fire_at_position(const std::string position, const uint32_t nu
 {
   try
   {
+    // Check that the client is connected
+    if (!m_client.is_connected())
+    {
+      response["messages"].push_back("Client is not connected.");
+      return false;
+    }
     // Initialize the response JSON with a messages array
     response["messages"] = json::array();
 
@@ -319,7 +385,20 @@ bool IoLSMonitor::fire_at_position(const std::string position, const uint32_t nu
 
     // Call the method under node "LS1.fire_at_position"
     std::vector<UA_Variant> outputArguments;
-    m_client.call_method("LS1", "LS1.fire_at_position", {requestVariant}, outputArguments);
+    try
+    {
+      m_client.call_method("LS1", "LS1.fire_at_position", {requestVariant}, outputArguments);
+    }
+    catch (const std::exception &e)
+    {
+      response["messages"].push_back("Exception in fire_at_position: " + std::string(e.what()));
+    }
+    // feed any feedback messages into the list
+    auto feedback_messages = m_client.get_feedback_messages();
+    for (const auto &msg : feedback_messages)
+    {
+      response["messages"].push_back(msg);
+    }
 
     // Convert the single output argument into a string and parse it into the response JSON variable
     if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
@@ -389,6 +468,12 @@ bool IoLSMonitor::fire_segment(const std::string start_position, const std::stri
 {
   try
   {
+    // Check that the client is connected
+    if (!m_client.is_connected())
+    {
+      response["messages"].push_back("Client is not connected.");
+      return false;
+    }
     // Initialize the response JSON with a messages array
     response["messages"] = json::array();
 
@@ -422,19 +507,57 @@ bool IoLSMonitor::fire_segment(const std::string start_position, const std::stri
 
     // Call the method under node "LS1.fire_segment"
     std::vector<UA_Variant> outputArguments;
-    m_client.call_method("LS1", "LS1.fire_segment", {requestVariant}, outputArguments);
+    try
+    {
+      m_client.call_method("LS1", "LS1.fire_segment", {requestVariant}, outputArguments);
+    }
+    catch (const std::exception &e)
+    {
+      response["messages"].push_back("Exception in fire_segment: " + std::string(e.what()));
+    }
+    // feed any feedback messages into the list
+    auto feedback_messages = m_client.get_feedback_messages();
+    for (const auto &msg : feedback_messages)
+    {
+      response["messages"].push_back(msg);
+    }
 
     // Convert the single output argument into a string and parse it into the response JSON variable
+    std::string reply;
     if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
     {
       UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
       std::string responseString(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
-      response = json::parse(responseString);
+
+      // Merge the messages from the server response into the existing response
+      json server_response = json::parse(responseString);
+      if (server_response.contains("messages"))
+      {
+        for (const auto &msg : server_response["messages"])
+        {
+          response["messages"].push_back(msg);
+        }
+      }
+      // Add any missing keys from the server response to the existing response
+      for (auto it = server_response.begin(); it != server_response.end(); ++it)
+      {
+        if (it.key() != "messages")
+        {
+          response[it.key()] = it.value();
+        }
+      }
     }
     else
     {
       response["messages"].push_back("No valid response received from server.");
-      response.clear();
+      // Clean up the UA_Variant
+      UA_Variant_clear(&requestVariant);
+      for (auto &output : outputArguments)
+      {
+        UA_Variant_clear(&output);
+      }
+
+      return false;
     }
 
     // Clean up the UA_Variant
@@ -467,6 +590,12 @@ bool IoLSMonitor::execute_scan(const std::string run_plan, json &response)
 {
   try
   {
+    // Check that the client is connected
+    if (!m_client.is_connected())
+    {
+      response["messages"].push_back("Client is not connected.");
+      return false;
+    }
     // Initialize the response JSON with a messages array
     response["messages"] = json::array();
 
@@ -525,19 +654,56 @@ bool IoLSMonitor::execute_scan(const std::string run_plan, json &response)
 
     // Call the method under node "LS1.execute_scan"
     std::vector<UA_Variant> outputArguments;
-    m_client.call_method("LS1", "LS1.execute_scan", {requestVariant}, outputArguments);
+    try
+    {
+      m_client.call_method("LS1", "LS1.execute_scan", {requestVariant}, outputArguments);
+    }
+    catch (const std::exception &e)
+    {
+      response["messages"].push_back("Exception in fire_segment: " + std::string(e.what()));
+    }
+    // feed any feedback messages into the list
+    auto feedback_messages = m_client.get_feedback_messages();
+    for (const auto &msg : feedback_messages)
+    {
+      response["messages"].push_back(msg);
+    }
 
     // Convert the single output argument into a string and parse it into the response JSON variable
     if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
     {
       UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
       std::string responseString(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
-      response = json::parse(responseString);
+
+      // Merge the messages from the server response into the existing response
+      json server_response = json::parse(responseString);
+      if (server_response.contains("messages"))
+      {
+        for (const auto &msg : server_response["messages"])
+        {
+          response["messages"].push_back(msg);
+        }
+      }
+      // Add any missing keys from the server response to the existing response
+      for (auto it = server_response.begin(); it != server_response.end(); ++it)
+      {
+        if (it.key() != "messages")
+        {
+          response[it.key()] = it.value();
+        }
+      }
     }
     else
     {
       response["messages"].push_back("No valid response received from server.");
-      response.clear();
+      // Clean up the UA_Variant
+      UA_Variant_clear(&requestVariant);
+      for (auto &output : outputArguments)
+      {
+        UA_Variant_clear(&output);
+      }
+
+      return false;
     }
 
     // Clean up the UA_Variant
@@ -570,6 +736,12 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, json &respo
 {
   try
   {
+    // Check that the client is connected
+    if (!m_client.is_connected())
+    {
+      response["messages"].push_back("Client is not connected.");
+      return false;
+    }
     // Initialize the response JSON with a messages array
     response["messages"] = json::array();
 
@@ -586,19 +758,56 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, json &respo
 
     // Call the method under the specified node
     std::vector<UA_Variant> outputArguments;
-    m_client.call_method("LS1", method_node, {requestVariant}, outputArguments);
+    try
+    {
+      m_client.call_method("LS1", method_node, {requestVariant}, outputArguments);
+    }
+    catch (const std::exception &e)
+    {
+      response["messages"].push_back("Exception in fire_segment: " + std::string(e.what()));
+    }
+    // feed any feedback messages into the list
+    auto feedback_messages = m_client.get_feedback_messages();
+    for (const auto &msg : feedback_messages)
+    {
+      response["messages"].push_back(msg);
+    }
 
     // Convert the single output argument into a string and parse it into the response JSON variable
     if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
     {
       UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
       std::string responseString(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
-      response = json::parse(responseString);
+
+      // Merge the messages from the server response into the existing response
+      json server_response = json::parse(responseString);
+      if (server_response.contains("messages"))
+      {
+        for (const auto &msg : server_response["messages"])
+        {
+          response["messages"].push_back(msg);
+        }
+      }
+      // Add any missing keys from the server response to the existing response
+      for (auto it = server_response.begin(); it != server_response.end(); ++it)
+      {
+        if (it.key() != "messages")
+        {
+          response[it.key()] = it.value();
+        }
+      }
     }
     else
     {
       response["messages"].push_back("No valid response received from server.");
-      response.clear();
+      // Clean up the UA_Variant
+      UA_Variant_clear(&requestVariant);
+      for (auto &output : outputArguments)
+      {
+        UA_Variant_clear(&output);
+      }
+
+      return false;
     }
 
     // Clean up the UA_Variant
@@ -669,4 +878,10 @@ void IoLSMonitor::set_monitored_vars(const std::vector<std::string> &var_names)
     UA_Variant_init(&value);
     m_monitored_vars[var_name] = value;
   }
+}
+std::deque<std::string> IoLSMonitor::get_feedback_messages()
+{
+  std::deque<std::string> messages = std::move(m_feedback_messages);
+  m_feedback_messages.clear();
+  return messages;
 }

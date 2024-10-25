@@ -180,7 +180,13 @@ int run_command(int argc, char**argv)
     {
       json resp;
       g_monitor->shutdown(resp);
+      update_feedback(resp);
       g_monitor->disconnect();
+      auto v = g_monitor->get_feedback_messages();
+      for (const auto &msg : v)
+      {
+        update_feedback(msg);
+      }
       delete g_monitor;
       g_monitor = nullptr;
     }
@@ -211,14 +217,29 @@ int run_command(int argc, char**argv)
       }
       update_feedback("Connecting to server: " + server);
       g_monitor = new IoLSMonitor(server);
+      auto v = g_monitor->get_feedback_messages();
+      for (const auto &msg : v)
+      {
+        update_feedback(msg);
+      }
       if (g_monitor->connect())
       {
+        auto v = g_monitor->get_feedback_messages();
+        for (const auto &msg : v)
+        {
+          update_feedback(msg);
+        }
         update_feedback("Connected to server.");
         // update the variables that are to be kept under surveillance
         g_monitor->set_monitored_vars(g_vars_to_monitor);
       }
       else
       {
+        auto v = g_monitor->get_feedback_messages();
+        for (const auto &msg : v)
+        {
+          update_feedback(msg);
+        }
         update_feedback("Failed to connect to server.");
         delete g_monitor;
         g_monitor = nullptr;
@@ -242,6 +263,11 @@ int run_command(int argc, char**argv)
       return 0;
     }
     g_monitor->disconnect();
+    auto v = g_monitor->get_feedback_messages();
+    for (const auto &msg : v)
+    {
+      update_feedback(msg);
+    }
     update_feedback("Disconnecting from server.");
     delete g_monitor;
     g_monitor = nullptr;

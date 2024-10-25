@@ -8,19 +8,29 @@ Open62541Client::Open62541Client()
 
 Open62541Client::~Open62541Client()
 {
-    disconnect();
-    UA_Client_delete(m_client);
+    if (m_client)
+    {
+        disconnect();
+        UA_Client_delete(m_client);
+    }
 }
 
-void Open62541Client::connect(const std::string &endpoint)
+bool Open62541Client::connect(const std::string &endpoint)
 {
+    if (m_connected)
+    {
+        log_error("Already connected to server", UA_STATUSCODE_BADCONNECTIONCLOSED);
+        return false;
+    }
+
     UA_StatusCode status = UA_Client_connect(m_client, endpoint.c_str());
     if (status != UA_STATUSCODE_GOOD)
     {
         log_error("Failed to connect to server", status);
-        throw std::runtime_error("Failed to connect to server: " + endpoint);
+        return false;
     }
     m_connected = true;
+    return true;
 }
 
 void Open62541Client::disconnect()
@@ -70,8 +80,10 @@ void Open62541Client::browse(const std::string &nodeId, std::vector<UA_BrowseRes
     UA_BrowseResponse bResp = UA_Client_Service_browse(m_client, bReq);
     if (bResp.responseHeader.serviceResult != UA_STATUSCODE_GOOD)
     {
-        log_error("Failed to browse", bResp.responseHeader.serviceResult);
-        throw std::runtime_error("Failed to browse: " + nodeId);
+      UA_BrowseRequest_clear(&bReq);
+      UA_BrowseResponse_clear(&bResp);
+      log_error("Failed to browse", bResp.responseHeader.serviceResult);
+      throw std::runtime_error("Failed to browse: " + nodeId);
     }
 
     results.assign(bResp.results, bResp.results + bResp.resultsSize);
@@ -94,8 +106,11 @@ void Open62541Client::call_method(const std::string &objectId, const std::string
     UA_CallResponse callResponse = UA_Client_Service_call(m_client, callRequest);
     if (callResponse.responseHeader.serviceResult != UA_STATUSCODE_GOOD)
     {
-        log_error("Failed to call method", callResponse.responseHeader.serviceResult);
-        throw std::runtime_error("Failed to call method: " + methodId + " on object: " + objectId);
+      UA_CallRequest_clear(&callRequest);
+      UA_CallResponse_clear(&callResponse);
+
+      log_error("Failed to call method", callResponse.responseHeader.serviceResult);
+      throw std::runtime_error("Failed to call method: " + methodId + " on object: " + objectId);
     }
 
     outputArguments.assign(callResponse.results[0].outputArguments, callResponse.results[0].outputArguments + callResponse.results[0].outputArgumentsSize);
@@ -106,5 +121,12 @@ void Open62541Client::call_method(const std::string &objectId, const std::string
 
 void Open62541Client::log_error(const std::string &message, UA_StatusCode status)
 {
-    spdlog::error("{}: {}", message, UA_StatusCode_name(status));
+  m_feedback_messages.push_back(message + ": " + UA_StatusCode_name(status));
+}
+
+std::deque<std::string> Open62541Client::get_feedback_messages()
+{
+  std::deque<std::string> messages = std::move(m_feedback_messages);
+  m_feedback_messages.clear();
+  return messages;
 }

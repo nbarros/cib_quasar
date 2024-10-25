@@ -40,10 +40,6 @@ add_executable(iols_manager EXCLUDE_FROM_ALL iols_manager.cpp)
 target_compile_features(iols_manager PUBLIC cxx_std_17)
 target_include_directories(iols_manager PUBLIC ${PROJECT_SOURCE_DIR}/Extra/client)
 target_compile_options(iols_manager PUBLIC -Wno-literal-suffix -Wno-write-strings)
-if(${BUILD_SPDLOG_FMT_EXTERNAL})
-	target_link_libraries(iols_manager iols_functions spdlog fmt readline pthread ncurses)
-	target_compile_definitions(iols_manager PUBLIC SPDLOG_FMT_EXTERNAL) 
-else()
-	target_link_libraries(iols_manager iols_functions spdlog readline pthread ncurses)
-endif(${BUILD_SPDLOG_FMT_EXTERNAL})
+target_link_libraries(iols_manager iols_functions pthread ncurses)
+
 
