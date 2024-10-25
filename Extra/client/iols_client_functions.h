@@ -4,7 +4,7 @@
 #ifdef UA_LOGLEVEL
 #undef UA_LOGLEVEL
 #endif
-#define UA_LOGLEVEL 3
+#define UA_LOGLEVEL 601
 
 extern "C"
 {

@@ -13,7 +13,7 @@
 // #include <unistd.h>
 // };
 
-#include "iols_client_functions.h"
+// #include "iols_client_functions.h"
 #include "iols_manager.h"
 #include "toolbox.h"
 #include "IoLSMonitor.h"
@@ -58,54 +58,60 @@ void set_label_color(WINDOW *pane, int y, int x, const std::string &label, const
 
 void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int height, iols_monitor_t &status)
 {
+  std::vector<std::string> labels = {"RNN800", "RNN600", "LSTAGE", "A1", "PM1", "L1"};
   while (running)
   {
     reset_right_pane(right_pane);
-
+    int hpos = 2;
     // redraw everything
     // first the states
     wattron(right_pane, A_BOLD);
-    mvwprintw(right_pane, 2, 1, "Status Monitor");
+    mvwprintw(right_pane, hpos, 1, "Status Monitor");
     wattroff(right_pane, A_BOLD);
-    // motor 1
-    mvwprintw(right_pane, 4, 2, "RNN800 :");
-    set_label_color(right_pane, 4, 12, status.m1.state, status.m1.state);
-    // motor 2
-    mvwprintw(right_pane, 5, 2, "RNN600 :");
-    set_label_color(right_pane, 5, 12, status.m2.state, status.m2.state);
-    // motor 3
-    mvwprintw(right_pane, 6, 2, "LSTAGE :");
-    set_label_color(right_pane, 6, 12, status.m3.state, status.m3.state);
-    // attenuator
-    mvwprintw(right_pane, 7, 2, "Attenuator :");
-    set_label_color(right_pane, 7, 12, status.att.state, status.att.state);
-    // power meter
-    mvwprintw(right_pane, 8, 2, "Power Meter :");
-    set_label_color(right_pane, 8, 12, status.pm.state, status.pm.state);
-    // laser unit
-    mvwprintw(right_pane, 9, 2, "Laser Unit :");
-    set_label_color(right_pane, 9, 12, status.laser.state, status.laser.state);
+    for (size_t i = 0; i < labels.size(); i++)
+    {
+      hpos = 3+i;
+      mvwprintw(right_pane, hpos, 2, labels[i].c_str());
+      std::string entry = "LS1." + labels[i] + ".state";
+      auto it = status.find(entry);
+      std::string v = (it != status.end()) ? std::get<std::string>(it->second) : "unknown";
 
+      set_label_color(right_pane, hpos, 15, v, v);
+    }
+    hpos = 3 + labels.size();
     // iols
-    mvwprintw(right_pane, 11, 2, "IoLS :");
-    set_label_color(right_pane, 11, 12, status.iols_state, status.iols_state);
+    auto it = status.find("LS1.state");
+    std::string v = (it != status.end()) ? std::get<std::string>(it->second) : "unknown";
 
+    set_label_color(right_pane, hpos, 15, v, v);
+    // set_label_color(right_pane, hpos, 15, v, v);
+    hpos += 2;
     // Add a horizontal line below the title
-    wmove(right_pane, 13, 1);
+    wmove(right_pane, hpos, 1);
     whline(right_pane, ACS_HLINE, getmaxx(right_pane) - 2);
-
+    hpos += 2;
     // now add in the other monitored items
-    mvwprintw(right_pane, 15, 2, "Periscope position");
-    mvwprintw(right_pane, 17, 2, "Motor : [%d, %d, %d]", status.m1.position_motor, status.m2.position_motor, status.m3.position_motor);
-    mvwprintw(right_pane, 18, 2, "CIB   : [%d, %d, %d]", status.m1.position_cib, status.m2.position_cib, status.m3.position_cib);
-
+    mvwprintw(right_pane, hpos, 2, "Motor : [%d, %d, %d]", 
+              status.count("LS1.RNN800.current_position_motor") ? std::get<int>(status["LS1.RNN800.current_position_motor"]) : -1,
+              status.count("LS1.RNN600.current_position_motor") ? std::get<int>(status["LS1.RNN600.current_position_motor"]) : -1,
+              status.count("LS1.LSTAGE.current_position_motor") ? std::get<int>(status["LS1.LSTAGE.current_position_motor"]) : -1);
+    hpos += 1;
+    mvwprintw(right_pane, hpos, 2, "CIB   : [%d, %d, %d]", 
+              status.count("LS1.RNN800.current_position_cib") ? std::get<int>(status["LS1.RNN800.current_position_cib"]) : -1,
+              status.count("LS1.RNN600.current_position_cib") ? std::get<int>(status["LS1.RNN600.current_position_cib"]) : -1,
+              status.count("LS1.LSTAGE.current_position_cib") ? std::get<int>(status["LS1.LSTAGE.current_position_cib"]) : -1);
+    hpos += 2;
+    mvwprintw(right_pane, hpos, 2, "Attenuator position : %d", 
+              status.count("LS1.A1.position") ? std::get<int>(status["LS1.A1.position"]) : -1);
     // attenuator position
-    mvwprintw(right_pane, 20, 2, "Attenuator position : %d", status.att.position);
-
-    // power meter readings
-    mvwprintw(right_pane, 22, 2, "Power Meter latest energy   : %.2f", status.pm.latest_reading);
-    mvwprintw(right_pane, 23, 2, "Power Meter average energy  : %.2f", status.pm.average_reading);
-
+    // mvwprintw(right_pane, hpos, 2, "Attenuator position : %d", std::get<int>(status["LS1.A1.attenuator_position"]));
+    hpos += 2;
+    mvwprintw(right_pane, hpos, 2, "Power Meter latest energy   : %.2f", 
+              status.count("LS1.PM1.energy_reading") ? std::get<double>(status["LS1.PM1.energy_reading"]) : -1.0);
+    hpos += 1;
+    mvwprintw(right_pane, hpos, 2, "Power Meter average energy  : %.2f", 
+              status.count("LS1.PM1.average_energy") ? std::get<double>(status["LS1.PM1.average_energy"]) : -1.0);
+    hpos += 1;
     wrefresh(right_pane);
 
     // Sleep for 500 ms
@@ -134,6 +140,31 @@ void print_help()
   update_feedback("     Exit the program");
 }
 
+/**
+ * @brief Executes a command based on the provided arguments.
+ *
+ * This function processes various commands such as "exit", "connect", "disconnect", and "help".
+ * It performs actions like connecting to a server, disconnecting from a server, shutting down
+ * the monitor, and printing help information.
+ *
+ * @param argc The number of arguments.
+ * @param argv The array of arguments.
+ * @return An integer status code indicating the result of the command execution.
+ *         - 255: Indicates the "exit" command was executed.
+ *         - 1: Indicates insufficient arguments were provided.
+ *         - 0: Indicates successful execution of the command or an error message was provided.
+ *
+ * Commands:
+ * - "exit": Shuts down and disconnects the monitor if it is running.
+ * - "connect <server>": Connects to the specified server. If the server is "cib1" or "cib2",
+ *   it connects to predefined addresses.
+ * - "disconnect": Disconnects from the server if connected and the system is not running.
+ * - "help": Prints help information.
+ * - Any other command: Provides an "Unknown command" feedback.
+ *
+ * @note The global variable `g_monitor` is used to manage the connection state.
+ * @note The `status` parameter is a std::map<std::string, std::variant<std::string, double, int>>.
+ */
 int run_command(int argc, char**argv)
 {
   if (argc < 1)
@@ -179,6 +210,16 @@ int run_command(int argc, char**argv)
       }
       update_feedback("Connecting to server: " + server);
       g_monitor = new IoLSMonitor(server);
+      if (g_monitor->is_connected())
+      {
+        update_feedback("Connected to server.");
+      }
+      else
+      {
+        update_feedback("Failed to connect to server.");
+        delete g_monitor;
+        g_monitor = nullptr;
+      }
       // start connection
       return 0;
     }
@@ -192,7 +233,7 @@ int run_command(int argc, char**argv)
     }
     iols_monitor_t status;
     g_monitor->get_status(status);
-    if (status.iols_state != "offline")
+    if (std::get<std::string>(status["LS1.state"]) != "offline")
     {
       update_feedback("Cannot disconnect while the system is running. Call 'shutdown' first.");
       return 0;
@@ -201,6 +242,250 @@ int run_command(int argc, char**argv)
     update_feedback("Disconnecting from server.");
     delete g_monitor;
     g_monitor = nullptr;
+    return 0;
+  }
+  else if (cmd == "shutdown")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    update_feedback("Shutting down the system.");
+    json resp;
+    g_monitor->shutdown(resp);
+    update_feedback(resp);
+    return 0;
+  }
+  else if (cmd == "config")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    if (argc < 2)
+    {
+      update_feedback("Usage: config <location>");
+      return 0;
+    }
+    std::string location(argv[1]);
+    json resp;
+    if (g_monitor->config(location, resp))
+    {
+      update_feedback("Configuration successful.");
+    }
+    else
+    {
+      update_feedback("Configuration failed.");
+    }
+    update_feedback(resp);
+    return 0;
+  }
+  else if (cmd == "move_to_position")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    if (argc < 2)
+    {
+      update_feedback("Usage: move_to_position <position>");
+      return 0;
+    }
+    std::string position(argv[1]);
+    json resp;
+    std::string approach = "---";
+    if (argc == 3)
+    {
+      approach = argv[2];
+    }
+    if (g_monitor->move_to_position(position, approach, resp))
+    {
+      update_feedback("Move to position successful.");
+    }
+    else
+    {
+      update_feedback("Move to position failed.");
+    }
+    update_feedback(resp);
+  }
+  else if (cmd == "warmup")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    json resp;
+    if (g_monitor->warmup(resp))
+    {
+      update_feedback("Warmup successful.");
+    }
+    else
+    {
+      update_feedback("Warmup failed.");
+    }
+    update_feedback(resp);
+  }
+  else if (cmd == "pause")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    json resp;
+    if (g_monitor->pause(resp))
+    {
+      update_feedback("Pause successful.");
+    }
+    else
+    {
+      update_feedback("Pause failed.");
+    }
+    update_feedback(resp);
+  }
+  else if (cmd == "standby")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    json resp;
+    if (g_monitor->standby(resp))
+    {
+      update_feedback("Standby successful.");
+    }
+    else
+    {
+      update_feedback("Standby failed.");
+    }
+    update_feedback(resp);
+  }
+  else if (cmd == "resume")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    json resp;
+    if (g_monitor->resume(resp))
+    {
+      update_feedback("Resume successful.");
+    }
+    else
+    {
+      update_feedback("Resume failed.");
+    }
+    update_feedback(resp);
+  }
+  else if (cmd == "stop")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    json resp;
+    if (g_monitor->stop(resp))
+    {
+      update_feedback("Stop successful.");
+    }
+    else
+    {
+      update_feedback("Stop failed.");
+    }
+    update_feedback(resp);
+  }
+  else if (cmd == "fire_at_position")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    if (argc != 3)
+    {
+      update_feedback("Usage: fire_at_position <position> <num_shots>");
+      return 0;
+    }
+    std::string position(argv[1]);
+    uint32_t num_shots = std::stoi(argv[2]);
+    json resp;
+    if (g_monitor->fire_at_position(position, num_shots, resp))
+    {
+      update_feedback("Fire at position successful.");
+    }
+    else
+    {
+      update_feedback("Fire at position failed.");
+    }
+    update_feedback(resp);    
+  }
+  else if (cmd == "fire_segment")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    if (argc != 3)
+    {
+      update_feedback("Usage: fire_segment <start_position> <end_position>");
+      return 0;
+    }
+    std::string start_position(argv[1]);
+    std::string end_position(argv[2]);
+    json resp;
+    if (g_monitor->fire_segment(start_position, end_position, resp))
+    {
+      update_feedback("Fire segment successful.");
+    }
+    else
+    {
+      update_feedback("Fire segment failed.");
+    }
+    update_feedback(resp);
+  }
+  else if (cmd == "execute_scan")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    if (argc != 2)
+    {
+      update_feedback("Usage: execute_scan <run_plan>");
+      return 0;
+    }
+    std::string run_plan(argv[1]);
+    json resp;
+    if (g_monitor->execute_scan(run_plan, resp))
+    {
+      update_feedback("Execute scan successful.");
+    }
+    else
+    {
+      update_feedback("Execute scan failed.");
+    }
+    update_feedback(resp);
+  }
+  else if (cmd == "shutdown")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    update_feedback("Shutting down the system.");
+    json resp;
+    g_monitor->shutdown(resp);
+    update_feedback(resp);
     return 0;
   }
   else if (cmd == "help")
@@ -213,7 +498,6 @@ int run_command(int argc, char**argv)
     update_feedback("Unknown command");
     return 0;
   }
-  update_feedback("Did something interesting");
   // do something with the command
   return 0;
 }
@@ -242,6 +526,17 @@ void update_feedback(const std::string &msg)
   if (g_feedback.size() > static_cast<size_t>(g_height - 4))
   {
     g_feedback.pop_back();
+  }
+}
+
+void update_feedback(json &resp)
+{
+  if (resp.contains("messages"))
+  {
+    for (const auto &msg : resp["messages"])
+    {
+      update_feedback(msg);
+    }
   }
 }
 
@@ -290,22 +585,7 @@ int main(int argc, char** argv)
 
   // Start the thread to update the right pane
   iols_monitor_t status; // Assuming you have a way to initialize this structure
-  status.att.position = 0;
-  status.iols_state = "offline";
-  status.laser.state = "offline";
-  status.m1.state = "offline";
-  status.m2.state = "offline";
-  status.m3.state = "offline";
-  status.pm.state = "offline";
-  status.pm.latest_reading = 0.0;
-  status.pm.average_reading = 0.0;
-  status.m1.position_motor = 0;
-  status.m1.position_cib = 0;
-  status.m2.position_motor = 0;
-  status.m2.position_cib = 0;
-  status.m3.position_motor = 0;
-  status.m3.position_cib = 0;
-  status.att.state = "offline";
+  std::vector<std::string> vars_to_monitor = {"LS1.state", "LS1.RNN800.state", "LS1.RNN600.state", "LS1.LSTAGE.state", "LS1.A1.state", "LS1.PM1.state", "LS1.PM1.energy_reading", "LS1.PM1.average_reading", "LS1.RNN800.current_position_motor", "RNN800.current_position_cib", "LS1.RNN600.current_position_motor", "LS1.RNN600.current_position_cib", "LS1.LSTAGE.current_position_motor", "LS1.LSTAGE.current_position_cib", "LS1.A1.position"};
 
   // start the monitoring thread
   std::thread right_pane_thread(update_right_pane, right_pane, std::ref(run_monitor), g_height, std::ref(status));
@@ -322,23 +602,13 @@ int main(int argc, char** argv)
     char buffer[256];
     // mvwprintw(left_pane, height - 2, 1, ">> ");
     mvwgetstr(left_pane, g_height - 2, 4, buffer);
-    // if (buffer[0] == '\n')
-    // {
-    //   // repeat
-    //   continue;
-    // }
-    // printf("Passed here\n");
+
     input = buffer;
-    //readline(input.c_str());
-    // if (input.length() > 0)
-    // {
-    //   add_history(input.c_str()); 
-    // }
 
     std::vector<std::string> tokens;
     tokens = toolbox::split_string(input,' ');
     std::ostringstream msg;
-    msg << "Got " << tokens.size() << " tokens";
+    // msg << "Got " << tokens.size() << " tokens";
     update_feedback(msg.str());
     if (tokens.size() > 0)
     {
@@ -355,6 +625,11 @@ int main(int argc, char** argv)
         goto leave;
         return 0;
       }
+      //   // if (ret != 0)
+      //   // {
+      //   //   goto leave;
+      //   //   return ret;
+      //   // }
     }
     else
     {
@@ -363,89 +638,7 @@ int main(int argc, char** argv)
       // goto leave;
       // return 0;
     }
-    // char *delim = (char *)" ";
-    // int count = 1;
-    // char *ptr = const_cast<char*>(input.c_str());
-    // while ((ptr = strchr(ptr, delim[0])) != NULL)
-    // {
-    //   count++;
-    //   ptr++;
-    // }
-    // if (count > 0)
-    // {
-    //   update_feedback(">> " + input);
-    //   char **cmd = new char *[count];
-    //   cmd[0] = strtok(const_cast<char*>(input.c_str()), delim);
-    //   int i;
-    //   for (i = 1; cmd[i - 1] != NULL && i < count; i++)
-    //   {
-    //     cmd[i] = strtok(NULL, delim);
-    //   }
-    //   if (cmd[i - 1] == NULL)
-    //     i--;
-    //   // FIXME: Implement this function
-    //   //  Add the input to the feedback deque
-    //   // feedback.push_front(">> " + input);
-    //   // if (feedback.size() > height - 4) // Keep the feedback within the pane height
-    //   // {
-    //   //   feedback.pop_back();
-    //   // }
-    //   // run the command
-    //   int ret = run_command(i, cmd);
-    //   refresh_left_panel(left_pane, g_height);
-    //   delete[] cmd;
-    //   if (ret == 255)
-    //   {
-    //     goto leave;
-    //     return 0;
-    //   }
-    //   // if (ret != 0)
-    //   // {
-    //   //   goto leave;
-    //   //   return ret;
-    //   // }
-    // }
-    // else
-    // {
-    //   // if there are no commands, just continue
-    //   continue;
-    //   // goto leave;
-    //   // return 0;
-    // }
-
   }
-
-  // while (true)
-  // {
-  //   // Get user input from the last line of the left pane
-  //   char buffer[256];
-  //   mvwgetstr(left_pane, height - 2, 1, buffer);
-  //   input = buffer;
-  //   status.laser.state = "ready";
-    
-  //   // Add the input to the feedback deque
-  //   feedback.push_front(">> " + input);
-  //   if (feedback.size() > height - 4) // Keep the feedback within the pane height
-  //   {
-  //     feedback.pop_back();
-  //   }
-
-  //   // Update the left pane with feedback
-  //   werase(left_pane);
-  //   box(left_pane, 0, 0);
-  //   mvwprintw(left_pane, 0, 1, "Left Pane");
-
-  //   // Display feedback starting from the third line from the bottom
-  //   int line = height - 4;
-  //   for (const auto &msg : feedback)
-  //   {
-  //     write_to_pane(left_pane, line--, 1, msg);
-  //   }
-
-  //   // Prompt for input on the last line
-  //   mvwprintw(left_pane, height - 2, 1, "Enter input: ");
-  //   wrefresh(left_pane);
-  // }
 
 leave:
   // Stop the right pane thread

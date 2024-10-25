@@ -5,6 +5,7 @@
 #include <string>
 #include <deque>
 #include <atomic>
+#include "IoLSMonitor.h"
 
 // Function prototypes
 void initialize_pane(WINDOW *&pane, int height, int width, int starty, int startx, const std::string &title);
