@@ -569,6 +569,11 @@ int run_command(int argc, char**argv)
     std::string variable(argv[1]);
     UA_Variant value;
     g_monitor->read_variable(variable, value);
+    auto v = g_monitor->get_feedback_messages();
+    for (const auto &msg : v)
+    {
+      update_feedback(msg);
+    }
     std::ostringstream msg;
     msg << variable << ": ";
     if (value.type == &UA_TYPES[UA_TYPES_STRING])
