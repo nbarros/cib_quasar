@@ -123,7 +123,7 @@
 		"discharge_voltage": 1.19,
 		"pause_timeout_min": 10,
 		"standby_timeout_min": 60,
-		"warmup_timer_min": 20,
+		"warmup_timer_min": 1,
 		"qswitch_delay_us": 195	,
 		"qswitch_width_us": 10,
 		"fire_width_us": 10,

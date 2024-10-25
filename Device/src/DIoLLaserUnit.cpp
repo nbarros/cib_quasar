@@ -1750,13 +1750,13 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         return;
       }
-#ifdef DEBUG
-	LOG(Log::INF) << log_i(lbl.c_str(),"Checking security");
-#endif
+// #ifdef DEBUG
+// 	LOG(Log::INF) << log_i(lbl.c_str(),"Checking security");
+// #endif
       m_laser->security(status, desc);
-#ifdef DEBUG
-      LOG(Log::INF) << log_i(lbl.c_str(),"Checking passed check");
-#endif
+// #ifdef DEBUG
+//       LOG(Log::INF) << log_i(lbl.c_str(),"Checking passed check");
+// #endif
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
       UaString ss(m_status_map.at(m_status).c_str());
       getAddressSpaceLink()->setState(ss,OpcUa_Good);

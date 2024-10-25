@@ -290,7 +290,7 @@ namespace Device
       }
       else
       {
-        num_pulses = config.at("target").get<uint16_t>();
+        num_pulses = config.at("num_pulses").get<uint16_t>();
       }
       //FIXME: Implement the lbls part (not setting it yet)
       st = fire_at_position(target_pos,num_pulses,resp);
