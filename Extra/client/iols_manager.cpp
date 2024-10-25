@@ -578,26 +578,32 @@ int run_command(int argc, char**argv)
     msg << variable << ": ";
     if (value.type == &UA_TYPES[UA_TYPES_STRING])
     {
+      update_feedback("String type");
       msg << std::string(reinterpret_cast<char *>(value.data));
     }
     else if (value.type == &UA_TYPES[UA_TYPES_DOUBLE])
     {
+      update_feedback("Double type");
       msg << *static_cast<double *>(value.data);
     }
     else if (value.type == &UA_TYPES[UA_TYPES_INT32])
     {
+      update_feedback("Int32 type");
       msg << *static_cast<int32_t *>(value.data);
     }
     else if (value.type == &UA_TYPES[UA_TYPES_UINT32])
     {
+      update_feedback("UInt32 type");
       msg << *static_cast<uint32_t *>(value.data);
     }
     else if (value.type == &UA_TYPES[UA_TYPES_UINT16])
     {
+      update_feedback("UInt16 type");
       msg << *static_cast<uint16_t *>(value.data);
     }
     else
     {
+      update_feedback("Unknown type");
       msg << "Unknown type";
     }
     update_feedback(msg.str());
