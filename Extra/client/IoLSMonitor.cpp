@@ -80,7 +80,9 @@ bool IoLSMonitor::config(std::string location, json &response)
     std::ifstream file(location);
     if (!file.is_open())
     {
+      printf("Failed to open file \n");
       response["messages"].push_back("Failed to open file at [" + location + "]");
+      printf("Returning false \n");
       return false;
     }
 
@@ -175,7 +177,7 @@ bool IoLSMonitor::config(std::string location, json &response)
 void IoLSMonitor::monitor_server()
 {
   return;
-  
+
   try
   {
     while (m_running)

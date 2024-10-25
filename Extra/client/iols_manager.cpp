@@ -590,6 +590,11 @@ int run_command(int argc, char**argv)
       update_feedback("Double type");
       msg << *static_cast<double *>(value.data);
     }
+    else if (value.type == &UA_TYPES[UA_TYPES_FLOAT])
+    {
+      update_feedback("Float type");
+      msg << *static_cast<float *>(value.data);
+    }
     else if (value.type == &UA_TYPES[UA_TYPES_INT32])
     {
       update_feedback("Int32 type");
