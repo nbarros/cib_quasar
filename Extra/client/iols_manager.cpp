@@ -212,7 +212,7 @@ int run_command(int argc, char**argv)
     {
       json resp;
       g_monitor->shutdown(resp);
-      update_feedback(resp);
+      update_feedback_json(resp);
       g_monitor->disconnect();
       auto v = g_monitor->get_feedback_messages();
       for (const auto &msg : v)
@@ -316,7 +316,7 @@ int run_command(int argc, char**argv)
     update_feedback("Shutting down the system.");
     json resp;
     g_monitor->shutdown(resp);
-    update_feedback(resp);
+    update_feedback_json(resp);
     return 0;
   }
   else if (cmd == "config")
@@ -341,7 +341,7 @@ int run_command(int argc, char**argv)
     {
       update_feedback("Configuration failed.");
     }
-    update_feedback(resp);
+    update_feedback_json(resp);
     return 0;
   }
   else if (cmd == "move_to_position")
@@ -371,7 +371,7 @@ int run_command(int argc, char**argv)
     {
       update_feedback("Move to position failed.");
     }
-    update_feedback(resp);
+    update_feedback_json(resp);
   }
   else if (cmd == "warmup")
   {
@@ -389,7 +389,7 @@ int run_command(int argc, char**argv)
     {
       update_feedback("Warmup failed.");
     }
-    update_feedback(resp);
+    update_feedback_json(resp);
   }
   else if (cmd == "pause")
   {
@@ -407,7 +407,7 @@ int run_command(int argc, char**argv)
     {
       update_feedback("Pause failed.");
     }
-    update_feedback(resp);
+    update_feedback_json(resp);
   }
   else if (cmd == "standby")
   {
@@ -425,7 +425,7 @@ int run_command(int argc, char**argv)
     {
       update_feedback("Standby failed.");
     }
-    update_feedback(resp);
+    update_feedback_json(resp);
   }
   else if (cmd == "resume")
   {
@@ -443,7 +443,7 @@ int run_command(int argc, char**argv)
     {
       update_feedback("Resume failed.");
     }
-    update_feedback(resp);
+    update_feedback_json(resp);
   }
   else if (cmd == "stop")
   {
@@ -461,7 +461,7 @@ int run_command(int argc, char**argv)
     {
       update_feedback("Stop failed.");
     }
-    update_feedback(resp);
+    update_feedback_json(resp);
   }
   else if (cmd == "fire_at_position")
   {
@@ -486,7 +486,7 @@ int run_command(int argc, char**argv)
     {
       update_feedback("Fire at position failed.");
     }
-    update_feedback(resp);    
+    update_feedback_json(resp);    
   }
   else if (cmd == "fire_segment")
   {
@@ -511,7 +511,7 @@ int run_command(int argc, char**argv)
     {
       update_feedback("Fire segment failed.");
     }
-    update_feedback(resp);
+    update_feedback_json(resp);
   }
   else if (cmd == "execute_scan")
   {
@@ -535,7 +535,7 @@ int run_command(int argc, char**argv)
     {
       update_feedback("Execute scan failed.");
     }
-    update_feedback(resp);
+    update_feedback_json(resp);
   }
   else if (cmd == "shutdown")
   {
@@ -671,7 +671,7 @@ void update_feedback(const std::string &msg)
   }
 }
 
-void update_feedback(json &resp)
+void update_feedback_json(json &resp)
 {
   printf("Dumping %s\n", resp.dump().c_str());
   if (resp.contains("messages"))
