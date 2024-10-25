@@ -1,7 +1,7 @@
 #ifndef OPEN62541CLIENT_H
 #define OPEN62541CLIENT_H
 
-#include <open62541.h>
+#include "open62541.h"
 #include <string>
 #include <vector>
 #include <deque>

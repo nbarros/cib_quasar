@@ -885,3 +885,36 @@ std::deque<std::string> IoLSMonitor::get_feedback_messages()
   m_feedback_messages.clear();
   return messages;
 }
+
+bool IoLSMonitor::read_variable(const std::string &variable, UA_Variant &value)
+{
+  try
+  {
+    // Check that the client is connected
+    if (!m_client.is_connected())
+    {
+      m_feedback_messages.push_back("Client is not connected.");
+      return false;
+    }
+
+    // Read the variable
+    m_client.read_variable(variable, value);
+
+    // Get feedback messages from the client and append them to m_feedback_messages
+    auto client_feedback = m_client.get_feedback_messages();
+    m_feedback_messages.insert(m_feedback_messages.end(), client_feedback.begin(), client_feedback.end());
+
+    m_feedback_messages.push_back("Successfully read variable: " + variable);
+    return true;
+  }
+  catch (const std::exception &e)
+  {
+    m_feedback_messages.push_back(std::string("Exception in read_variable: ") + e.what());
+    return false;
+  }
+  catch (...)
+  {
+    m_feedback_messages.push_back("Unknown exception in read_variable");
+    return false;
+  }
+}

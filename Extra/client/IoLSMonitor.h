@@ -80,8 +80,9 @@ public:
     void get_status(iols_monitor_t &status) { status = m_monitored_items; }
     void set_monitored_vars(const std::vector<std::string> &var_names);
     std::deque<std::string> get_feedback_messages(); // Accessor method to get and clear feedback messages
+    bool read_variable(const std::string &variable, UA_Variant &value); // Method to read a variable
 
-private:
+  private:
     void parse_method_response(const std::string response);
     bool exec_method_simple(const std::string &method_node, json &response);
     void monitor_loop();
@@ -95,7 +96,7 @@ private:
     std::thread m_monitor_thread;
     std::atomic<bool> m_running;
     bool m_connected; // Member variable to track connection status
-      std::deque<std::string> m_feedback_messages; // Member variable to hold feedback messages
+    std::deque<std::string> m_feedback_messages; // Member variable to hold feedback messages
 
 };
 

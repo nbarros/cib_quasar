@@ -130,15 +130,47 @@ void reset_right_pane(WINDOW *right_pane)
 void print_help()
 {
   update_feedback("Available commands:");
-  update_feedback("  connect <server>");
-  update_feedback("     Connect to a server. Options are:");
+  update_feedback("  help");
+  update_feedback("       Prints this help");
+  update_feedback("   connect <server>");
+  update_feedback("       Connect to a server. Options are:");
   update_feedback("         cib1 : connects to P1");
   update_feedback("         cib2 : connects to P2");
   update_feedback("         opc.tcp://11.22.33.44:5555 : connects to a server in another location");
-  update_feedback("  help");
-  update_feedback("     Prints this help");
+  update_feedback("   disconnect");
+  update_feedback("       Disconnect from the server");
+  update_feedback("   shutdown");
+  update_feedback("       Shutdown the IoLS system");
+  update_feedback("   config <location>");
+  update_feedback("       Configure the IoLS system. Location points to the configuration file");
+  update_feedback("   move_to_position <position> [approach]");
+  update_feedback("       Move to a specified position. Approach is optional");
+  update_feedback("       Example: move_to_position [155,256,367] uud");
+  update_feedback("   warmup");
+  update_feedback("       Start warmup of the laser. During this stage only motors can be moved.");
+  update_feedback("   pause");
+  update_feedback("       Pause the system. This will *keep* the laser from firing, but shutter is closed.");
+  update_feedback("   standby");
+  update_feedback("       Pause the system. This will close the internal shutter and stop QSWITCH.");
+  update_feedback("   resume");
+  update_feedback("       Resume the system. This will open the shutters and start QSWITCH.");
+  update_feedback("   stop");
+  update_feedback("       Stop the system. This will stop the system (fire, qswitch, and return shutters to default position).");
+  update_feedback("   fire_at_position <position> <num_shots>");
+  update_feedback("       Fire at a specified position. Number of shots is optional.");
+  update_feedback("       Example: fire_at_position [1,2,3] 10");
+  update_feedback("   fire_segment <start_position> <end_position>");
+  update_feedback("       Fire at a segment between two positions.");
+  update_feedback("       Example: fire_segment [1,2,3] [4,5,6]");
+  update_feedback("   execute_scan <run_plan>");
+  update_feedback("       Execute a scan plan. The run plan should be a JSON object with a 'scan_plan' array.");
+  update_feedback("       Example: execute_scan '{\"scan_plan\":[{\"start\":[1,2,3],\"end\":[4,5,6]}, {\"start\":[7,8,9],\"end\":[10,11,12]}]}'");
+  // update_feedback("   add_monitor <variable>");
+  // update_feedback("       Add a variable to the monitor list. Variable must be a fully qualified OPC-UA node");
+  update_feedback("   read_variable <variable>");
+  update_feedback("       Read the value of a variable. Variable must be a fully qualified OPC-UA node");
   update_feedback("  exit");
-  update_feedback("     Exit the program");
+  update_feedback("       Exit the program");
 }
 
 /**
@@ -521,6 +553,66 @@ int run_command(int argc, char**argv)
   {
     print_help();
     return 0;
+  }
+  else if (cmd == "read_variable")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    if (argc != 2)
+    {
+      update_feedback("Usage: read_variable <variable>");
+      return 0;
+    }
+    std::string variable(argv[1]);
+    UA_Variant value;
+    g_monitor->read_variable(variable, value);
+    std::ostringstream msg;
+    msg << variable << ": ";
+    if (value.type == &UA_TYPES[UA_TYPES_STRING])
+    {
+      msg << std::string(reinterpret_cast<char *>(value.data));
+    }
+    else if (value.type == &UA_TYPES[UA_TYPES_DOUBLE])
+    {
+      msg << *static_cast<double *>(value.data);
+    }
+    else if (value.type == &UA_TYPES[UA_TYPES_INT32])
+    {
+      msg << *static_cast<int32_t *>(value.data);
+    }
+    else if (value.type == &UA_TYPES[UA_TYPES_UINT32])
+    {
+      msg << *static_cast<uint32_t *>(value.data);
+    }
+    else if (value.type == &UA_TYPES[UA_TYPES_UINT16])
+    {
+      msg << *static_cast<uint16_t *>(value.data);
+    }
+    else
+    {
+      msg << "Unknown type";
+    }
+    update_feedback(msg.str());
+  }
+  else if (cmd == "add_monitor")
+  {
+    if (g_monitor == nullptr)
+    {
+      update_feedback("Not connected to a server.");
+      return 0;
+    }
+    if (argc != 2)
+    {
+      update_feedback("Usage: add_monitor <variable>");
+      return 0;
+    }
+    std::string variable(argv[1]);
+    g_vars_to_monitor.push_back(variable);
+    g_monitor->set_monitored_vars(g_vars_to_monitor);
+    update_feedback("Added variable to monitor list.");
   }
   else
   {
