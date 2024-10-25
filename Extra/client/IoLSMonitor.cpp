@@ -160,32 +160,35 @@ void IoLSMonitor::monitor_server()
     {
       for (auto &item : m_monitored_vars)
       {
-        UA_Variant value;
-        UA_Variant_init(&value);
-        m_client.read_variable(item.first, value);
+        try
+        {
+          UA_Variant value;
+          UA_Variant_init(&value);
+          m_client.read_variable(item.first, value);
 
-        if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_STRING]))
-        {
-          UA_String *uaString = static_cast<UA_String *>(value.data);
-          m_monitored_items[item.first] = std::string(reinterpret_cast<char *>(uaString->data), uaString->length);
-        }
-        else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_INT32]))
-        {
-          m_monitored_items[item.first] = *static_cast<UA_Int32 *>(value.data);
-        }
-        else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_DOUBLE]))
-        {
-          m_monitored_items[item.first] = *static_cast<UA_Double *>(value.data);
-        }
+          if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_STRING]))
+          {
+            UA_String *uaString = static_cast<UA_String *>(value.data);
+            m_monitored_items[item.first] = std::string(reinterpret_cast<char *>(uaString->data), uaString->length);
+          }
+          else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_INT32]))
+          {
+            m_monitored_items[item.first] = *static_cast<UA_Int32 *>(value.data);
+          }
+          else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_DOUBLE]))
+          {
+            m_monitored_items[item.first] = *static_cast<UA_Double *>(value.data);
+          }
 
-        UA_Variant_clear(&value);
+          UA_Variant_clear(&value);
+        }
+        catch (const std::exception &e)
+        {
+          spdlog::error("Failed to read variable {}: {}", item.first, e.what());
+        }
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-  }
-  catch (const json::exception &e)
-  {
-    spdlog::critical("JSON exception occurred: {}", e.what());
   }
   catch (const std::exception &e)
   {
