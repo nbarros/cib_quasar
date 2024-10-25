@@ -241,7 +241,7 @@ config -> init -> start_cib -> [pause, standby, resume, force_ext_shutter] -> st
     //
     bool get_counting_flashes() {return m_count_flashes;}
     void set_counting_flashes(bool s) {m_count_flashes = s;}
-    bool is_ready() {return (m_status == sReady);}
+    bool is_ready() {return ((m_status == sPause) || (m_status == sStandby));}
     //
 private:
     // -- private methods
