@@ -289,7 +289,8 @@ int run_command(int argc, char**argv)
     }
     iols_monitor_t status;
     g_monitor->get_status(status);
-    if (std::get<std::string>(status["LS1.state"]) != "offline")
+    if ((std::get<std::string>(status["LS1.state"]) != "offline") && 
+        (std::get<std::string>(status["LS1.state"]) != "unknown"))
     {
       update_feedback("Cannot disconnect while the system is running. Call 'shutdown' first.");
       return 0;

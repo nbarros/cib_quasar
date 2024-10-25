@@ -49,6 +49,11 @@ bool Open62541Client::is_connected() const
 
 void Open62541Client::read_variable(const std::string &nodeId, UA_Variant &value)
 {
+    if (!m_connected)
+    {
+        log_error("Client is not connected", UA_STATUSCODE_BADCONNECTIONCLOSED);
+        throw std::runtime_error("Client is not connected");
+    }
     UA_StatusCode status = UA_Client_readValueAttribute(m_client, UA_NODEID_STRING_ALLOC(2,nodeId.c_str()), &value);
     if (status != UA_STATUSCODE_GOOD)
     {
