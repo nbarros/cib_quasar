@@ -2085,6 +2085,7 @@ namespace Device
       msg << log_e("warmup","Laser system failed to start. Check previous messages.");
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
     }
     // confirm that the laser is in warmup state

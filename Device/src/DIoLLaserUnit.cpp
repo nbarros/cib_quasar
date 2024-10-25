@@ -1459,7 +1459,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return st;
     }
-    const std::lock_guard<std::mutex> lock(m_serial_mutex);
+    // const std::lock_guard<std::mutex> lock(m_serial_mutex);
     try
     {
       // deassert qswitch enable
