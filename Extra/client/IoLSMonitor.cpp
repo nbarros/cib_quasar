@@ -185,6 +185,8 @@ void IoLSMonitor::monitor_server()
           std::unique_ptr<UA_Variant, void(*)(UA_Variant*)> value(new UA_Variant, [](UA_Variant* v) { UA_Variant_clear(v); delete v; });
           UA_Variant_init(value.get());
           m_client.read_variable(item.first, *value);
+          // grab the feedback...and forget it
+          m_client.get_feedback_messages();
           if (UA_Variant_hasScalarType(value.get(), &UA_TYPES[UA_TYPES_STRING]))
           {
             UA_String *uaString = static_cast<UA_String *>(value->data);
@@ -202,6 +204,7 @@ void IoLSMonitor::monitor_server()
         catch (const std::exception &e)
         {
           // don't print anything here, just silently ignore the call
+          m_client.get_feedback_messages();
         }
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
