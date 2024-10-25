@@ -287,14 +287,17 @@ int run_command(int argc, char**argv)
       update_feedback("Not connected to a server.");
       return 0;
     }
-    iols_monitor_t status;
-    g_monitor->get_status(status);
-    if ((std::get<std::string>(status["LS1.state"]) != "offline") && 
-        (std::get<std::string>(status["LS1.state"]) != "unknown"))
-    {
-      update_feedback("Cannot disconnect while the system is running. Call 'shutdown' first.");
-      return 0;
-    }
+    // iols_monitor_t status;
+    // g_monitor->get_status(status);
+    // if (status.count("LS1.state") != 0)
+    // {
+    //   if ((std::get<std::string>(status["LS1.state"]) != "offline") &&
+    //       (std::get<std::string>(status["LS1.state"]) != "unknown"))
+    //   {
+    //     update_feedback("Cannot disconnect while the system is running. Call 'shutdown' first.");
+    //     return 0;
+    //   }
+    // }
     g_monitor->disconnect();
     auto v = g_monitor->get_feedback_messages();
     for (const auto &msg : v)
