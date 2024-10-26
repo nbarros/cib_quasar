@@ -112,9 +112,10 @@ private:
     // ----------------------------------------------------------------------- *
 
 public:
-    enum Status{sOffline=0x0,sReady=2,sReading=3};
+    enum Status{sOffline=0x0,sReady=1,sOperating=3};
     void update();
     bool is_ready();
+    Status get_state() {return m_status;}
     UaStatus set_conn(const std::string port, const uint16_t baud, json &resp);
     // variable proxy setters. These can be called internally (unlike the others)
     UaStatus set_average(const uint16_t ave, json &resp);

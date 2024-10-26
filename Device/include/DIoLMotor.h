@@ -128,12 +128,12 @@ public:
       size_t n_bits;
     } cib_param_t;
     //
-    enum Status{sOffline=0x0,sReady=2,sMoving=3,sError=4};
+    enum Status{sOffline=0x0,sReady=1,sOperating=3,sError=6};
 
     //
     void update();
     bool is_ready();
-
+    Status get_state() {return m_status;}
     // -- wrapper for interface commands commands
     UaStatus move_wrapper(int32_t dest, json &resp);
     UaStatus reset_wrapper(json &resp);
@@ -183,6 +183,7 @@ public:
     const std::string get_server_addr() {return m_server_host;}
     bool is_moving() const {return m_is_moving;}
     bool is_in_range(const int32_t &v);
+
 private:
 
 

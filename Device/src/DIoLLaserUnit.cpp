@@ -1202,7 +1202,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 
           return;
         }
-        std::this_thread::sleep_for(std::chrono::seconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         n_ticks++;
         if ((n_ticks%n_ticks_per_sec) == 0)
         {
@@ -1665,6 +1665,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         update_status(sStandby);
       }
+      // this does not seem to make sense, but it does. 
+      // if QS(off),ISH(closed),ESH(open) and no fire enable, then we are in sReady 
+      // 
       else
       {
         update_status(sReady);
@@ -3200,7 +3203,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_Good;
+      return OpcUa_BadInvalidState;
     }
     // -- do a couple moreconsistent checks
     if (!m_part_state.state.fire_enable)

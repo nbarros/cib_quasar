@@ -104,7 +104,12 @@ private:
     UaStatus config(json &conf, json &resp);
     UaStatus check_ready(bool &ready);
     UaStatus stop(json &resp);
-    UaStatus fire_at_position(const std::vector<int32_t>&  target_pos, uint16_t num_pulses, json &resp);
+    bool process_fap_arguments(const UaString &arguments, std::vector<int32_t> &target_pos, uint32_t &num_pulses, bool &lbls,json &response);
+    void init_fire_point_task(const std::vector<int32_t> &target, const uint32_t &num_pulses);
+    void fire_point_task(const std::vector<int32_t> &target, const uint32_t &num_pulses);
+
+    UaStatus fire_at_position(const std::vector<int32_t> &target_pos, uint32_t num_pulses, json &resp);
+
     UaStatus fire_segment(
         const std::vector<OpcUa_Int32>&  spos,
         const std::vector<OpcUa_Int32>&  lpos,
@@ -116,6 +121,7 @@ private:
     UaStatus resume(json &resp);
     UaStatus warmup(json &resp);
     UaStatus shutdown(json &resp);
+    bool process_move_arguments(const UaString& arguments, std::vector<int32_t> &target_pos, std::string &approach, json &response);
     UaStatus move_to_pos(
         const std::vector<int32_t>&  position, const std::string approach,json &resp);
     // this is a stripped down version that does not make any checks
@@ -128,6 +134,7 @@ private:
     inline void reset(std::ostringstream &s);
     bool validate_config_fragment(json &frag, json &resp);
     void update_state(State s);
+    void refresh_state();
     void init_segment_task(const std::vector<OpcUa_Int32>&  spos,
                            const std::vector<OpcUa_Int32>&  lpos
                           );

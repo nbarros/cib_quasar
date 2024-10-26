@@ -113,7 +113,7 @@ DIoLPowerMeter::DIoLPowerMeter (
     // -- initialize the status map
     m_status_map.insert({sOffline,"offline"});
     m_status_map.insert({sReady,"ready"});
-    m_status_map.insert({sReading,"reading"});
+    m_status_map.insert({sOperating,"operating"});
 
 }
 
@@ -563,7 +563,7 @@ UaStatus DIoLPowerMeter::callTerminate (
 
   void DIoLPowerMeter::refresh_energy_reading()
   {
-    if (m_status != sReading)
+    if (m_status != sOperating)
     {
       getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable);
     }
@@ -593,7 +593,7 @@ UaStatus DIoLPowerMeter::callTerminate (
 
   void DIoLPowerMeter::refresh_average_reading()
   {
-    if (m_status != sReading)
+    if (m_status != sOperating)
     {
       getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_BadDataUnavailable);
     }
@@ -972,6 +972,7 @@ UaStatus DIoLPowerMeter::callTerminate (
             msg.clear(); msg.str("");
             msg << log_e(label.c_str()," ") << "Failed to complete Power Meter configuration. See previous messages";
             resp["messages"].push_back(msg.str());
+            LOG(Log::ERR) << msg.str();
             return OpcUa_Uncertain;
           }
         }
@@ -1054,7 +1055,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       return st;
     }
     // -- if Reading, stop the measurements
-    if (m_status == sReading)
+    if (m_status == sOperating)
     {
       msg.clear(); msg.str("");
       msg << log_w(label.c_str(),"Power Meter is taking readings. Stopping first.");
@@ -1291,6 +1292,16 @@ UaStatus DIoLPowerMeter::callTerminate (
           getAddressSpaceLink()->setMeasurement_interval_ms(m_measurement_interval, OpcUa_Good);
         }
       }
+      update_status(sReady);
+      // -- will start right away
+      st = start_readings(resp);
+      if (st != OpcUa_Good)
+      {
+        resp["status"] = "ERROR";
+        resp["messages"].push_back("Failed to start readings");
+        resp["statuscode"] = static_cast<int>(st);
+        LOG(Log::ERR) << "Failed to start readings";
+      }
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -1371,12 +1382,12 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     if (m_do_measurements.load())
     {
-      resp["status"] = "ERROR";
+      resp["status"] = "WARN";
       std::ostringstream msg("");
-      msg << log_e(label.c_str(),"Readings already ongoing");
+      msg << log_w(label.c_str(),"Readings already ongoing. Ignoring command.");
       resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_Bad;
-      return OpcUa_Uncertain;
+      resp["statuscode"] = OpcUa_Uncertain;
+      return OpcUa_Good;
     }
     // check that the refresh interval is not too low or we'll run into troubles for sure
     if (m_measurement_interval < 50)
@@ -1389,7 +1400,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       return OpcUa_BadInvalidArgument;
     }
     // if it reached this point, we should be good to go
-    update_status(sReading);
+    update_status(sOperating);
     start_readings();
     // this should just flip a variable
     return OpcUa_Good;
@@ -1487,7 +1498,8 @@ UaStatus DIoLPowerMeter::callTerminate (
 
   bool DIoLPowerMeter::is_ready()
   {
-    return (m_status == sReady);
+    // if it is operating, just let it go
+    return ((m_status == sReady) || (m_status == sOperating));
   }
   void DIoLPowerMeter::update_status(Status s)
   {
@@ -1518,14 +1530,9 @@ UaStatus DIoLPowerMeter::callTerminate (
       return OpcUa_Bad;
     }
     try
-    {
-      if (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
+    { 
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
       m_pm->average_query(m_ave_setting, u16); // this ensures that the map is filled
-      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -1610,14 +1617,8 @@ UaStatus DIoLPowerMeter::callTerminate (
     bool got_exception = false;
     try
     {
-      if (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
-
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
       m_pm->write_range(range, success);
-      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -1653,7 +1654,6 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
       // do not attempt any deallocations
       // just nullify the pointer
       resp["status"] = "ERROR";
@@ -1663,7 +1663,6 @@ UaStatus DIoLPowerMeter::callTerminate (
       // one does not call terminate checking its result
       return OpcUa_Bad;
     }
-
     if (!success)
     {
       msg << log_e(label.c_str()," ") << "Failed to select range " << range;
@@ -1704,13 +1703,8 @@ UaStatus DIoLPowerMeter::callTerminate (
     bool got_exception = false;
     try
     {
-      if (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
       m_pm->pulse_length(pwidth, u16);
-      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -1746,12 +1740,12 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
       // do not attempt any deallocations
       // just nullify the pointer
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
       // the return value is actually not very relevant
       // one does not call terminate checking its result
       return OpcUa_Bad;
@@ -1783,44 +1777,38 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
+      LOG(Log::ERR) << msg.str();
       return OpcUa_BadInvalidState;
     }
     try
     {
-      if (m_serial_busy.load())
       {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        const std::lock_guard<std::mutex> lock(m_serial_mutex);
+        m_pm->query_user_threshold(current, min, max);
       }
-      m_serial_busy.store(true);
-      m_pm->query_user_threshold(current, min, max);
-      m_serial_busy.store(false);
       m_threshold_limits.first = min;
       m_threshold_limits.second = max;
 
       if (current != thresh)
       {
-        // if the current setting is the same as the set threshold, do nothing
-        if (m_serial_busy.load())
         {
-          std::this_thread::sleep_for(std::chrono::milliseconds(5));
+          const std::lock_guard<std::mutex> lock(m_serial_mutex);
+          m_pm->user_threshold(thresh, u16);
         }
-        m_serial_busy.store(true);
-        m_pm->user_threshold(thresh, u16);
-        m_serial_busy.store(false);
-        if (u16 != thresh)
-        {
-          msg << log_e(label.c_str()," ") << " Failed to set energy threshold to " << thresh;
-          resp["status"] = "ERROR";
-          resp["messages"].push_back(msg.str());
-          resp["statuscode"] = OpcUa_Bad;
-          LOG(Log::ERR) << msg.str();
-          getAddressSpaceLink()->setTrigger_threshold(u16,OpcUa_Bad);
-          return OpcUa_Bad;
+          if (u16 != thresh)
+          {
+            msg << log_e(label.c_str(), " ") << " Failed to set energy threshold to " << thresh;
+            resp["status"] = "ERROR";
+            resp["messages"].push_back(msg.str());
+            resp["statuscode"] = OpcUa_Bad;
+            LOG(Log::ERR) << msg.str();
+            getAddressSpaceLink()->setTrigger_threshold(u16, OpcUa_Bad);
+            return OpcUa_Bad;
+          }
+          m_e_threshold = thresh;
+          getAddressSpaceLink()->setTrigger_threshold(m_e_threshold, OpcUa_Good);
+          return OpcUa_Good;
         }
-        m_e_threshold = thresh;
-        getAddressSpaceLink()->setTrigger_threshold(m_e_threshold,OpcUa_Good);
-        return OpcUa_Good;
-      }
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -1856,7 +1844,6 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
       // do not attempt any deallocations
       // just nullify the pointer
       resp["status"] = "ERROR";
@@ -1883,17 +1870,13 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
+      LOG(Log::ERR) << msg.str();
       return OpcUa_BadInvalidState;
     }
     try
     {
-      if (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
       m_pm->wavelength(lambda, success);
-      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -1929,7 +1912,6 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     if (got_exception)
     {
-      m_serial_busy.store(false);
       // do not attempt any deallocations
       // just nullify the pointer
       resp["status"] = "ERROR";
@@ -1968,6 +1950,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
+      LOG(Log::ERR) << msg.str();
       return OpcUa_BadInvalidState;
     }
     if (m_measurement_modes.count(mmode))
@@ -1984,6 +1967,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
+      LOG(Log::ERR) << msg.str();
       // remain online, but unconfigured
       // in this case update the local variable with whatever is set in the hardware
       st = OpcUa_Bad;
@@ -1994,14 +1978,8 @@ UaStatus DIoLPowerMeter::callTerminate (
     bool got_exception = false;
     try
     {
-      if (m_serial_busy.load())
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      }
-      m_serial_busy.store(true);
-
+      const std::lock_guard<std::mutex> lock(m_serial_mutex);
       m_pm->measurement_mode(local_mode,mm);
-      m_serial_busy.store(false);
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -2043,6 +2021,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
       // the return value is actually not very relevant
       // one does not call terminate checking its result
       return OpcUa_Bad;

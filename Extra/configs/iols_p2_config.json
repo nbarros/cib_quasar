@@ -33,7 +33,7 @@
 	"acceleration":200,
 	"deceleration":200,
 	"refresh_period_ms":500,
-	"refresh_movement_ms":5,
+	"refresh_movement_ms":10,
 	"motor_com_timeout_ms" : 500,
 	"mmap": 
 		{
@@ -53,7 +53,7 @@
 	"acceleration":200,
 	"deceleration":200,
 	"refresh_period_ms":500,
-	"refresh_movement_ms":5,
+	"refresh_movement_ms":10,
 	"mmap": 
 		{
 		 "direction" : [7,0,31,31],
@@ -73,7 +73,7 @@
 	"acceleration":200,
 	"deceleration":200,
 	"refresh_period_ms":500,
-	"refresh_movement_ms":5,
+	"refresh_movement_ms":10,
 	"mmap": 
 		{
 		"direction" : [8,0,31,31],

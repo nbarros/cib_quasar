@@ -115,10 +115,11 @@ public:
       size_t n_bits;
     } conf_param_t;
     //
-    enum Status{sOffline=0x0,sReady=2,sError=3};
+    enum Status{sOffline=0x0,sReady=1,sError=6};
     //
     bool is_ready() {return (m_status == sReady);}
     void update();
+    Status get_state() {return m_status;}
     UaStatus terminate(json &resp);
     UaStatus set_id(const std::string &id);
     const std::string get_id() {return m_id;}

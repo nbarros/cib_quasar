@@ -70,39 +70,39 @@ namespace Device
 // 2222222222222222222222222222222222222222222222222222222222222222222222222
 
 /* sample ctr */
-DIoLMotor::DIoLMotor (
-    const Configuration::IoLMotor& config,
-    Parent_DIoLMotor* parent
-):
-    Base_DIoLMotor( config, parent)
+DIoLMotor::DIoLMotor(
+    const Configuration::IoLMotor &config,
+    Parent_DIoLMotor *parent) : Base_DIoLMotor(config, parent)
 
-    /* fill up constructor initialization list here */
-            ,m_position_motor(-999999)
-            ,m_position_setpoint(-999999)
-            ,m_is_ready(false)
-            ,m_is_moving(false)
-            ,m_acceleration(0)
-            ,m_deceleration(0)
-            ,m_speed_setpoint(200)
-            ,m_speed_readout(0)
-            ,m_torque(0.0)
-            ,m_temperature(0.0)
-            //,m_address("")
-            ,m_refresh_ms(500)
-            ,m_refresh_cib_ms(10)
-            ,m_stats_monitor(false)
-            ,m_position_monitor(false)
-            ,m_cib_monitor(false)
-            ,m_monitor_status(OpcUa_BadResourceUnavailable)
-            ,m_server_host("")
-            ,m_server_port(0)
-            ,m_range_min(-999999)
-            ,m_range_max(-999999)
-            ,m_id("NONE")
-            ,m_coordinate_index(0)
-            ,m_alarm_code_motor(0)
-            ,m_mmap_fd(0)
-            ,m_status(sOffline)
+                                /* fill up constructor initialization list here */
+                                ,
+                                m_position_motor(-999999),
+                                m_position_setpoint(-999999), 
+                                m_is_ready(false), 
+                                m_is_moving(false), 
+                                m_acceleration(0), 
+                                m_deceleration(0), 
+                                m_speed_setpoint(200), 
+                                m_speed_readout(0), 
+                                m_torque(0.0), 
+                                m_temperature(0.0)
+                                //,m_address("")
+                                ,
+                                m_refresh_ms(500), 
+                                m_refresh_cib_ms(10), 
+                                m_stats_monitor(false), 
+                                m_position_monitor(false), 
+                                m_cib_monitor(false), 
+                                m_monitor_status(OpcUa_BadResourceUnavailable),
+                                m_server_host(""), 
+                                m_server_port(0), 
+                                m_range_min(-999999), 
+                                m_range_max(-999999), 
+                                m_alarm_code_motor(0), 
+                                m_coordinate_index(0), 
+                                m_id("NONE"), 
+                                m_mmap_fd(0), 
+                                m_status(sOffline)
 
 {
     /* fill up constructor body here */
@@ -113,7 +113,7 @@ DIoLMotor::DIoLMotor (
     (void)init_cib_mem();
     m_status_map.insert({sOffline,"offline"});
     m_status_map.insert({sReady,"ready"});
-    m_status_map.insert({sMoving,"moving"});
+    m_status_map.insert({sOperating,"moving"});
     m_status_map.insert({sError,"error"});
 
     m_id = id();
@@ -528,12 +528,14 @@ UaStatus DIoLMotor::callClear_alarm (
     std::thread([this]()
                 {
       json resp;
-      int32_t prev_pos;
+      // int32_t prev_pos;
+      // int32_t prev_prev_pos;
       UaStatus st;
       while (m_position_monitor.load())
       {
         auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_refresh_ms);
-        prev_pos = m_position_motor;
+        // prev_pos = m_position_motor;
+        // prev_prev_pos = prev_pos;
         st = motor_get_position(resp);
         if (st != OpcUa_Good)
         {
@@ -542,18 +544,19 @@ UaStatus DIoLMotor::callClear_alarm (
 #endif
 
         }
-        // check if we are moving based on the comparison with the previous position
-        if (m_position_motor == prev_pos)
-        {
-          m_is_moving = false;
-          update_status(sReady);
-        }
-        else
-        {
-          m_is_moving = true;
-          update_status(sMoving);
-        }
-        getAddressSpaceLink()->setIs_moving(m_is_moving,OpcUa_Good);
+        // use the CIB as the reference for identifying motor movement
+        // // check if we are moving based on the comparison with the previous position
+        // if (m_position_motor == prev_prev_pos)
+        // {
+        //   m_is_moving = false;
+        //   update_status(sReady);
+        // }
+        // else
+        // {
+        //   m_is_moving = true;
+        //   update_status(sOperating);
+        // }
+        // getAddressSpaceLink()->setIs_moving(m_is_moving,OpcUa_Good);
         std::this_thread::sleep_until(x);
       }
                 }).detach();
@@ -602,11 +605,15 @@ UaStatus DIoLMotor::callClear_alarm (
     m_cib_monitor.store(true);
     std::thread([this]()
                 {
+      int32_t cpos;
+      int32_t prev_pos = m_position_cib;
+      int32_t prev_prev_pos = prev_pos;
       while (m_cib_monitor.load())
       {
         auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_refresh_cib_ms);
         //prev_pos =m_position_cib;
-        int32_t cpos;
+        prev_prev_pos = prev_pos;
+        prev_pos = m_position_cib;
         UaStatus st = cib_get_position(cpos);
 #ifdef DEBUG
         if (st != OpcUa_Good)
@@ -616,9 +623,21 @@ UaStatus DIoLMotor::callClear_alarm (
 #endif
         m_position_cib = cpos;
         getAddressSpaceLink()->setCurrent_position_cib(m_position_cib,OpcUa_Good);
+        if (m_position_cib == prev_prev_pos)
+        {
+          m_is_moving = false;
+          update_status(sReady);
+        }
+        else
+        {
+          m_is_moving = true;
+          update_status(sOperating);
+        }
+        getAddressSpaceLink()->setIs_moving(m_is_moving,OpcUa_Good);
+
         std::this_thread::sleep_until(x);
-      }
-                }).detach();
+      } })
+        .detach();
   }
   UaStatus DIoLMotor::query_motor(const std::string request, json &reply, json &resp)
   {
@@ -1416,17 +1435,20 @@ UaStatus DIoLMotor::callClear_alarm (
   }
   UaStatus DIoLMotor::check_motor_ready(json &resp)
   {
+    const std::string lbl = "check_motor_ready";
     if (!is_ready())
     {
+      if (!resp.contains("messages"))
+      {
+        resp["messages"] = json::array();
+      }
       std::ostringstream msg("");
       msg.clear(); msg.str("");
       resp["status"] = "ERROR";
-      msg << log_e("start_move","Motor is not ready to operate");
+      msg << log_e(lbl.c_str(),"Motor is not ready to operate");
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidState;
-#ifdef DEBUG
+      resp["statuscode"] = OpcUa_BadInvalidState;
       LOG(Log::ERR) << msg.str();
-#endif
       return OpcUa_BadInvalidState;
     }
     return OpcUa_Good;

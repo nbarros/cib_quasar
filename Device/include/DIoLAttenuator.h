@@ -112,9 +112,10 @@ public:
     // as the device stores configuration internally,
     // there is no minimal setting necessary
     // as far as the connection is set, one is ready to operate
-    enum Status{sOffline=0x0,sReady=1};
+    enum Status{sOffline=0x0,sReady=1,sError=6};
     void update();
     bool is_ready() {return (m_status == sReady);}
+    Status get_state() {return m_status;}
     UaStatus config(json config, json &resp);
     UaStatus terminate(json &resp);
     UaStatus set_id(const std::string &id);
