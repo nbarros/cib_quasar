@@ -22,7 +22,7 @@
 */
 int g_height;
 IoLSMonitor *g_monitor;
-std::deque<std::string> g_feedback;
+std::deque<FeedbackMessage> g_feedback;
 std::vector<std::string> g_vars_to_monitor = {"LS1.state", "LS1.RNN800.state", "LS1.RNN600.state", "LS1.LSTAGE.state", "LS1.A1.state", "LS1.PM1.state", "LS1.PM1.energy_reading", "LS1.PM1.average_reading", "LS1.RNN800.current_position_motor", "RNN800.current_position_cib", "LS1.RNN600.current_position_motor", "LS1.RNN600.current_position_cib", "LS1.LSTAGE.current_position_motor", "LS1.LSTAGE.current_position_cib", "LS1.A1.position"};
 
 void initialize_pane(WINDOW *&pane, int height, int width, int starty, int startx, const std::string &title)
@@ -127,50 +127,110 @@ void reset_right_pane(WINDOW *right_pane)
   mvwprintw(right_pane, 0, 1, "IoLS Monitoring");
 }
 
+void refresh_left_panel(WINDOW *pane, int height)
+{
+  werase(pane);
+  box(pane, 0, 0);
+  mvwprintw(pane, 0, 1, "Command Terminal");
+
+  // Display feedback starting from the third line from the bottom
+  int line = height - 4;
+  int color_pair = 0;
+  std::string label = "      ";
+  for (const auto &msg : g_feedback)
+  {
+    switch(msg.severity)
+    {
+      case Severity::INFO:
+        label = "INFO ";
+        color_pair = 2;
+        break;
+      case Severity::WARN:
+        label = "WARN ";
+        color_pair = 3;
+        break;
+      case Severity::ERROR:
+        label = "ERROR";
+        color_pair = 1;
+        break;
+      default:
+        label = "      ";
+        color_pair = 0;
+        break;
+    }
+    wattron(pane, COLOR_PAIR(color_pair));
+    write_to_pane(pane, line, 1, label);
+    wattroff(pane, COLOR_PAIR(color_pair));
+    write_to_pane(pane, line--, 7, msg.message);
+  }
+
+  // Prompt for input on the last line
+  mvwprintw(pane, height - 2, 1, ">> ");
+  wrefresh(pane);
+}
+
+void add_feedback(Severity severity, const std::string &msg)
+{
+  g_feedback.push_front({severity, msg});
+  if (g_feedback.size() > static_cast<size_t>(g_height - 4))
+  {
+    g_feedback.pop_back();
+  }
+}
+
+void update_feedback(std::vector<FeedbackMessage> &feedback)
+{
+  for (const auto &msg : feedback)
+  {
+    add_feedback(msg.severity, msg.message);
+  }
+}
+
+
 void print_help()
 {
-  update_feedback("Available commands:");
-  update_feedback("  help");
-  update_feedback("       Prints this help");
-  update_feedback("   connect <server>");
-  update_feedback("       Connect to a server. Options are:");
-  update_feedback("         cib1 : connects to P1");
-  update_feedback("         cib2 : connects to P2");
-  update_feedback("         opc.tcp://11.22.33.44:5555 : connects to a server in another location");
-  update_feedback("   disconnect");
-  update_feedback("       Disconnect from the server");
-  update_feedback("   shutdown");
-  update_feedback("       Shutdown the IoLS system");
-  update_feedback("   config <location>");
-  update_feedback("       Configure the IoLS system. Location points to the configuration file");
-  update_feedback("   move_to_position <position> [approach]");
-  update_feedback("       Move to a specified position. Approach is optional");
-  update_feedback("       Example: move_to_position [155,256,367] uud");
-  update_feedback("   warmup");
-  update_feedback("       Start warmup of the laser. During this stage only motors can be moved.");
-  update_feedback("   pause");
-  update_feedback("       Pause the system. This will *keep* the laser from firing, but shutter is closed.");
-  update_feedback("   standby");
-  update_feedback("       Pause the system. This will close the internal shutter and stop QSWITCH.");
-  update_feedback("   resume");
-  update_feedback("       Resume the system. This will open the shutters and start QSWITCH.");
-  update_feedback("   stop");
-  update_feedback("       Stop the system. This will stop the system (fire, qswitch, and return shutters to default position).");
-  update_feedback("   fire_at_position <position> <num_shots>");
-  update_feedback("       Fire at a specified position. Number of shots is optional.");
-  update_feedback("       Example: fire_at_position [1,2,3] 10");
-  update_feedback("   fire_segment <start_position> <end_position>");
-  update_feedback("       Fire at a segment between two positions.");
-  update_feedback("       Example: fire_segment [1,2,3] [4,5,6]");
-  update_feedback("   execute_scan <run_plan>");
-  update_feedback("       Execute a scan plan. The run plan should be a JSON object with a 'scan_plan' array.");
-  update_feedback("       Example: execute_scan '{\"scan_plan\":[{\"start\":[1,2,3],\"end\":[4,5,6]}, {\"start\":[7,8,9],\"end\":[10,11,12]}]}'");
-  // update_feedback("   add_monitor <variable>");
-  // update_feedback("       Add a variable to the monitor list. Variable must be a fully qualified OPC-UA node");
-  update_feedback("   read_variable <variable>");
-  update_feedback("       Read the value of a variable. Variable must be a fully qualified OPC-UA node");
-  update_feedback("  exit");
-  update_feedback("       Exit the program");
+  add_feedback(Severity::INFO, "Available commands:");
+  add_feedback(Severity::INFO, "  help");
+  add_feedback(Severity::INFO, "       Prints this help");
+  add_feedback(Severity::INFO, "   connect <server>");
+  add_feedback(Severity::INFO, "       Connect to a server. Options are:");
+  add_feedback(Severity::INFO, "         cib1 : connects to P1");
+  add_feedback(Severity::INFO, "         cib2 : connects to P2");
+  add_feedback(Severity::INFO, "         opc.tcp://11.22.33.44:5555 : connects to a server in another location");
+  add_feedback(Severity::INFO, "   disconnect");
+  add_feedback(Severity::INFO, "       Disconnect from the server");
+  add_feedback(Severity::INFO, "   shutdown");
+  add_feedback(Severity::INFO, "       Shutdown the IoLS system");
+  add_feedback(Severity::INFO, "   config <location>");
+  add_feedback(Severity::INFO, "       Configure the IoLS system. Location points to the configuration file");
+  add_feedback(Severity::INFO, "   move_to_position <position> [approach]");
+  add_feedback(Severity::INFO, "       Move to a specified position. Approach is optional");
+  add_feedback(Severity::INFO, "       Example: move_to_position [155,256,367] uud");
+  add_feedback(Severity::INFO, "   warmup");
+  add_feedback(Severity::INFO, "       Start warmup of the laser. During this stage only motors can be moved.");
+  add_feedback(Severity::INFO, "   pause");
+  add_feedback(Severity::INFO, "       Pause the system. This will *keep* the laser from firing, but shutter is closed.");
+  add_feedback(Severity::INFO, "   standby");
+  add_feedback(Severity::INFO, "       Pause the system. This will close the internal shutter and stop QSWITCH.");
+  add_feedback(Severity::INFO, "   resume");
+  add_feedback(Severity::INFO, "       Resume the system. This will open the shutters and start QSWITCH.");
+  add_feedback(Severity::INFO, "   stop");
+  add_feedback(Severity::INFO, "       Stop the system. This will stop the system (fire, qswitch, and return shutters to default position).");
+  add_feedback(Severity::INFO, "   fire_at_position <position> <num_shots>");
+  add_feedback(Severity::INFO, "       Fire at a specified position. Number of shots is optional.");
+  add_feedback(Severity::INFO, "       Example: fire_at_position [1,2,3] 10");
+  add_feedback(Severity::INFO, "   fire_segment <start_position> <end_position>");
+  add_feedback(Severity::INFO, "       Fire at a segment between two positions.");
+  add_feedback(Severity::INFO, "       Example: fire_segment [1,2,3] [4,5,6]");
+  add_feedback(Severity::INFO, "   execute_scan <run_plan>");
+  add_feedback(Severity::INFO, "       Execute a scan plan. The run plan should be a JSON object with a 'scan_plan' array.");
+  add_feedback(Severity::INFO, "       Example: execute_scan '{\"scan_plan\":[{\"start\":[1,2,3],\"end\":[4,5,6]}, {\"start\":[7,8,9],\"end\":[10,11,12]}]}'");
+  // add_feedback(Severity::INFO, "   add_monitor <variable>");
+  // add_feedback(Severity::INFO, "       Add a variable to the monitor list. Variable must be a fully qualified OPC-UA node");
+  add_feedback(Severity::INFO, "   read_variable <variable>");
+  add_feedback(Severity::INFO, "       Read the value of a variable. Variable must be a fully qualified OPC-UA node");
+  add_feedback(Severity::INFO, "  exit");
+  add_feedback(Severity::INFO, "       Exit the program");
 }
 
 /**
@@ -211,14 +271,13 @@ int run_command(int argc, char**argv)
     if (g_monitor != nullptr)
     {
       json resp;
-      g_monitor->shutdown(resp);
-      update_feedback_json(resp);
-      g_monitor->disconnect();
-      auto v = g_monitor->get_feedback_messages();
-      for (const auto &msg : v)
-      {
-        update_feedback(msg);
-      }
+      FeedbackManager feedback;
+      g_monitor->shutdown(feedback);
+      std::vector<FeedbackMessage> messages = feedback.get_messages();
+      update_feedback(messages);
+      g_monitor->disconnect(feedback);
+      messages = feedback.get_messages();
+      update_feedback(messages);
       delete g_monitor;
       g_monitor = nullptr;
     }
@@ -228,12 +287,12 @@ int run_command(int argc, char**argv)
   {
     if (g_monitor != nullptr)
     {
-      update_feedback("Already connected to a server. Disconnect first.");
+      add_feedback(Severity::ERROR,"Already connected to a server. Disconnect first.");
       return 0;
     }
     if (argc < 2)
     {
-      update_feedback("Usage: connect <server>");
+      add_feedback(Severity::WARN, "Usage: connect <server>");
       return 0;
     }
     else
@@ -247,32 +306,21 @@ int run_command(int argc, char**argv)
       {
         server = "opc.tcp://10.73.137.148:4841";
       }
-      update_feedback("Connecting to server: " + server);
+      add_feedback(Severity::INFO,"Connecting to server: " + server);
       g_monitor = new IoLSMonitor(server);
-      auto v = g_monitor->get_feedback_messages();
-      for (const auto &msg : v)
+      FeedbackManager feedback;
+      bool res = g_monitor->connect(feedback);
+      std::vector<FeedbackMessage> messages = feedback.get_messages();
+      update_feedback(messages);
+      if (res)
       {
-        update_feedback(msg);
-      }
-      if (g_monitor->connect())
-      {
-        auto v = g_monitor->get_feedback_messages();
-        for (const auto &msg : v)
-        {
-          update_feedback(msg);
-        }
-        update_feedback("Connected to server.");
+        add_feedback(Severity::INFO,"Connected to server.");
         // update the variables that are to be kept under surveillance
         g_monitor->set_monitored_vars(g_vars_to_monitor);
       }
       else
       {
-        auto v = g_monitor->get_feedback_messages();
-        for (const auto &msg : v)
-        {
-          update_feedback(msg);
-        }
-        update_feedback("Failed to connect to server.");
+        add_feedback(Severity::ERROR, "Failed to connect to server.");
         delete g_monitor;
         g_monitor = nullptr;
       }
@@ -284,7 +332,7 @@ int run_command(int argc, char**argv)
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR,"Not connected to a server.");
       return 0;
     }
     // iols_monitor_t status;
@@ -298,13 +346,11 @@ int run_command(int argc, char**argv)
     //     return 0;
     //   }
     // }
-    g_monitor->disconnect();
-    auto v = g_monitor->get_feedback_messages();
-    for (const auto &msg : v)
-    {
-      update_feedback(msg);
-    }
-    update_feedback("Disconnecting from server.");
+    FeedbackManager feedback;
+    g_monitor->disconnect(feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    add_feedback(Severity::INFO,"Disconnecting from server.");
     delete g_monitor;
     g_monitor = nullptr;
     return 0;
@@ -313,246 +359,268 @@ int run_command(int argc, char**argv)
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR,"Not connected to a server.");
       return 0;
     }
-    update_feedback("Shutting down the system.");
-    json resp;
-    g_monitor->shutdown(resp);
-    update_feedback_json(resp);
+    add_feedback(Severity::INFO,"Shutting down the system.");
+    FeedbackManager feedback;
+    g_monitor->shutdown(feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
     return 0;
   }
   else if (cmd == "config")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR,"Not connected to a server.");
       return 0;
     }
     if (argc < 2)
     {
-      update_feedback("Usage: config <location>");
+      add_feedback(Severity::WARN,"Usage: config <location>");
       return 0;
     }
     std::string location(argv[1]);
-    json resp;
-    if (g_monitor->config(location, resp))
+    FeedbackManager feedback;
+    bool res = g_monitor->config(location, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (res)
     {
-      update_feedback("Configuration successful.");
+      add_feedback(Severity::INFO,"Configuration successful.");
     }
     else
     {
-      update_feedback("Configuration failed.");
+      add_feedback(Severity::ERROR,"Configuration failed.");
     }
-    update_feedback_json(resp);
     return 0;
   }
   else if (cmd == "move_to_position")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR,"Not connected to a server.");
       return 0;
     }
     if (argc < 2)
     {
-      update_feedback("Usage: move_to_position <position>");
+      add_feedback(Severity::WARN,"Usage: move_to_position <position>");
       return 0;
     }
     std::string position(argv[1]);
-    json resp;
+    FeedbackManager feedback;
     std::string approach = "---";
     if (argc == 3)
     {
       approach = argv[2];
     }
-    if (g_monitor->move_to_position(position, approach, resp))
+    bool res = g_monitor->move_to_position(position, approach, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (res)
     {
-      update_feedback("Move to position successful.");
+      add_feedback(Severity::INFO,"Move to position successful.");
     }
     else
     {
-      update_feedback("Move to position failed.");
+      add_feedback(Severity::ERROR,"Move to position failed.");
     }
-    update_feedback_json(resp);
   }
   else if (cmd == "warmup")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR,"Not connected to a server.");
       return 0;
     }
-    json resp;
-    if (g_monitor->warmup(resp))
+    FeedbackManager feedback;
+    bool res = g_monitor->warmup(feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (res)
     {
-      update_feedback("Warmup successful.");
+      add_feedback(Severity::INFO,"Warmup successful.");
     }
     else
     {
-      update_feedback("Warmup failed.");
+      add_feedback(Severity::ERROR,"Warmup failed.");
     }
-    update_feedback_json(resp);
   }
   else if (cmd == "pause")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
-    json resp;
-    if (g_monitor->pause(resp))
+    FeedbackManager feedback;
+    bool res = g_monitor->pause(feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (res)
     {
-      update_feedback("Pause successful.");
+      add_feedback(Severity::INFO, "Pause successful.");
     }
     else
     {
-      update_feedback("Pause failed.");
+      add_feedback(Severity::ERROR, "Pause failed.");
     }
-    update_feedback_json(resp);
   }
   else if (cmd == "standby")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
-    json resp;
-    if (g_monitor->standby(resp))
+    FeedbackManager feedback;
+    bool res = g_monitor->standby(feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (res)
     {
-      update_feedback("Standby successful.");
+      add_feedback(Severity::INFO, "Standby successful.");
     }
     else
     {
-      update_feedback("Standby failed.");
+      add_feedback(Severity::ERROR, "Standby failed.");
     }
-    update_feedback_json(resp);
   }
   else if (cmd == "resume")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
-    json resp;
-    if (g_monitor->resume(resp))
+    FeedbackManager feedback;
+    bool res = g_monitor->resume(feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (res)
     {
-      update_feedback("Resume successful.");
+      add_feedback(Severity::INFO, "Resume successful.");
     }
     else
     {
-      update_feedback("Resume failed.");
+      add_feedback(Severity::ERROR, "Resume failed.");
     }
-    update_feedback_json(resp);
   }
   else if (cmd == "stop")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
-    json resp;
-    if (g_monitor->stop(resp))
+    FeedbackManager feedback;
+    bool res = g_monitor->stop(feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (res)
     {
-      update_feedback("Stop successful.");
+      add_feedback(Severity::INFO, "Stop successful.");
     }
     else
     {
-      update_feedback("Stop failed.");
+      add_feedback(Severity::ERROR, "Stop failed.");
     }
-    update_feedback_json(resp);
   }
   else if (cmd == "fire_at_position")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
     if (argc != 3)
     {
-      update_feedback("Usage: fire_at_position <position> <num_shots>");
+      add_feedback(Severity::WARN, "Usage: fire_at_position <position> <num_shots>");
       return 0;
     }
     std::string position(argv[1]);
     uint32_t num_shots = std::stoi(argv[2]);
-    json resp;
-    if (g_monitor->fire_at_position(position, num_shots, resp))
+    FeedbackManager feedback;
+    bool res = g_monitor->fire_at_position(position, num_shots, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (res)
     {
-      update_feedback("Fire at position successful.");
+      add_feedback(Severity::INFO, "Fire at position successful.");
     }
     else
     {
-      update_feedback("Fire at position failed.");
+      add_feedback(Severity::ERROR, "Fire at position failed.");
     }
-    update_feedback_json(resp);    
   }
   else if (cmd == "fire_segment")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
     if (argc != 3)
     {
-      update_feedback("Usage: fire_segment <start_position> <end_position>");
+      add_feedback(Severity::WARN, "Usage: fire_segment <start_position> <end_position>");
       return 0;
     }
     std::string start_position(argv[1]);
     std::string end_position(argv[2]);
-    json resp;
-    if (g_monitor->fire_segment(start_position, end_position, resp))
+    FeedbackManager feedback;
+    bool res = g_monitor->fire_segment(start_position, end_position, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (res)
     {
-      update_feedback("Fire segment successful.");
+      add_feedback(Severity::INFO, "Fire segment successful.");
     }
     else
     {
-      update_feedback("Fire segment failed.");
+      add_feedback(Severity::ERROR, "Fire segment failed.");
     }
-    update_feedback_json(resp);
   }
   else if (cmd == "execute_scan")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
     if (argc != 2)
     {
-      update_feedback("Usage: execute_scan <run_plan>");
+      add_feedback(Severity::WARN, "Usage: execute_scan <run_plan>");
       return 0;
     }
     std::string run_plan(argv[1]);
-    json resp;
-    if (g_monitor->execute_scan(run_plan, resp))
+    FeedbackManager feedback;
+    bool res = g_monitor->execute_scan(run_plan, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (res)
     {
-      update_feedback("Execute scan successful.");
+      add_feedback(Severity::INFO, "Execute scan successful.");
     }
     else
     {
-      update_feedback("Execute scan failed.");
+      add_feedback(Severity::ERROR, "Execute scan failed.");
     }
-    update_feedback_json(resp);
   }
   else if (cmd == "shutdown")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
-    update_feedback("Shutting down the system.");
-    json resp;
-    g_monitor->shutdown(resp);
-    update_feedback(resp);
+    add_feedback(Severity::INFO, "Shutting down the system.");
+    FeedbackManager feedback;
+    g_monitor->shutdown(feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
     return 0;
-  }
+    }
   else if (cmd == "help")
   {
     print_help();
@@ -562,129 +630,82 @@ int run_command(int argc, char**argv)
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
     if (argc != 2)
     {
-      update_feedback("Usage: read_variable <variable>");
+      add_feedback(Severity::WARN, "Usage: read_variable <variable>");
       return 0;
     }
     std::string variable(argv[1]);
     UA_Variant value;
     UA_Variant_init(&value);
 
-    g_monitor->read_variable(variable, value);
-    auto v = g_monitor->get_feedback_messages();
-    for (const auto &msg : v)
-    {
-      update_feedback(msg);
-    }
+    FeedbackManager feedback;
+    g_monitor->read_variable(variable, value, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
     std::ostringstream msg;
     msg << variable << ": ";
     if (value.type == &UA_TYPES[UA_TYPES_STRING])
     {
-      update_feedback("String type");
-      std::string str((char*)static_cast<UA_String*>(value.data)->data,(size_t)static_cast<UA_String*>(value.data)->length);
-      msg << str;
+      msg << std::string((char*)static_cast<UA_String*>(value.data)->data,(size_t)static_cast<UA_String*>(value.data)->length);
     }
     else if (value.type == &UA_TYPES[UA_TYPES_DOUBLE])
     {
-      update_feedback("Double type");
       msg << *static_cast<double *>(value.data);
     }
     else if (value.type == &UA_TYPES[UA_TYPES_FLOAT])
     {
-      update_feedback("Float type");
       msg << *static_cast<float *>(value.data);
     }
     else if (value.type == &UA_TYPES[UA_TYPES_INT32])
     {
-      update_feedback("Int32 type");
       msg << *static_cast<int32_t *>(value.data);
     }
     else if (value.type == &UA_TYPES[UA_TYPES_UINT32])
     {
-      update_feedback("UInt32 type");
       msg << *static_cast<uint32_t *>(value.data);
     }
     else if (value.type == &UA_TYPES[UA_TYPES_UINT16])
     {
-      update_feedback("UInt16 type");
       msg << *static_cast<uint16_t *>(value.data);
     }
     else
     {
-      update_feedback("Unknown type");
       msg << "Unknown type";
     }
-    update_feedback(msg.str());
+    add_feedback(Severity::INFO, msg.str());
     UA_Variant_clear(&value);
   }
   else if (cmd == "add_monitor")
   {
     if (g_monitor == nullptr)
     {
-      update_feedback("Not connected to a server.");
+      add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
     if (argc != 2)
     {
-      update_feedback("Usage: add_monitor <variable>");
+      add_feedback(Severity::WARN, "Usage: add_monitor <variable>");
       return 0;
     }
     std::string variable(argv[1]);
     g_vars_to_monitor.push_back(variable);
+    FeedbackManager feedback;
     g_monitor->set_monitored_vars(g_vars_to_monitor);
-    update_feedback("Added variable to monitor list.");
+    add_feedback(Severity::INFO, "Added variable to monitor list.");
   }
   else
   {
-    update_feedback("Unknown command");
+    add_feedback(Severity::ERROR, "Unknown command");
     return 0;
   }
   // do something with the command
   return 0;
 }
 
-void refresh_left_panel(WINDOW *pane, int height)
-{
-  werase(pane);
-  box(pane, 0, 0);
-  mvwprintw(pane, 0, 1, "Command Terminal");
-
-  // Display feedback starting from the third line from the bottom
-  int line = height - 4;
-  for (const auto &msg : g_feedback)
-  {
-    write_to_pane(pane, line--, 1, msg);
-  }
-
-  // Prompt for input on the last line
-  mvwprintw(pane, height - 2, 1, ">> ");
-  wrefresh(pane);
-}
-
-void update_feedback(const std::string &msg)
-{
-  g_feedback.push_front(msg);
-  if (g_feedback.size() > static_cast<size_t>(g_height - 4))
-  {
-    g_feedback.pop_back();
-  }
-}
-
-void update_feedback_json(json &resp)
-{
-  printf("Dumping %s\n", resp.dump().c_str());
-  if (resp.contains("messages"))
-  {
-    for (const auto &msg : resp["messages"])
-    {
-      update_feedback(msg);
-    }
-  }
-}
 
 int main(int argc, char** argv)
 {
@@ -754,9 +775,10 @@ int main(int argc, char** argv)
     tokens = toolbox::split_string(input,' ');
     std::ostringstream msg;
     // msg << "Got " << tokens.size() << " tokens";
-    update_feedback(msg.str());
+    // update_feedback(msg.str());
     if (tokens.size() > 0)
     {
+      add_feedback(Severity::INFO,">> " + input);
       char **cmd = new char *[tokens.size()];
       for (size_t i = 0; i < tokens.size(); i++)
       {
