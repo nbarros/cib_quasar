@@ -1,14 +1,13 @@
 #include "IoLSMonitor.h"
-#include <json.hpp>
+#include <iostream>
 #include <fstream>
 #include <regex>
-#include <chrono>
+#include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
 IoLSMonitor::IoLSMonitor(const std::string &serverUrl)
     : m_serverUrl(serverUrl), m_running(false), m_connected(false)
 {
-  // -- fill the list of variables 
 }
 
 IoLSMonitor::~IoLSMonitor()
@@ -23,40 +22,41 @@ IoLSMonitor::~IoLSMonitor()
   }
 }
 
-bool IoLSMonitor::connect()
+bool IoLSMonitor::connect(FeedbackManager &feedback)
 {
   try
   {
-    m_connected = m_client.connect(m_serverUrl);
+    m_connected = m_client.connect(m_serverUrl, feedback);
     if (m_connected)
     {
       m_running = true;
       m_monitor_thread = std::thread(&IoLSMonitor::monitor_loop, this);
+      feedback.add_message(Severity::INFO, "Connected to server and started monitoring.");
       return true;
     }
     else
     {
-      m_feedback_messages.push_back("Failed to connect to server.");
+      feedback.add_message(Severity::ERROR, "Failed to connect to server.");
       return false;
     }
   }
   catch (const std::exception &e)
   {
-    m_feedback_messages.push_back("Failed to connect to server : " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "Failed to connect to server: " + std::string(e.what()));
     return false;
   }
 }
 
-void IoLSMonitor::disconnect()
+void IoLSMonitor::disconnect(FeedbackManager &feedback)
 {
   m_running = false;
   if (m_monitor_thread.joinable())
   {
     m_monitor_thread.join();
   }
-  m_client.disconnect();
+  m_client.disconnect(feedback);
   m_connected = false;
-  m_feedback_messages.push_back("Disconnected from server.");
+  feedback.add_message(Severity::INFO, "Disconnected from server.");
 }
 
 bool IoLSMonitor::is_connected() const
@@ -64,30 +64,75 @@ bool IoLSMonitor::is_connected() const
   return m_connected;
 }
 
-bool IoLSMonitor::config(std::string location, json &response)
+void IoLSMonitor::monitor_loop()
+{
+  while (m_running)
+  {
+    monitor_server();
+    std::this_thread::sleep_for(std::chrono::seconds(1)); // Adjust the sleep duration as needed
+  }
+}
+
+void IoLSMonitor::monitor_server()
+{
+  try
+  {
+    for (auto &item : m_monitored_vars)
+    {
+      UA_Variant value;
+      UA_Variant_init(&value);
+      FeedbackManager feedback;
+      m_client.read_variable(item.first, value, feedback);
+
+      if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_STRING]))
+      {
+        UA_String *uaString = static_cast<UA_String *>(value.data);
+        update_monitored_item(item.first, std::string(reinterpret_cast<char *>(uaString->data), uaString->length));
+      }
+      else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_INT32]))
+      {
+        update_monitored_item(item.first, *static_cast<UA_Int32 *>(value.data));
+      }
+      else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_DOUBLE]))
+      {
+        update_monitored_item(item.first, *static_cast<UA_Double *>(value.data));
+      }
+
+      UA_Variant_clear(&value);
+    }
+  }
+  catch (const std::exception &e)
+  {
+    FeedbackManager feedback;
+    feedback.add_message(Severity::ERROR, std::string("Exception in monitor_server: ") + e.what());
+  }
+  catch (...)
+  {
+    FeedbackManager feedback;
+    feedback.add_message(Severity::ERROR, "Unknown exception in monitor_server");
+  }
+}
+
+bool IoLSMonitor::config(const std::string &location, FeedbackManager &feedback)
 {
   try
   {
     // Check that the client is connected
     if (!m_client.is_connected())
     {
-      response["messages"].push_back("Client is not connected.");
+      feedback.add_message(Severity::ERROR, "Client is not connected.");
       return false;
     }
-    // Initialize the response JSON with a messages array
-    response["messages"] = json::array();
 
     std::ifstream file(location);
     if (!file.is_open())
     {
-      printf("Failed to open file \n");
-      response["messages"].push_back("Failed to open file at [" + location + "]");
-      printf("Returning false \n");
+      feedback.add_message(Severity::ERROR, "Failed to open file at [" + location + "]");
       return false;
     }
 
     json jconf = json::parse(file); // parse the file
-    response["messages"].push_back("Configuration file loaded successfully.");
+    feedback.add_message(Severity::INFO, "Configuration file loaded successfully.");
     file.close();
 
     // now we have the json object, we can send it to the server
@@ -105,17 +150,12 @@ bool IoLSMonitor::config(std::string location, json &response)
 
     try
     {
-      m_client.call_method(node_base, method, {configVariant}, outputArguments);
+      m_client.call_method(node_base, method, {configVariant}, outputArguments, feedback);
     }
-    catch(const std::exception& e)
+    catch (const std::exception &e)
     {
-      // the method somehow may have failed. 
-      // append the feedback to the ongoing response
-    }
-    auto feedback_messages = m_client.get_feedback_messages();
-    for (const auto &msg : feedback_messages)
-    {
-      response["messages"].push_back(msg);
+      feedback.add_message(Severity::ERROR, "Exception in call_method: " + std::string(e.what()));
+      return false;
     }
 
     std::string reply;
@@ -123,32 +163,23 @@ bool IoLSMonitor::config(std::string location, json &response)
     {
       UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
       reply = std::string(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
-      //response["messages"].push_back("Reply from server: " + reply);
+      feedback.add_message(Severity::INFO, "Reply from server: " + reply);
     }
     else
     {
-      response["messages"].push_back("No valid response received from server.");
-      // Do not clear the response
+      feedback.add_message(Severity::ERROR, "No valid response received from server.");
+      return false;
     }
 
-    // Parse the server's reply and merge the messages and other keys
     json server_response = json::parse(reply);
     if (server_response.contains("messages"))
     {
       for (const auto &msg : server_response["messages"])
       {
-        response["messages"].push_back(msg);
-      }
-    }
-    for (auto it = server_response.begin(); it != server_response.end(); ++it)
-    {
-      if (it.key() != "messages")
-      {
-        response[it.key()] = it.value();
+        feedback.add_message(Severity::INFO, msg);
       }
     }
 
-    // Clean up the UA_Variant
     UA_Variant_clear(&configVariant);
     for (auto &output : outputArguments)
     {
@@ -159,112 +190,129 @@ bool IoLSMonitor::config(std::string location, json &response)
   }
   catch (const json::exception &e)
   {
-    response["messages"].push_back("JSON exception in config: " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "JSON exception in config: " + std::string(e.what()));
     return false;
   }
   catch (const std::exception &e)
   {
-    response["messages"].push_back("Exception in config: " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "Exception in config: " + std::string(e.what()));
     return false;
   }
   catch (...)
   {
-    response["messages"].push_back("Unknown exception in config");
+    feedback.add_message(Severity::ERROR, "Unknown exception in config");
     return false;
   }
 }
 
-void IoLSMonitor::monitor_server()
-{
-  return;
+// bool IoLSMonitor::move_to_position(const std::string &position, const std::string &approach, FeedbackManager &feedback)
+// {
+//   try
+//   {
+//     std::regex position_regex(R"(\[\s*(-?\d+),\s*(-?\d+),\s*(-?\d+)\s*\])");
+//     std::smatch position_match;
+//     if (!std::regex_match(position, position_match, position_regex))
+//     {
+//       feedback.add_message(Severity::ERROR, "Invalid position format: " + position);
+//       return false;
+//     }
 
-  try
-  {
-    while (m_running)
-    {
-      for (auto &item : m_monitored_vars)
-      {
-        try
-        {
-          std::unique_ptr<UA_Variant, void(*)(UA_Variant*)> value(new UA_Variant, [](UA_Variant* v) { UA_Variant_clear(v); delete v; });
-          UA_Variant_init(value.get());
-          m_client.read_variable(item.first, *value);
-          // grab the feedback...and forget it
-          m_client.get_feedback_messages();
-          if (UA_Variant_hasScalarType(value.get(), &UA_TYPES[UA_TYPES_STRING]))
-          {
-            UA_String *uaString = static_cast<UA_String *>(value->data);
-            m_monitored_items[item.first] = std::string(reinterpret_cast<char *>(uaString->data), uaString->length);
-          }
-          else if (UA_Variant_hasScalarType(value.get(), &UA_TYPES[UA_TYPES_INT32]))
-          {
-            m_monitored_items[item.first] = *static_cast<UA_Int32 *>(value->data);
-          }
-          else if (UA_Variant_hasScalarType(value.get(), &UA_TYPES[UA_TYPES_DOUBLE]))
-          {
-            m_monitored_items[item.first] = *static_cast<UA_Double *>(value->data);
-          }
-        }
-        catch (const std::exception &e)
-        {
-          // don't print anything here, just silently ignore the call
-          m_client.get_feedback_messages();
-        }
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-  }
-  catch (const std::exception &e)
-  {
-    m_feedback_messages.push_back(std::string("Exception in monitor_server: ") + e.what());
-  }
-  catch (...)
-  {
-    m_feedback_messages.push_back("Unknown exception in monitor_server");
-  }
-}
+//     if (approach.size() != 3 || !std::all_of(approach.begin(), approach.end(), [](char c)
+//                                              { return c == 'u' || c == 'd' || c == '-'; }))
+//     {
+//       feedback.add_message(Severity::ERROR, "Invalid approach format: " + approach);
+//       return false;
+//     }
 
-void IoLSMonitor::monitor_loop()
-{
-  monitor_server();
-}
+//     json jrequest;
+//     jrequest["target"] = json::array({std::stoi(position_match[1].str()), std::stoi(position_match[2].str()), std::stoi(position_match[3].str())});
+//     jrequest["approach"] = approach;
 
-bool IoLSMonitor::move_to_position(const std::string &position, const std::string &approach, json &response)
+//     UA_Variant requestVariant;
+//     UA_Variant_init(&requestVariant);
+//     std::string requestString = jrequest.dump();
+//     UA_String uaRequestString = UA_STRING_ALLOC(requestString.c_str());
+//     UA_Variant_setScalarCopy(&requestVariant, &uaRequestString, &UA_TYPES[UA_TYPES_STRING]);
+//     UA_String_clear(&uaRequestString);
+
+//     std::vector<UA_Variant> outputArguments;
+//     m_client.call_method("LS1", "LS1.move_to_pos", {requestVariant}, outputArguments, feedback);
+
+//     if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
+//     {
+//       UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
+//       std::string responseString(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
+//       json response = json::parse(responseString);
+
+//       if (response.contains("messages"))
+//       {
+//         for (const auto &msg : response["messages"])
+//         {
+//           feedback.add_message(Severity::INFO, msg);
+//         }
+//       }
+//     }
+//     else
+//     {
+//       feedback.add_message(Severity::ERROR, "No valid response received from server.");
+//     }
+
+//     UA_Variant_clear(&requestVariant);
+//     for (auto &output : outputArguments)
+//     {
+//       UA_Variant_clear(&output);
+//     }
+
+//     return true;
+//   }
+//   catch (const json::exception &e)
+//   {
+//     feedback.add_message(Severity::ERROR, "JSON exception in move_to_position: " + std::string(e.what()));
+//     return false;
+//   }
+//   catch (const std::exception &e)
+//   {
+//     feedback.add_message(Severity::ERROR, "Exception in move_to_position: " + std::string(e.what()));
+//     return false;
+//   }
+//   catch (...)
+//   {
+//     feedback.add_message(Severity::ERROR, "Unknown exception in move_to_position");
+//     return false;
+//   }
+// }
+
+
+bool IoLSMonitor::move_to_position(const std::string &position, const std::string &approach, FeedbackManager &feedback)
 {
   try
   {
     // Check that the client is connected
     if (!m_client.is_connected())
     {
-      response["messages"].push_back("Client is not connected.");
+      feedback.add_message(Severity::ERROR, "Client is not connected");
       return false;
     }
-    // Initialize the response JSON with a messages array
-    response["messages"] = json::array();
-
     // Check that the position input has the format [x,y,z] with x, y, and z being integers
     std::regex position_regex(R"(\[\s*(-?\d+),\s*(-?\d+),\s*(-?\d+)\s*\])");
     std::smatch position_match;
     if (!std::regex_match(position, position_match, position_regex))
     {
-      response["messages"].push_back("Invalid position format: " + position);
+      feedback.add_message(Severity::ERROR, "Invalid position format: " + position);
       return false;
     }
 
-    // Check that the approach input is a string with three characters and all of them are one of 'u', 'd', '-'
     if (approach.size() != 3 || !std::all_of(approach.begin(), approach.end(), [](char c)
                                              { return c == 'u' || c == 'd' || c == '-'; }))
     {
-      response["messages"].push_back("Invalid approach format: " + approach);
+      feedback.add_message(Severity::ERROR, "Invalid approach format: " + approach);
       return false;
     }
 
-    // Convert the two input strings into a JSON variable
     json jrequest;
     jrequest["target"] = json::array({std::stoi(position_match[1].str()), std::stoi(position_match[2].str()), std::stoi(position_match[3].str())});
     jrequest["approach"] = approach;
 
-    // Convert the JSON variable to a UA_Variant
     UA_Variant requestVariant;
     UA_Variant_init(&requestVariant);
     std::string requestString = jrequest.dump();
@@ -272,54 +320,34 @@ bool IoLSMonitor::move_to_position(const std::string &position, const std::strin
     UA_Variant_setScalarCopy(&requestVariant, &uaRequestString, &UA_TYPES[UA_TYPES_STRING]);
     UA_String_clear(&uaRequestString);
 
-    // Call the method under node "LS1.move_to_pos"
     std::vector<UA_Variant> outputArguments;
-    try
-    {
-      m_client.call_method("LS1", "LS1.move_to_pos", {requestVariant}, outputArguments);
-    }
-    catch (const std::exception &e)
-    {
-      response["messages"].push_back("Exception in move_to_position: " + std::string(e.what()));
-      return false;
-    }
-    auto feedback_messages = m_client.get_feedback_messages();
-    for (const auto &msg : feedback_messages)
-    {
-      response["messages"].push_back(msg);
-    }
-
-    m_client.call_method("LS1", "LS1.move_to_pos", {requestVariant}, outputArguments);
+    m_client.call_method("LS1", "LS1.move_to_pos", {requestVariant}, outputArguments, feedback);
 
     // Convert the single output argument into a string and parse it into the response JSON variable
-    std::string reply;
     if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
     {
       UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
       std::string responseString(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
-      reply = json::parse(responseString);
+      json server_response = json::parse(responseString);
+
+      if (server_response.contains("messages"))
+      {
+        for (const auto &msg : server_response["messages"])
+        {
+          feedback.add_message(Severity::ERROR, msg);
+        }
+      }
+      if (server_response.contains("statuscode"))
+      {
+        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
+      }
     }
     else
     {
-      response["messages"].push_back("No valid response received from server.");
+      feedback.add_message(Severity::ERROR, "No valid response received from server.");
+      feedback.set_global_status(UA_STATUSCODE_BADUNKNOWNRESPONSE);
     }
 
-    // Parse the server's reply and merge the messages and other keys
-    json server_response = json::parse(reply);
-    if (server_response.contains("messages"))
-    {
-      for (const auto &msg : server_response["messages"])
-      {
-        response["messages"].push_back(msg);
-      }
-    }
-    for (auto it = server_response.begin(); it != server_response.end(); ++it)
-    {
-      if (it.key() != "messages")
-      {
-        response[it.key()] = it.value();
-      }
-    }
 
     // Clean up the UA_Variant
     UA_Variant_clear(&requestVariant);
@@ -332,47 +360,45 @@ bool IoLSMonitor::move_to_position(const std::string &position, const std::strin
   }
   catch (const json::exception &e)
   {
-    response["messages"].push_back("JSON exception in move_to_position: " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "JSON exception in move_to_position: " + std::string(e.what()));
     return false;
   }
   catch (const std::exception &e)
   {
-    response["messages"].push_back("Exception in move_to_position: " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "Exception in move_to_position: " + std::string(e.what()));
     return false;
   }
   catch (...)
   {
-    response["messages"].push_back("Unknown exception in move_to_position");
+    feedback.add_message(Severity::ERROR, "Unknown exception in move_to_position");
     return false;
   }
 }
 
-bool IoLSMonitor::fire_at_position(const std::string position, const uint32_t num_shots, json &response)
+bool IoLSMonitor::fire_at_position(const std::string &position, const uint32_t num_shots, FeedbackManager &feedback)
 {
   try
   {
     // Check that the client is connected
     if (!m_client.is_connected())
     {
-      response["messages"].push_back("Client is not connected.");
+      feedback.add_message(Severity::ERROR, "Client is not connected.");
       return false;
     }
-    // Initialize the response JSON with a messages array
-    response["messages"] = json::array();
 
     // Check that the position input has the format [x,y,z], with x, y, and z being integer values
     std::regex position_regex(R"(\[\s*(-?\d+),\s*(-?\d+),\s*(-?\d+)\s*\])");
     std::smatch position_match;
     if (!std::regex_match(position, position_match, position_regex))
     {
-      response["messages"].push_back("Invalid position format: " + position);
+      feedback.add_message(Severity::ERROR, "Invalid position format: " + position);
       return false;
     }
 
     // Check that num_shots is a value above 0
     if (num_shots <= 0)
     {
-      response["messages"].push_back("Invalid number of shots: " + std::to_string(num_shots));
+      feedback.add_message(Severity::ERROR, "Invalid number of shots: " + std::to_string(num_shots));
       return false;
     }
 
@@ -394,17 +420,10 @@ bool IoLSMonitor::fire_at_position(const std::string position, const uint32_t nu
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method("LS1", "LS1.fire_at_position", {requestVariant}, outputArguments);
+      m_client.call_method("LS1", "LS1.fire_at_position", {requestVariant}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
-      response["messages"].push_back("Exception in fire_at_position: " + std::string(e.what()));
-    }
-    // feed any feedback messages into the list
-    auto feedback_messages = m_client.get_feedback_messages();
-    for (const auto &msg : feedback_messages)
-    {
-      response["messages"].push_back(msg);
     }
 
     // Convert the single output argument into a string and parse it into the response JSON variable
@@ -415,26 +434,26 @@ bool IoLSMonitor::fire_at_position(const std::string position, const uint32_t nu
       json server_response = json::parse(responseString);
 
       // Merge the messages from the server response into the existing response
+      Severity severity = Severity::INFO;
+      if (server_response.contains("statuscode"))
+      {
+        if (server_response["statuscode"].get<int>() != 0)
+        {
+          severity = Severity::ERROR;
+          feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
+        }
+      }
       if (server_response.contains("messages"))
       {
-      for (const auto &msg : server_response["messages"])
-      {
-        response["messages"].push_back(msg);
-      }
-      }
-
-      // Add any missing keys from the server response to the existing response
-      for (auto it = server_response.begin(); it != server_response.end(); ++it)
-      {
-      if (it.key() != "messages")
-      {
-        response[it.key()] = it.value();
-      }
+        for (const auto &msg : server_response["messages"])
+        {
+          feedback.add_message(severity,msg);
+        }
       }
     }
     else
     {
-      response["messages"].push_back("No valid response received from server.");
+      feedback.add_message(Severity::ERROR, "No valid response received from server.");
       // Clean up the UA_Variant
       UA_Variant_clear(&requestVariant);
       for (auto &output : outputArguments)
@@ -456,45 +475,42 @@ bool IoLSMonitor::fire_at_position(const std::string position, const uint32_t nu
   }
   catch (const json::exception &e)
   {
-    response["messages"].push_back("JSON exception in fire_at_position: " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "JSON exception in fire_at_position: " + std::string(e.what()));
     return false;
   }
   catch (const std::exception &e)
   {
-    response["messages"].push_back("Exception in fire_at_position: " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "Exception in fire_at_position: " + std::string(e.what()));
     return false;
   }
   catch (...)
   {
-    response["messages"].push_back("Unknown exception in fire_at_position");
+    feedback.add_message(Severity::ERROR, "Unknown exception in fire_at_position");
     return false;
   }
 }
 
-bool IoLSMonitor::fire_segment(const std::string start_position, const std::string end_position, json &response)
+bool IoLSMonitor::fire_segment(const std::string &start_position, const std::string &end_position, FeedbackManager &feedback)
 {
   try
   {
     // Check that the client is connected
     if (!m_client.is_connected())
     {
-      response["messages"].push_back("Client is not connected.");
+      feedback.add_message(Severity::ERROR, "Client is not connected.");
       return false;
     }
-    // Initialize the response JSON with a messages array
-    response["messages"] = json::array();
-
     // Check that the start_position and end_position inputs have the format [x,y,z], with x, y, and z being integer values
     std::regex position_regex(R"(\[\s*(-?\d+),\s*(-?\d+),\s*(-?\d+)\s*\])");
     std::smatch start_position_match, end_position_match;
     if (!std::regex_match(start_position, start_position_match, position_regex))
     {
-      response["messages"].push_back("Invalid start position format: " + start_position);
+      feedback.add_message(Severity::ERROR, "Invalid start position format: " + start_position);
       return false;
     }
     if (!std::regex_match(end_position, end_position_match, position_regex))
     {
-      response["messages"].push_back("Invalid end position format: " + end_position);
+      feedback.add_message(Severity::ERROR, "Invalid end position format: " + end_position);
       return false;
     }
 
@@ -516,17 +532,11 @@ bool IoLSMonitor::fire_segment(const std::string start_position, const std::stri
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method("LS1", "LS1.fire_segment", {requestVariant}, outputArguments);
+      m_client.call_method("LS1", "LS1.fire_segment", {requestVariant}, outputArguments,feedback);
     }
     catch (const std::exception &e)
     {
-      response["messages"].push_back("Exception in fire_segment: " + std::string(e.what()));
-    }
-    // feed any feedback messages into the list
-    auto feedback_messages = m_client.get_feedback_messages();
-    for (const auto &msg : feedback_messages)
-    {
-      response["messages"].push_back(msg);
+      feedback.add_message(Severity::ERROR, "Exception in fire_segment: " + std::string(e.what()));
     }
 
     // Convert the single output argument into a string and parse it into the response JSON variable
@@ -538,25 +548,23 @@ bool IoLSMonitor::fire_segment(const std::string start_position, const std::stri
 
       // Merge the messages from the server response into the existing response
       json server_response = json::parse(responseString);
+      Severity severity = Severity::INFO;
+      if (server_response.contains("statuscode"))
+      {
+        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
+        severity= Severity::ERROR;
+      }
       if (server_response.contains("messages"))
       {
         for (const auto &msg : server_response["messages"])
         {
-          response["messages"].push_back(msg);
-        }
-      }
-      // Add any missing keys from the server response to the existing response
-      for (auto it = server_response.begin(); it != server_response.end(); ++it)
-      {
-        if (it.key() != "messages")
-        {
-          response[it.key()] = it.value();
+          feedback.add_message(severity,msg);
         }
       }
     }
     else
     {
-      response["messages"].push_back("No valid response received from server.");
+      feedback.add_message(Severity::ERROR,"No valid response received from server.");
       // Clean up the UA_Variant
       UA_Variant_clear(&requestVariant);
       for (auto &output : outputArguments)
@@ -578,38 +586,29 @@ bool IoLSMonitor::fire_segment(const std::string start_position, const std::stri
   }
   catch (const json::exception &e)
   {
-    response["messages"].push_back("JSON exception in fire_segment: " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "JSON exception in fire_segment: " + std::string(e.what()));
     return false;
   }
   catch (const std::exception &e)
   {
-    response["messages"].push_back("Exception in fire_segment: " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "Exception in fire_segment: " + std::string(e.what()));
     return false;
   }
   catch (...)
   {
-    response["messages"].push_back("Unknown exception in fire_segment");
+    feedback.add_message(Severity::ERROR, "Unknown exception in fire_segment");
     return false;
   }
 }
 
-bool IoLSMonitor::execute_scan(const std::string run_plan, json &response)
+bool IoLSMonitor::execute_scan(const std::string &run_plan, FeedbackManager &feedback)
 {
   try
   {
     // Check that the client is connected
     if (!m_client.is_connected())
     {
-      response["messages"].push_back("Client is not connected.");
-      return false;
-    }
-    // Initialize the response JSON with a messages array
-    response["messages"] = json::array();
-
-    // Check that the client is connected
-    if (!m_client.is_connected())
-    {
-      response["messages"].push_back("Client is not connected.");
+      feedback.add_message(Severity::ERROR, "Client is not connected.");
       return false;
     }
 
@@ -621,14 +620,14 @@ bool IoLSMonitor::execute_scan(const std::string run_plan, json &response)
     }
     catch (const json::exception &e)
     {
-      response["messages"].push_back("Invalid JSON format: " + std::string(e.what()) + " | Input: " + run_plan);
+      feedback.add_message(Severity::ERROR, "Invalid JSON format: " + std::string(e.what()) + " | Input: " + run_plan);
       return false;
     }
 
     // Check that the run_plan variable is valid JSON with the required structure
     if (!jrun_plan.contains("scan_plan") || !jrun_plan["scan_plan"].is_array())
     {
-      response["messages"].push_back("Invalid scan plan structure. Expected a JSON object with a 'scan_plan' array.");
+      feedback.add_message(Severity::ERROR, "Invalid scan plan structure. Expected a JSON object with a 'scan_plan' array.");
       return false;
     }
 
@@ -637,7 +636,7 @@ bool IoLSMonitor::execute_scan(const std::string run_plan, json &response)
     {
       if (!item.contains("start") || !item.contains("end"))
       {
-        response["messages"].push_back("Missing 'start' or 'end' key in scan plan item: " + item.dump());
+        feedback.add_message(Severity::ERROR, "Missing 'start' or 'end' key in scan plan item: " + item.dump());
         return false;
       }
 
@@ -646,7 +645,7 @@ bool IoLSMonitor::execute_scan(const std::string run_plan, json &response)
       std::smatch start_match, end_match;
       if (!std::regex_match(start_str, start_match, position_regex) || !std::regex_match(end_str, end_match, position_regex))
       {
-        response["messages"].push_back("Invalid position format in scan plan item. Expected format [x,y,z]. Item: " + item.dump());
+        feedback.add_message(Severity::ERROR, "Invalid position format in scan plan item. Expected format [x,y,z]. Item: " + item.dump());
         return false;
       }
     }
@@ -663,17 +662,11 @@ bool IoLSMonitor::execute_scan(const std::string run_plan, json &response)
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method("LS1", "LS1.execute_scan", {requestVariant}, outputArguments);
+      m_client.call_method("LS1", "LS1.execute_scan", {requestVariant}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
-      response["messages"].push_back("Exception in fire_segment: " + std::string(e.what()));
-    }
-    // feed any feedback messages into the list
-    auto feedback_messages = m_client.get_feedback_messages();
-    for (const auto &msg : feedback_messages)
-    {
-      response["messages"].push_back(msg);
+      feedback.add_message(Severity::ERROR, "Exception in fire_segment: " + std::string(e.what()));
     }
 
     // Convert the single output argument into a string and parse it into the response JSON variable
@@ -684,25 +677,23 @@ bool IoLSMonitor::execute_scan(const std::string run_plan, json &response)
 
       // Merge the messages from the server response into the existing response
       json server_response = json::parse(responseString);
+      Severity severity = Severity::INFO;
+      if (server_response.contains("statuscode"))
+      {
+        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
+        severity = Severity::ERROR;
+      }
       if (server_response.contains("messages"))
       {
         for (const auto &msg : server_response["messages"])
         {
-          response["messages"].push_back(msg);
-        }
-      }
-      // Add any missing keys from the server response to the existing response
-      for (auto it = server_response.begin(); it != server_response.end(); ++it)
-      {
-        if (it.key() != "messages")
-        {
-          response[it.key()] = it.value();
+          feedback.add_message(severity,msg);
         }
       }
     }
     else
     {
-      response["messages"].push_back("No valid response received from server.");
+      feedback.add_message(Severity::ERROR, "No valid response received from server.");
       // Clean up the UA_Variant
       UA_Variant_clear(&requestVariant);
       for (auto &output : outputArguments)
@@ -724,38 +715,29 @@ bool IoLSMonitor::execute_scan(const std::string run_plan, json &response)
   }
   catch (const json::exception &e)
   {
-    response["messages"].push_back("JSON exception in execute_scan: " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "JSON exception in execute_scan: " + std::string(e.what()));
     return false;
   }
   catch (const std::exception &e)
   {
-    response["messages"].push_back("Exception in execute_scan: " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "Exception in execute_scan: " + std::string(e.what()));
     return false;
   }
   catch (...)
   {
-    response["messages"].push_back("Unknown exception in execute_scan");
+    feedback.add_message(Severity::ERROR, "Unknown exception in execute_scan");
     return false;
   }
 }
 
-bool IoLSMonitor::exec_method_simple(const std::string &method_node, json &response)
+bool IoLSMonitor::exec_method_simple(const std::string &method_node, FeedbackManager &feedback)
 {
   try
   {
     // Check that the client is connected
     if (!m_client.is_connected())
     {
-      response["messages"].push_back("Client is not connected.");
-      return false;
-    }
-    // Initialize the response JSON with a messages array
-    response["messages"] = json::array();
-
-    // Check that the client is connected
-    if (!m_client.is_connected())
-    {
-      response["messages"].push_back("Client is not connected.");
+      feedback.add_message(Severity::ERROR, "Client is not connected.");
       return false;
     }
 
@@ -767,17 +749,11 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, json &respo
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method("LS1", method_node, {requestVariant}, outputArguments);
+      m_client.call_method("LS1", method_node, {requestVariant}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
-      response["messages"].push_back("Exception in fire_segment: " + std::string(e.what()));
-    }
-    // feed any feedback messages into the list
-    auto feedback_messages = m_client.get_feedback_messages();
-    for (const auto &msg : feedback_messages)
-    {
-      response["messages"].push_back(msg);
+      feedback.add_message(Severity::ERROR, "Exception in fire_segment: " + std::string(e.what()));
     }
 
     // Convert the single output argument into a string and parse it into the response JSON variable
@@ -788,25 +764,23 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, json &respo
 
       // Merge the messages from the server response into the existing response
       json server_response = json::parse(responseString);
+      Severity severity = Severity::INFO;
+      if (server_response.contains("statuscode"))
+      {
+        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
+        severity = Severity::ERROR;
+      }
       if (server_response.contains("messages"))
       {
         for (const auto &msg : server_response["messages"])
         {
-          response["messages"].push_back(msg);
-        }
-      }
-      // Add any missing keys from the server response to the existing response
-      for (auto it = server_response.begin(); it != server_response.end(); ++it)
-      {
-        if (it.key() != "messages")
-        {
-          response[it.key()] = it.value();
+          feedback.add_message(severity, msg);
         }
       }
     }
     else
     {
-      response["messages"].push_back("No valid response received from server.");
+      feedback.add_message(Severity::ERROR, "No valid response received from server.");
       // Clean up the UA_Variant
       UA_Variant_clear(&requestVariant);
       for (auto &output : outputArguments)
@@ -828,50 +802,51 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, json &respo
   }
   catch (const json::exception &e)
   {
-    response["messages"].push_back("JSON exception in " + method_node + ": " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "JSON exception in " + method_node + ": " + std::string(e.what()));
     return false;
   }
   catch (const std::exception &e)
   {
-    response["messages"].push_back("Exception in " + method_node + ": " + std::string(e.what()));
+    feedback.add_message(Severity::ERROR, "Exception in " + method_node + ": " + std::string(e.what()));
     return false;
   }
   catch (...)
   {
-    response["messages"].push_back("Unknown exception in " + method_node);
+    feedback.add_message(Severity::ERROR, "Unknown exception in " + method_node);
     return false;
   }
 }
 
-bool IoLSMonitor::pause(json &response)
+bool IoLSMonitor::pause(FeedbackManager &feedback)
 {
-  return exec_method_simple("LS1.pause", response);
+  return exec_method_simple("LS1.pause", feedback);
 }
 
-bool IoLSMonitor::standby(json &response)
+bool IoLSMonitor::standby(FeedbackManager &feedback)
 {
-  return exec_method_simple("LS1.standby", response);
+  return exec_method_simple("LS1.standby", feedback);
 }
 
-bool IoLSMonitor::resume(json &response)
+bool IoLSMonitor::resume(FeedbackManager &feedback)
 {
-  return exec_method_simple("LS1.resume", response);
+  return exec_method_simple("LS1.resume", feedback);
 }
 
-bool IoLSMonitor::warmup(json &response)
+bool IoLSMonitor::warmup(FeedbackManager &feedback)
 {
-  return exec_method_simple("LS1.warmup", response);
+  return exec_method_simple("LS1.warmup", feedback);
 }
 
-bool IoLSMonitor::shutdown(json &response)
+bool IoLSMonitor::shutdown(FeedbackManager &feedback)
 {
-  return exec_method_simple("LS1.shutdown", response);
+  return exec_method_simple("LS1.shutdown", feedback);
 }
 
-bool IoLSMonitor::stop(json &response)
+bool IoLSMonitor::stop(FeedbackManager &feedback)
 {
-  return exec_method_simple("LS1.stop", response);
+  return exec_method_simple("LS1.stop", feedback);
 }
+
 void IoLSMonitor::update_monitored_item(const std::string &key, const iols_opc_variant_t &value)
 {
   m_monitored_items[key] = value;
@@ -886,42 +861,31 @@ void IoLSMonitor::set_monitored_vars(const std::vector<std::string> &var_names)
     m_monitored_vars[var_name] = value;
   }
 }
-std::deque<std::string> IoLSMonitor::get_feedback_messages()
-{
-  std::deque<std::string> messages = std::move(m_feedback_messages);
-  m_feedback_messages.clear();
-  return messages;
-}
 
-bool IoLSMonitor::read_variable(const std::string &variable, UA_Variant &value)
+bool IoLSMonitor::read_variable(const std::string &variable, UA_Variant &value, FeedbackManager &feedback)
 {
   try
   {
     // Check that the client is connected
     if (!m_client.is_connected())
     {
-      m_feedback_messages.push_back("Client is not connected.");
+      feedback.add_message(Severity::ERROR, "Client is not connected.");
       return false;
     }
 
     // Read the variable
-    m_client.read_variable(variable, value);
-
-    // Get feedback messages from the client and append them to m_feedback_messages
-    auto client_feedback = m_client.get_feedback_messages();
-    m_feedback_messages.insert(m_feedback_messages.end(), client_feedback.begin(), client_feedback.end());
-
-    m_feedback_messages.push_back("Successfully read variable: " + variable);
+    m_client.read_variable(variable, value,feedback);
+    feedback.add_message(Severity::INFO, "Successfully read variable: " + variable);
     return true;
   }
   catch (const std::exception &e)
   {
-    m_feedback_messages.push_back(std::string("Exception in read_variable: ") + e.what());
+    feedback.add_message(Severity::ERROR, std::string("Exception in read_variable: ") + e.what());
     return false;
   }
   catch (...)
   {
-    m_feedback_messages.push_back("Unknown exception in read_variable");
+    feedback.add_message(Severity::ERROR, "Unknown exception in read_variable");
     return false;
   }
 }
