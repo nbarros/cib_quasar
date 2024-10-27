@@ -1705,3 +1705,4 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
     getAddressSpaceLink()->setState(UaString(m_status_map.at(st).c_str()),OpcUa_Good);
   }
 
+}

@@ -2339,6 +2339,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return;
     }
+    update_status(m_status);
 
     if (m_laser)
     {
