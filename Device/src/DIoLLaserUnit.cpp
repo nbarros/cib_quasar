@@ -122,7 +122,6 @@ DIoLLaserUnit::DIoLLaserUnit (
     m_status_map.insert({sError,"error"});
 
     cib_init_mem();
-    update_status(sOffline);
 }
 
 /* sample dtr */

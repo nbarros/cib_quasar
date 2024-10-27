@@ -118,7 +118,6 @@ DIoLAttenuator::DIoLAttenuator (
     m_status_map.insert(std::pair<Status,std::string>(sOffline,"offline"));
     m_status_map.insert(std::pair<Status,std::string>(sReady,"ready"));
     m_status_map.insert(std::pair<Status, std::string>(sError, "error"));
-    set_status(sOffline);
 }
 
 /* sample dtr */
@@ -1629,6 +1628,7 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
   void DIoLAttenuator::update()
   {
     refresh_position();
+    set_status(m_status);
   }
   UaStatus DIoLAttenuator::terminate(json &resp)
   {

@@ -66,7 +66,7 @@ bool IoLSMonitor::is_connected() const
 
 void IoLSMonitor::monitor_loop()
 {
-  while (m_running)
+  while (m_running.load())
   {
     monitor_server();
     std::this_thread::sleep_for(std::chrono::seconds(1)); // Adjust the sleep duration as needed

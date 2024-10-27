@@ -62,6 +62,7 @@ void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int heigh
   std::vector<std::string> labels = {"RNN800", "RNN600", "LSTAGE", "A1", "PM1", "L1"};
   while (running)
   {
+    g_monitor->get_status(status);
     reset_right_pane(right_pane);
     int hpos = 2;
     // redraw everything

@@ -103,7 +103,6 @@ namespace Device
     m_status_map.insert({sOffline,"offline"});
     m_status_map.insert({sReady,"ready"});
     m_status_map.insert({sError,"error"});
-    update_status(sOffline);
             }
 
   /* sample dtr */
