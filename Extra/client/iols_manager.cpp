@@ -21,7 +21,7 @@
   Global variables to be manipulated
 */
 int g_height;
-IoLSMonitor *g_monitor;
+IoLSMonitor g_monitor;
 std::deque<FeedbackMessage> g_feedback;
 std::vector<std::string> g_vars_to_monitor = {"LS1.state", "LS1.RNN800.state", "LS1.RNN600.state", "LS1.LSTAGE.state", "LS1.A1.state", "LS1.L1.state","LS1.PM1.state", "LS1.PM1.energy_reading", "LS1.PM1.average_reading", "LS1.RNN800.current_position_motor", "RNN800.current_position_cib", "LS1.RNN600.current_position_motor", "LS1.RNN600.current_position_cib", "LS1.LSTAGE.current_position_motor", "LS1.LSTAGE.current_position_cib", "LS1.A1.position"};
 
@@ -57,15 +57,15 @@ void set_label_color(WINDOW *pane, int y, int x, const std::string &label, const
   wrefresh(pane);
 }
 
-void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int height, IoLSMonitor *monitor)
+void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int height, IoLSMonitor &monitor)
 {
   std::vector<std::string> labels = {"RNN800", "RNN600", "LSTAGE", "A1", "PM1", "L1"};
   while (running)
   {
     iols_monitor_t status;
-    if (monitor != nullptr)
+    if (monitor.is_connected())
     {
-      monitor->get_status(status);
+      monitor.get_status(status);
     }
     reset_right_pane(right_pane);
     int hpos = 2;
@@ -273,24 +273,27 @@ int run_command(int argc, char**argv)
   // check command request
   if (cmd == "exit")
   {
-    if (g_monitor != nullptr)
+    if (g_monitor.is_connected())
     {
-      json resp;
       FeedbackManager feedback;
-      g_monitor->shutdown(feedback);
+      g_monitor.disconnect(feedback);
       std::vector<FeedbackMessage> messages = feedback.get_messages();
       update_feedback(messages);
-      g_monitor->disconnect(feedback);
-      messages = feedback.get_messages();
-      update_feedback(messages);
-      delete g_monitor;
-      g_monitor = nullptr;
+
+      //g_monitor->shutdown(feedback);
+      // std::vector<FeedbackMessage> messages = feedback.get_messages();
+      // update_feedback(messages);
+      // g_monitor->disconnect(feedback);
+      // messages = feedback.get_messages();
+      // update_feedback(messages);
+      // delete g_monitor;
+      // g_monitor = nullptr;
     }
     return 255;
   }
   else if (cmd == "connect")
   {
-    if (g_monitor != nullptr)
+    if (g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR,"Already connected to a server. Disconnect first.");
       return 0;
@@ -312,22 +315,20 @@ int run_command(int argc, char**argv)
         server = "opc.tcp://10.73.137.148:4841";
       }
       add_feedback(Severity::INFO,"Connecting to server: " + server);
-      g_monitor = new IoLSMonitor(server);
+      // g_monitor = new IoLSMonitor(server);
       FeedbackManager feedback;
-      bool res = g_monitor->connect(feedback);
+      bool res = g_monitor.connect(server,feedback);
       std::vector<FeedbackMessage> messages = feedback.get_messages();
       update_feedback(messages);
       if (res)
       {
         add_feedback(Severity::INFO,"Connected to server.");
         // update the variables that are to be kept under surveillance
-        g_monitor->set_monitored_vars(g_vars_to_monitor);
+        g_monitor.set_monitored_vars(g_vars_to_monitor);
       }
       else
       {
         add_feedback(Severity::ERROR, "Failed to connect to server.");
-        delete g_monitor;
-        g_monitor = nullptr;
       }
       // start connection
       return 0;
@@ -335,7 +336,7 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "disconnect")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR,"Not connected to a server.");
       return 0;
@@ -352,31 +353,31 @@ int run_command(int argc, char**argv)
     //   }
     // }
     FeedbackManager feedback;
-    g_monitor->disconnect(feedback);
+    g_monitor.disconnect(feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     add_feedback(Severity::INFO,"Disconnecting from server.");
-    delete g_monitor;
-    g_monitor = nullptr;
+    // delete g_monitor;
+    // g_monitor = nullptr;
     return 0;
   }
   else if (cmd == "shutdown")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR,"Not connected to a server.");
       return 0;
     }
     add_feedback(Severity::INFO,"Shutting down the system.");
     FeedbackManager feedback;
-    g_monitor->shutdown(feedback);
+    g_monitor.shutdown(feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     return 0;
   }
   else if (cmd == "config")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR,"Not connected to a server.");
       return 0;
@@ -388,7 +389,7 @@ int run_command(int argc, char**argv)
     }
     std::string location(argv[1]);
     FeedbackManager feedback;
-    bool res = g_monitor->config(location, feedback);
+    bool res = g_monitor.config(location, feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -403,7 +404,7 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "move_to_position")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR,"Not connected to a server.");
       return 0;
@@ -420,7 +421,7 @@ int run_command(int argc, char**argv)
     {
       approach = argv[2];
     }
-    bool res = g_monitor->move_to_position(position, approach, feedback);
+    bool res = g_monitor.move_to_position(position, approach, feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -434,13 +435,13 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "warmup")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR,"Not connected to a server.");
       return 0;
     }
     FeedbackManager feedback;
-    bool res = g_monitor->warmup(feedback);
+    bool res = g_monitor.warmup(feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -454,13 +455,13 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "pause")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
     FeedbackManager feedback;
-    bool res = g_monitor->pause(feedback);
+    bool res = g_monitor.pause(feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -474,13 +475,13 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "standby")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
     FeedbackManager feedback;
-    bool res = g_monitor->standby(feedback);
+    bool res = g_monitor.standby(feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -494,13 +495,13 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "resume")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
     FeedbackManager feedback;
-    bool res = g_monitor->resume(feedback);
+    bool res = g_monitor.resume(feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -514,13 +515,13 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "stop")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
     FeedbackManager feedback;
-    bool res = g_monitor->stop(feedback);
+    bool res = g_monitor.stop(feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -534,7 +535,7 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "fire_at_position")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
@@ -547,7 +548,7 @@ int run_command(int argc, char**argv)
     std::string position(argv[1]);
     uint32_t num_shots = std::stoi(argv[2]);
     FeedbackManager feedback;
-    bool res = g_monitor->fire_at_position(position, num_shots, feedback);
+    bool res = g_monitor.fire_at_position(position, num_shots, feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -561,7 +562,7 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "fire_segment")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
@@ -574,7 +575,7 @@ int run_command(int argc, char**argv)
     std::string start_position(argv[1]);
     std::string end_position(argv[2]);
     FeedbackManager feedback;
-    bool res = g_monitor->fire_segment(start_position, end_position, feedback);
+    bool res = g_monitor.fire_segment(start_position, end_position, feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -588,7 +589,7 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "execute_scan")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
@@ -600,7 +601,7 @@ int run_command(int argc, char**argv)
     }
     std::string run_plan(argv[1]);
     FeedbackManager feedback;
-    bool res = g_monitor->execute_scan(run_plan, feedback);
+    bool res = g_monitor.execute_scan(run_plan, feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -614,14 +615,14 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "shutdown")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
     add_feedback(Severity::INFO, "Shutting down the system.");
     FeedbackManager feedback;
-    g_monitor->shutdown(feedback);
+    g_monitor.shutdown(feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     return 0;
@@ -633,7 +634,7 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "read_variable")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
@@ -648,7 +649,7 @@ int run_command(int argc, char**argv)
     UA_Variant_init(&value);
 
     FeedbackManager feedback;
-    g_monitor->read_variable(variable, value, feedback);
+    g_monitor.read_variable(variable, value, feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     std::ostringstream msg;
@@ -686,7 +687,7 @@ int run_command(int argc, char**argv)
   }
   else if (cmd == "add_monitor")
   {
-    if (g_monitor == nullptr)
+    if (!g_monitor.is_connected())
     {
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
@@ -699,7 +700,7 @@ int run_command(int argc, char**argv)
     std::string variable(argv[1]);
     g_vars_to_monitor.push_back(variable);
     FeedbackManager feedback;
-    g_monitor->set_monitored_vars(g_vars_to_monitor);
+    g_monitor.set_monitored_vars(g_vars_to_monitor);
     add_feedback(Severity::INFO, "Added variable to monitor list.");
   }
   else
@@ -716,7 +717,7 @@ int main(int argc, char** argv)
 {
 
   // initialize globals
-  g_monitor = nullptr;
+  //g_monitor = nullptr;
 
   //
   // Initialize the ncurses window
@@ -759,7 +760,7 @@ int main(int argc, char** argv)
   // iols_monitor_t status; // Assuming you have a way to initialize this structure
 
   // start the monitoring thread
-  std::thread right_pane_thread(update_right_pane, right_pane, std::ref(run_monitor), g_height, g_monitor);
+  std::thread right_pane_thread(update_right_pane, right_pane, std::ref(run_monitor), g_height, std::ref(g_monitor));
   // this part is similar to the cib_manager, but with the
   // ncurse interface
   // -- now start the real work

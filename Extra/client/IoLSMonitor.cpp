@@ -5,8 +5,8 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
-IoLSMonitor::IoLSMonitor(const std::string &serverUrl)
-    : m_serverUrl(serverUrl), m_running(false), m_connected(false)
+IoLSMonitor::IoLSMonitor()
+    : m_serverUrl(""), m_running(false), m_connected(false)
 {
 }
 
@@ -22,10 +22,11 @@ IoLSMonitor::~IoLSMonitor()
   }
 }
 
-bool IoLSMonitor::connect(FeedbackManager &feedback)
+bool IoLSMonitor::connect(const std::string &serverUrl, FeedbackManager &feedback)
 {
   try
   {
+    m_serverUrl = serverUrl;
     m_connected = m_client.connect(m_serverUrl, feedback);
     if (m_connected)
     {
@@ -75,9 +76,9 @@ void IoLSMonitor::monitor_loop()
 
 void IoLSMonitor::monitor_server()
 {
-  try
+  for (auto &item : m_monitored_vars)
   {
-    for (auto &item : m_monitored_vars)
+    try
     {
       UA_Variant value;
       UA_Variant_init(&value);
@@ -93,23 +94,43 @@ void IoLSMonitor::monitor_server()
       {
         update_monitored_item(item.first, *static_cast<UA_Int32 *>(value.data));
       }
+      else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_UINT32]))
+      {
+        update_monitored_item(item.first, *static_cast<UA_UInt32 *>(value.data));
+      }
+      else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_INT16]))
+      {
+        update_monitored_item(item.first, *static_cast<UA_Int16 *>(value.data));
+      }
+      else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_UINT16]))
+      {
+        update_monitored_item(item.first, *static_cast<UA_UInt16 *>(value.data));
+      }
       else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_DOUBLE]))
       {
         update_monitored_item(item.first, *static_cast<UA_Double *>(value.data));
       }
+      else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_FLOAT]))
+      {
+        update_monitored_item(item.first, *static_cast<UA_Float *>(value.data));
+      }
+      else if (UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_BOOLEAN]))
+      {
+        update_monitored_item(item.first, *static_cast<UA_Boolean *>(value.data));
+      }
 
       UA_Variant_clear(&value);
     }
-  }
-  catch (const std::exception &e)
-  {
-    FeedbackManager feedback;
-    feedback.add_message(Severity::ERROR, std::string("Exception in monitor_server: ") + e.what());
-  }
-  catch (...)
-  {
-    FeedbackManager feedback;
-    feedback.add_message(Severity::ERROR, "Unknown exception in monitor_server");
+    catch (const std::exception &e)
+    {
+      FeedbackManager feedback;
+      feedback.add_message(Severity::ERROR, std::string("Exception in monitor_server: ") + e.what());
+    }
+    catch (...)
+    {
+      FeedbackManager feedback;
+      feedback.add_message(Severity::ERROR, "Unknown exception in monitor_server");
+    }
   }
 }
 

@@ -14,16 +14,16 @@
 using json = nlohmann::json;
 
 // Define the variant type using std::variant
-using iols_opc_variant_t = std::variant<std::string, double, int>;
+using iols_opc_variant_t = std::variant<std::string, float, double, int32_t, uint32_t, int16_t, uint16_t,bool>;
 using iols_monitor_t = std::map<std::string, iols_opc_variant_t>;
 
 class IoLSMonitor
 {
 public:
-    IoLSMonitor(const std::string &serverUrl);
+    IoLSMonitor();
     ~IoLSMonitor();
 
-    bool connect(FeedbackManager &feedback);
+    bool connect(const std::string &serverUrl, FeedbackManager &feedback);
     void disconnect(FeedbackManager &feedback);
     bool is_connected() const;
 
