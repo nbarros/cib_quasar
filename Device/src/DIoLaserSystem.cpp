@@ -914,7 +914,7 @@ namespace Device
       // this should only fail if something is not configured
       //st = iollaserunit()->stop(resp);
       //FIXME: Should we set another method that does *really* stop the laser?
-      st = iollaserunit()->pause(resp);
+      st = iollaserunit()->stop(resp);
       if (st != OpcUa_Good)
       {
         reset(msg);
@@ -960,23 +960,9 @@ namespace Device
         }
         return st;
       }
-      // for (auto meter : iolpowermeters())
-      // {
-      //   st = meter->stop_readings(resp);
-      //   if (st != OpcUa_Good)
-      //   {
-      //     reset(msg);
-      //     msg << log_e("stop","Failed to stop power meter ") << meter->getFullName() << ". See previous messages.";
-      //     resp["status"] = "ERROR";
-      //     resp["messages"].push_back(msg.str());
-      //     if (!resp.contains("statuscode"))
-      //     {
-      //       resp["statuscode"] = OpcUa_Bad;
-      //     }
-      //     return st;
-      //   }
-      // }
-      // if it reached this point we are currently stopped
+      // in this case we should not go back to ready, or we 
+      // will have to warmup again
+      update_state(sReady);
     }
     catch(json::exception &e)
     {
