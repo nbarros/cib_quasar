@@ -122,6 +122,7 @@ DIoLLaserUnit::DIoLLaserUnit (
     m_status_map.insert({sError,"error"});
 
     cib_init_mem();
+    update_status(sOffline);
 }
 
 /* sample dtr */
@@ -2338,6 +2339,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return;
     }
+    update_status(m_status);
 
     if (m_laser)
     {
@@ -3777,8 +3779,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 #endif
     if (m_reg_map.size() != 3)
     {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map oneor more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
-      m_status = sError;
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
+      update_status(sError);
     }
   }
   void DIoLLaserUnit::cib_free_mem()

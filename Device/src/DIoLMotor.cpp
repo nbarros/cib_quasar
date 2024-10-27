@@ -72,38 +72,33 @@ namespace Device
 /* sample ctr */
 DIoLMotor::DIoLMotor(
     const Configuration::IoLMotor &config,
-    Parent_DIoLMotor *parent) : Base_DIoLMotor(config, parent)
-
-                                /* fill up constructor initialization list here */
-                                ,
+    Parent_DIoLMotor *parent) : Base_DIoLMotor(config, parent),
                                 m_position_motor(-999999),
-                                m_position_setpoint(-999999), 
-                                m_is_ready(false), 
-                                m_is_moving(false), 
-                                m_acceleration(0), 
-                                m_deceleration(0), 
-                                m_speed_setpoint(200), 
-                                m_speed_readout(0), 
-                                m_torque(0.0), 
-                                m_temperature(0.0)
-                                //,m_address("")
-                                ,
-                                m_refresh_ms(500), 
-                                m_refresh_cib_ms(10), 
-                                m_stats_monitor(false), 
-                                m_position_monitor(false), 
-                                m_cib_monitor(false), 
+                                m_position_cib(-999999),
+                                m_position_setpoint(-999999),
+                                m_is_ready(false),
+                                m_is_moving(false),
+                                m_acceleration(0),
+                                m_deceleration(0),
+                                m_speed_setpoint(200),
+                                m_speed_readout(0),
+                                m_alarm_code_motor(0),
+                                m_coordinate_index(0),
+                                m_torque(0.0),
+                                m_temperature(0.0),
+                                m_refresh_ms(500),
+                                m_refresh_cib_ms(10),
+                                m_stats_monitor(false),
+                                m_position_monitor(false),
+                                m_cib_monitor(false),
                                 m_monitor_status(OpcUa_BadResourceUnavailable),
-                                m_server_host(""), 
-                                m_server_port(0), 
-                                m_range_min(-999999), 
-                                m_range_max(-999999), 
-                                m_alarm_code_motor(0), 
-                                m_coordinate_index(0), 
-                                m_id("NONE"), 
-                                m_mmap_fd(0), 
+                                m_server_host(""),
+                                m_server_port(0),
+                                m_range_min(-999999),
+                                m_range_max(-999999),
+                                m_id("NONE"),
+                                m_mmap_fd(0),
                                 m_status(sOffline)
-
 {
     /* fill up constructor body here */
     // initialize cURL
@@ -113,7 +108,7 @@ DIoLMotor::DIoLMotor(
     (void)init_cib_mem();
     m_status_map.insert({sOffline,"offline"});
     m_status_map.insert({sReady,"ready"});
-    m_status_map.insert({sOperating,"moving"});
+    m_status_map.insert({sOperating,"operating"});
     m_status_map.insert({sError,"error"});
 
     m_id = id();
