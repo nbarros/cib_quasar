@@ -57,15 +57,15 @@ void set_label_color(WINDOW *pane, int y, int x, const std::string &label, const
   wrefresh(pane);
 }
 
-void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int height)
+void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int height, IoLSMonitor *monitor)
 {
   std::vector<std::string> labels = {"RNN800", "RNN600", "LSTAGE", "A1", "PM1", "L1"};
-  iols_monitor_t status;
   while (running)
   {
-    if (g_monitor != nullptr)
+    iols_monitor_t status;
+    if (monitor != nullptr)
     {
-      g_monitor->get_status(status);
+      monitor->get_status(status);
     }
     reset_right_pane(right_pane);
     int hpos = 2;
@@ -759,7 +759,7 @@ int main(int argc, char** argv)
   // iols_monitor_t status; // Assuming you have a way to initialize this structure
 
   // start the monitoring thread
-  std::thread right_pane_thread(update_right_pane, right_pane, std::ref(run_monitor), g_height);
+  std::thread right_pane_thread(update_right_pane, right_pane, std::ref(run_monitor), g_height, g_monitor);
   // this part is similar to the cib_manager, but with the
   // ncurse interface
   // -- now start the real work
