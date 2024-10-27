@@ -103,7 +103,7 @@ namespace Device
     m_status_map.insert({sOffline,"offline"});
     m_status_map.insert({sReady,"ready"});
     m_status_map.insert({sError,"error"});
-
+    update_status(sOffline);
             }
 
   /* sample dtr */
@@ -237,8 +237,9 @@ namespace Device
 
     if (m_reg_map.size() != 3)
     {
-      // sError is a special case of status, since this
+      // sError is a special case of status, 
       LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regions. This is going to fail spectacularly!!!\n\n";
+      update_status(sError);
     }
     return OpcUa_Good;
   }
@@ -805,7 +806,7 @@ namespace Device
     }
     else
     {
-      update_status(sError);
+      // if we haven't yet configured, the pdts won't be known
       getAddressSpaceLink()->setPdts_state(0xF,OpcUa_Uncertain);
       getAddressSpaceLink()->setPdts_address(0xF,OpcUa_Uncertain);
     }

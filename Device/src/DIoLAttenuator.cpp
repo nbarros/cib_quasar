@@ -118,6 +118,7 @@ DIoLAttenuator::DIoLAttenuator (
     m_status_map.insert(std::pair<Status,std::string>(sOffline,"offline"));
     m_status_map.insert(std::pair<Status,std::string>(sReady,"ready"));
     m_status_map.insert(std::pair<Status, std::string>(sError, "error"));
+    set_status(sOffline);
 }
 
 /* sample dtr */
@@ -1704,4 +1705,3 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
     getAddressSpaceLink()->setState(UaString(m_status_map.at(st).c_str()),OpcUa_Good);
   }
 
-}
