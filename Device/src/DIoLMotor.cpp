@@ -113,7 +113,7 @@ DIoLMotor::DIoLMotor(
     (void)init_cib_mem();
     m_status_map.insert({sOffline,"offline"});
     m_status_map.insert({sReady,"ready"});
-    m_status_map.insert({sOperating,"moving"});
+    m_status_map.insert({sOperating,"operating"});
     m_status_map.insert({sError,"error"});
 
     m_id = id();

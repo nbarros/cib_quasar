@@ -82,6 +82,8 @@ namespace Device
     m_state_map.insert({sPause,"pause"});
     m_state_map.insert({sStandby,"standby"});
     m_state_map.insert({sOperating,"operating"});
+    m_state_map.insert({sError,"sError"});
+
 
       
         }

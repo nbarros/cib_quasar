@@ -117,7 +117,7 @@ DIoLAttenuator::DIoLAttenuator (
 
     m_status_map.insert(std::pair<Status,std::string>(sOffline,"offline"));
     m_status_map.insert(std::pair<Status,std::string>(sReady,"ready"));
-
+    m_status_map.insert(std::pair<Status, std::string>(sError, "error"));
 }
 
 /* sample dtr */
