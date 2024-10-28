@@ -859,7 +859,7 @@ bool IoLSMonitor::resume(FeedbackManager &feedback)
 
 bool IoLSMonitor::warmup(FeedbackManager &feedback)
 {
-  return exec_method_simple("LS1.warmup", feedback);
+  return exec_method_simple("LS1.warmup_laser", feedback);
 }
 
 bool IoLSMonitor::shutdown(FeedbackManager &feedback)
