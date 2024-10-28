@@ -283,7 +283,7 @@ bool IoLSMonitor::move_to_position(const std::string &position, const std::strin
           feedback.add_message(Severity::REPORT, msg);
         }
       }
-      if (server_response.contains("statuscode"))
+      if (server_response.contains("statuscode") && (server_response["statuscode"].get<int>() != UA_STATUSCODE_GOOD))
       {
         feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
       }
@@ -381,19 +381,18 @@ bool IoLSMonitor::fire_at_position(const std::string &position, const uint32_t n
 
       // Merge the messages from the server response into the existing response
       Severity severity = Severity::REPORT;
-      if (server_response.contains("statuscode"))
-      {
-        if (server_response["statuscode"].get<int>() != 0)
-        {
-          severity = Severity::ERROR;
-          feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
-        }
-      }
       if (server_response.contains("messages"))
       {
         for (const auto &msg : server_response["messages"])
         {
-          feedback.add_message(severity,msg);
+          feedback.add_message(severity, msg);
+        }
+      }
+      if (server_response.contains("statuscode"))
+      {
+        if (server_response["statuscode"].get<int>() != 0)
+        {
+          feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
         }
       }
     }
@@ -495,17 +494,17 @@ bool IoLSMonitor::fire_segment(const std::string &start_position, const std::str
       // Merge the messages from the server response into the existing response
       json server_response = json::parse(responseString);
       Severity severity = Severity::REPORT;
-      if (server_response.contains("statuscode"))
-      {
-        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
-        severity= Severity::ERROR;
-      }
       if (server_response.contains("messages"))
       {
         for (const auto &msg : server_response["messages"])
         {
-          feedback.add_message(severity,msg);
+          feedback.add_message(severity, msg);
         }
+      }
+      if (server_response.contains("statuscode")  && (server_response["statuscode"].get<int>() != 0))
+
+      {
+        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
       }
     }
     else
@@ -624,17 +623,16 @@ bool IoLSMonitor::execute_scan(const std::string &run_plan, FeedbackManager &fee
       // Merge the messages from the server response into the existing response
       json server_response = json::parse(responseString);
       Severity severity = Severity::REPORT;
-      if (server_response.contains("statuscode"))
-      {
-        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
-        severity = Severity::ERROR;
-      }
       if (server_response.contains("messages"))
       {
         for (const auto &msg : server_response["messages"])
         {
-          feedback.add_message(severity,msg);
+          feedback.add_message(severity, msg);
         }
+      }
+      if (server_response.contains("statuscode") && (server_response["statuscode"].get<int>() != UA_STATUSCODE_GOOD))
+      {
+        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
       }
     }
     else
@@ -711,17 +709,16 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, FeedbackMan
       // Merge the messages from the server response into the existing response
       json server_response = json::parse(responseString);
       Severity severity = Severity::REPORT;
-      if (server_response.contains("statuscode"))
-      {
-        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
-        severity = Severity::ERROR;
-      }
       if (server_response.contains("messages"))
       {
         for (const auto &msg : server_response["messages"])
         {
           feedback.add_message(severity, msg);
         }
+      }
+      if (server_response.contains("statuscode") && (server_response["statuscode"].get<int>() != UA_STATUSCODE_GOOD))
+      {
+        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
       }
     }
     else
@@ -796,17 +793,16 @@ bool IoLSMonitor::exec_method_arg(const std::string &method_node, const UA_Varia
       // Merge the messages from the server response into the existing response
       json server_response = json::parse(responseString);
       Severity severity = Severity::REPORT;
-      if (server_response.contains("statuscode"))
-      {
-        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
-        severity = Severity::ERROR;
-      }
       if (server_response.contains("messages"))
       {
         for (const auto &msg : server_response["messages"])
         {
           feedback.add_message(severity, msg);
         }
+      }
+      if (server_response.contains("statuscode") && (server_response["statuscode"].get<int>() != UA_STATUSCODE_GOOD))
+      {
+        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
       }
     }
     else
