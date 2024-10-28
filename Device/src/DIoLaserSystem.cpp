@@ -2315,6 +2315,14 @@ UaStatus DIoLaserSystem::callClear_error (
         is_moving = lmotor->is_moving();
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
       }
+      
+      lmotor->get_position_motor(c_pos, resp);
+
+      reset(msg);
+      msg << log_i(lbl.c_str(), "Interim position for motor (id : ")
+          << lmotor->get_id() << ") : " << c_pos;
+      LOG(Log::INF) << msg.str();
+
       reset(msg);
       msg << log_i(lbl.c_str(), "Now reaching for target position for motor (id : ")
           << lmotor->get_id() << ") : " << position.at(idx);
