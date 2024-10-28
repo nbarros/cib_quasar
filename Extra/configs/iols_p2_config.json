@@ -111,7 +111,8 @@
 	"calibration" : {
 		"offset" : 3900,
 		"scale"	 : -43.333333	
-	}
+	},
+	"position_range" : [-10000,10000]
 },
 "laser" : {
 		"id": "L1",
