@@ -906,7 +906,10 @@ bool IoLSMonitor::shutdown(FeedbackManager &feedback)
 {
   return exec_method_simple("LS1.shutdown", feedback);
 }
-
+bool IoLSMonitor::clear_error(FeedbackManager &feedback)
+{
+  return exec_method_simple("LS1.clear_error", feedback);
+}
 bool IoLSMonitor::stop(FeedbackManager &feedback)
 {
   return exec_method_simple("LS1.stop", feedback);

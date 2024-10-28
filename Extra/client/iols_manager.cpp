@@ -305,6 +305,8 @@ void print_help()
   add_feedback(Severity::INFO, "       Position should be a value in [-10000; 10000]");
   add_feedback(Severity::INFO, "   set_dac <value>");
   add_feedback(Severity::INFO, "       Value cannot be above 4095");
+  add_feedback(Severity::INFO, "   clear_error");
+  add_feedback(Severity::INFO, "       Clears IoLS error state, returning task messages");
   add_feedback(Severity::INFO, "  exit");
   add_feedback(Severity::INFO, "       Exit the program");
 }
@@ -697,7 +699,21 @@ int run_command(int argc, char**argv)
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     return 0;
+  }
+  else if (cmd == "clear_error")
+  {
+    if (!g_monitor.is_connected())
+    {
+      add_feedback(Severity::ERROR, "Not connected to a server.");
+      return 0;
     }
+    add_feedback(Severity::INFO, "Clearing error state.");
+    FeedbackManager feedback;
+    g_monitor.clear_error(feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    return 0;
+  }
   else if (cmd == "help")
   {
     print_help();

@@ -37,6 +37,7 @@ public:
     bool resume(FeedbackManager &feedback);
     bool warmup(FeedbackManager &feedback);
     bool shutdown(FeedbackManager &feedback);
+    bool clear_error(FeedbackManager &feedback);
     bool stop(FeedbackManager &feedback);
     void get_status(iols_monitor_t &status) { status = m_monitored_items; }
     void set_monitored_vars(const std::vector<std::string> &var_names);
@@ -44,7 +45,6 @@ public:
     bool set_pm_range(const int16_t &selection, FeedbackManager &feedback);
     bool set_pm_threshold(const uint16_t &selection, FeedbackManager &feedback);
     bool set_dac_threshold(const uint16_t &selection, FeedbackManager &feedback);
-
     bool set_att_pos(const uint32_t &value, FeedbackManager &feedback);
 
 private:

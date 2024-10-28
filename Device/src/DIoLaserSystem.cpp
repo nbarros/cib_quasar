@@ -2243,7 +2243,7 @@ UaStatus DIoLaserSystem::callClear_error (
       // we have the current position, decide whether the approach is good or requires some overstepping
       if (c_pos < position.at(idx))
       {
-        // current position is "below" the target, only 'u' requires overstepping
+        // current position is "below" the target, only 'd' requires overstepping
         if (approach.at(idx) == 'd')
         {
           int32_t interim_target = position.at(idx) + overstep;
@@ -2252,12 +2252,21 @@ UaStatus DIoLaserSystem::callClear_error (
           {
             resp["status"] = "ERROR";
             reset(msg);
-            msg << log_e(lbl.c_str(), "Failed to set target position for motor (id : ")
+            msg << log_e(lbl.c_str(), "Failed to set overstep position for motor (id : ")
                 << lmotor->get_id() << ").";
             resp["messages"].push_back(msg.str());
             resp["statuscode"] = static_cast<uint32_t>(st);
             LOG(Log::ERR) << msg.str();
             // nothing is being done, so just terminate this task
+
+            if (!m_task_message_queue.contains("messages"))
+            {
+              m_task_message_queue["messages"] = json::array();
+            }
+            m_task_message_queue["status"] = "ERROR";
+            m_task_message_queue["statuscode"] = resp.at("statuscode").get<int>();
+            m_task_message_queue["messages"].insert(resp.at("messages").begin(), resp.at("messages").end());
+            //m_task_message_queue = resp;
             update_state(sError);
             return;
           }
@@ -2266,7 +2275,7 @@ UaStatus DIoLaserSystem::callClear_error (
       }
       else if (c_pos > position.at(idx))
       {
-        // we are above. If approach is 'd', we have to overstep
+        // we are above. If approach is 'u', we have to overstep
         // current position is "below" the target, only 'u' requires overstepping
         if (approach.at(idx) == 'u')
         {
@@ -2276,12 +2285,18 @@ UaStatus DIoLaserSystem::callClear_error (
           {
             resp["status"] = "ERROR";
             reset(msg);
-            msg << log_e(lbl.c_str(), "Failed to set target position for motor (id : ")
+            msg << log_e(lbl.c_str(), "Failed to set overstep position for motor (id : ")
                 << lmotor->get_id() << ").";
             resp["messages"].push_back(msg.str());
             resp["statuscode"] = static_cast<uint32_t>(st);
             LOG(Log::ERR) << msg.str();
-            // nothing is being done, so just terminate this task
+            if (!m_task_message_queue.contains("messages"))
+            {
+              m_task_message_queue["messages"] = json::array();
+            }
+            m_task_message_queue["status"] = "ERROR";
+            m_task_message_queue["statuscode"] = resp.at("statuscode").get<int>();
+            m_task_message_queue["messages"].insert(resp.at("messages").begin(), resp.at("messages").end());
             update_state(sError);
             return;
           }
@@ -2305,7 +2320,13 @@ UaStatus DIoLaserSystem::callClear_error (
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = static_cast<uint32_t>(st);
         LOG(Log::ERR) << msg.str();
-        // nothing is being done, so just terminate this task
+        if (!m_task_message_queue.contains("messages"))
+        {
+          m_task_message_queue["messages"] = json::array();
+        }
+        m_task_message_queue["status"] = "ERROR";
+        m_task_message_queue["statuscode"] = resp.at("statuscode").get<int>();
+        m_task_message_queue["messages"].insert(resp.at("messages").begin(), resp.at("messages").end());
         update_state(sError);
         return;
       }
@@ -2336,7 +2357,11 @@ UaStatus DIoLaserSystem::callClear_error (
         {
           m_task_message_queue["status"] = "OK";
         }
-        msg << log_e("move_to_pos","Operation was successful.");
+        msg << log_i("move_to_pos","Operation was successful.");
+        if (!m_task_message_queue.contains("messages"))
+        {
+          m_task_message_queue["messages"] = json::array();
+        }
         m_task_message_queue["messages"].push_back(msg.str());
         if (!m_task_message_queue.contains("statuscode"))
         {
