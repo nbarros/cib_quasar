@@ -125,7 +125,7 @@ void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int heigh
               status.count("LS1.A1.position") ? std::get<int>(status["LS1.A1.position"]) : -1);
     vpos += 2;
     mvwprintw(right_pane, vpos, 2, "DAC : %d",
-              status.count("LS1.CIB1.dac_threshold") ? std::get<int>(status["LS1.CIB1.dac_threshold"]) : -1);
+              status.count("LS1.CIB1.dac_threshold") ? std::get<uint16_t>(status["LS1.CIB1.dac_threshold"]) : -1);
     vpos += 2;
     // A few laser updates
     mvwprintw(right_pane, vpos, 2, "Laser status code : %02d",
