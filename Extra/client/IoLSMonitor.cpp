@@ -184,7 +184,7 @@ bool IoLSMonitor::config(const std::string &location, FeedbackManager &feedback)
     {
       UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
       reply = std::string(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
-      feedback.add_message(Severity::INFO, "Reply from server: " + reply);
+      //feedback.add_message(Severity::INFO, "Reply from server: " + reply);
     }
     else
     {
@@ -198,6 +198,10 @@ bool IoLSMonitor::config(const std::string &location, FeedbackManager &feedback)
       for (const auto &msg : server_response["messages"])
       {
         feedback.add_message(Severity::INFO, msg);
+      }
+      if (server_response.contains("statuscode"))
+      {
+        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
       }
     }
 
