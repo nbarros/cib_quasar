@@ -89,6 +89,9 @@ public:
         const UaString&  arguments,
         UaString& response
     ) ;
+    UaStatus callClear_error (
+        UaString& response
+    ) ;
 
 private:
     /* Delete copy constructor and assignment operator */
@@ -122,6 +125,7 @@ private:
     UaStatus warmup(json &resp);
     UaStatus shutdown(json &resp);
     bool process_move_arguments(const UaString& arguments, std::vector<int32_t> &target_pos, std::string &approach, json &response);
+    void move_task(std::vector<int32_t> &target_pos, std::string &approach);
     UaStatus move_to_pos(
         const std::vector<int32_t>&  position, const std::string approach,json &resp);
     // this is a stripped down version that does not make any checks
@@ -145,7 +149,7 @@ private:
     void get_message_queue(json &resp, bool clear);
     bool validate_scan_plan(json &plan, json &resp);
 public:
-
+    UaStatus clear_error(json &resp);
     // makes a roll call for each system to update itself
     void update();
     // makes a status call over all subsystems

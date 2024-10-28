@@ -1275,10 +1275,13 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     std::ostringstream msg("");
     const std::string lbl = "terminate";
     m_is_terminating.store(true);
+    // stop counting flashes
+    set_counting_flashes(false);
     // terminate should take on a mutex right away so other methods do nothing during this period
 
 #ifdef DEBUG
-    LOG(Log::WRN) << log_w(lbl.c_str(),"Terminating the current object instance.");
+            LOG(Log::WRN)
+        << log_w(lbl.c_str(), "Terminating the current object instance.");
 #endif
     // this is meant to do a smooth temrination of the device
     if (m_status == sOffline)
@@ -3268,7 +3271,6 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_i(lbl.c_str(),"Laser unit resumed operation.");
-      LOG(Log::ERR) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;

@@ -87,7 +87,7 @@ DIoLMotor::DIoLMotor(
                                 m_torque(0.0),
                                 m_temperature(0.0),
                                 m_refresh_ms(500),
-                                m_refresh_cib_ms(10),
+                                m_refresh_cib_ms(50),
                                 m_stats_monitor(false),
                                 m_position_monitor(false),
                                 m_cib_monitor(false),
@@ -308,7 +308,12 @@ UaStatus DIoLMotor::callClear_alarm (
     st = check_motor_ready(resp);
     if (st != OpcUa_Good)
     {
-      return st;
+      // check again, just to be sure
+      json dump;
+      if (check_motor_ready(dump) != OpcUa_Good)
+      {
+        return st;
+      }
     }
     // -- if we don't have a good monitoring status we cannot be sure of
     // what is the status of the motor downstream.
@@ -603,6 +608,12 @@ UaStatus DIoLMotor::callClear_alarm (
       int32_t cpos;
       int32_t prev_pos = m_position_cib;
       int32_t prev_prev_pos = prev_pos;
+
+      // fancy new try
+      // since we know the speed of the motor, we can check the CIB only 
+      // after the step period of the motor
+      m_refresh_cib_ms = (1 /m_speed_setpoint) * 1000;
+
       while (m_cib_monitor.load())
       {
         auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_refresh_cib_ms);
@@ -618,6 +629,9 @@ UaStatus DIoLMotor::callClear_alarm (
 #endif
         m_position_cib = cpos;
         getAddressSpaceLink()->setCurrent_position_cib(m_position_cib,OpcUa_Good);
+        // if the motor speed is very slow, this is certainly going to fail
+        // as the CIB is being queried much faster than the motor
+
         if (m_position_cib == prev_prev_pos)
         {
           m_is_moving = false;
@@ -731,18 +745,19 @@ UaStatus DIoLMotor::callClear_alarm (
       {
         m_position_motor = reply.at("cur_pos").get<int32_t>();
       }
-      if (reply.contains("tar_pos"))
-      {
-        int32_t tpos = reply.at("tar_pos").get<int32_t>();
-        if ((tpos < (m_position_setpoint-5)) || (tpos > (m_position_setpoint+5)))
-        {
-          // something is wrong, the target is not what we think
-          // FIXME: What to do in this case?
-#ifdef DEBUG
-          LOG(Log::ERR) << log_e("get_info","Mismatch in set_point. Got ") << tpos << " expected " << m_position_setpoint;
-#endif
-          }
-      }
+      // -- this gives a bunch of warnings that do not make any sense
+      //       if (reply.contains("tar_pos"))
+      //       {
+      //         int32_t tpos = reply.at("tar_pos").get<int32_t>();
+      //         if ((tpos < (m_position_setpoint-5)) || (tpos > (m_position_setpoint+5)))
+      //         {
+      //           // something is wrong, the target is not what we think
+      //           // FIXME: What to do in this case?
+      // #ifdef DEBUG
+      //           LOG(Log::ERR) << log_e("get_info","Mismatch in set_point. Got ") << tpos << " expected " << m_position_setpoint;
+      // #endif
+      //           }
+      //       }
       if (reply.contains("cur_speed"))
       {
         m_speed_readout = reply.at("cur_speed").get<uint32_t>();
@@ -1127,12 +1142,12 @@ UaStatus DIoLMotor::callClear_alarm (
       {
         m_coordinate_index = it.value();
       }
-      if (it.key() == "refresh_movememt_ms")
-      {
-        // timer to refresh the cib position
-        m_refresh_cib_ms = it.value();
-        // since by now the registers are mapped, we can initiate the thread
-      }
+      // if (it.key() == "refresh_movememt_ms")
+      // {
+      //   // timer to refresh the cib position
+      //   m_refresh_cib_ms = it.value();
+      //   // since by now the registers are mapped, we can initiate the thread
+      // }
     }
     update_status(sReady);
     //

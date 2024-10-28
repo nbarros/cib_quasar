@@ -42,37 +42,37 @@ using std::ostringstream;
 
 namespace Device
 {
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
-  // 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
-  // 1     Users don't modify this code!!!!                                  1
-  // 1     If you modify this code you may start a fire or a flood somewhere,1
-  // 1     and some human being may possible cease to exist. You don't want  1
-  // 1     to be charged with that!                                          1
-  // 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
+// 1     GENERATED CODE STARTS HERE AND FINISHES AT SECTION 2              1
+// 1     Users don't modify this code!!!!                                  1
+// 1     If you modify this code you may start a fire or a flood somewhere,1
+// 1     and some human being may possible cease to exist. You don't want  1
+// 1     to be charged with that!                                          1
+// 1111111111111111111111111111111111111111111111111111111111111111111111111
 
 
 
 
 
 
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
-  // 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
-  // 2     (code for which only stubs were generated automatically)          2
-  // 2     You should add the implementation but dont alter the headers      2
-  // 2     (apart from constructor, in which you should complete initializati2
-  // 2     on list)                                                          2
-  // 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
+// 2     SEMI CUSTOM CODE STARTS HERE AND FINISHES AT SECTION 3            2
+// 2     (code for which only stubs were generated automatically)          2
+// 2     You should add the implementation but dont alter the headers      2
+// 2     (apart from constructor, in which you should complete initializati2
+// 2     on list)                                                          2
+// 2222222222222222222222222222222222222222222222222222222222222222222222222
 
-  /* sample ctr */
-  DIoLaserSystem::DIoLaserSystem (
-      const Configuration::IoLaserSystem& config,
-      Parent_DIoLaserSystem* parent
-  ):
-        Base_DIoLaserSystem( config, parent)
+/* sample ctr */
+DIoLaserSystem::DIoLaserSystem (
+    const Configuration::IoLaserSystem& config,
+    Parent_DIoLaserSystem* parent
+):
+    Base_DIoLaserSystem( config, parent)
 
-        /* fill up constructor initialization list here */
+    /* fill up constructor initialization list here */
         ,m_state(sOffline)
-        {
+{
     /* fill up constructor body here */
     // this had to be in the constructor
 
@@ -86,23 +86,23 @@ namespace Device
 
 
       
-        }
+}
 
-  /* sample dtr */
-  DIoLaserSystem::~DIoLaserSystem ()
-  {
-  }
+/* sample dtr */
+DIoLaserSystem::~DIoLaserSystem ()
+{
+}
 
-  /* delegates for cachevariables */
+/* delegates for cachevariables */
 
 
 
-  /* delegators for methods */
-  UaStatus DIoLaserSystem::callLoad_config (
-      const UaString&  conf,
-      UaString& response
-  )
-  {
+/* delegators for methods */
+UaStatus DIoLaserSystem::callLoad_config (
+    const UaString&  conf,
+    UaString& response
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -156,11 +156,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-    UaStatus DIoLaserSystem::callCheck_ready (
-      OpcUa_Boolean& ready
-  )
-  {
+}
+UaStatus DIoLaserSystem::callCheck_ready (
+    OpcUa_Boolean& ready
+)
+{
     // check the states of all systems
     // check all associated subsystems if they're ready
     bool rdy = true;
@@ -211,11 +211,11 @@ namespace Device
     }
     ready = rdy;
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callStop (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLaserSystem::callStop (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -250,12 +250,12 @@ namespace Device
     }
     //response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callFire_at_position (
-      const UaString&  arguments,
-      UaString& answer
-  )
-  {
+}
+UaStatus DIoLaserSystem::callFire_at_position (
+    const UaString&  arguments,
+    UaString& answer
+)
+{
     const std::string lbl = "fire_at_pos";
     std::ostringstream msg("");
     bool got_exception = false;
@@ -312,12 +312,12 @@ namespace Device
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callFire_segment (
-      const UaString&  arguments,
-      UaString& answer
-  )
-  {
+}
+UaStatus DIoLaserSystem::callFire_segment (
+    const UaString&  arguments,
+    UaString& answer
+)
+{
     const std::string lbl = "fire_segment";
     std::ostringstream msg("");
     bool got_exception = false;
@@ -389,12 +389,12 @@ namespace Device
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callExecute_scan (
-      const UaString&  plan,
-      UaString& answer
-  )
-  {
+}
+UaStatus DIoLaserSystem::callExecute_scan (
+    const UaString&  plan,
+    UaString& answer
+)
+{
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
@@ -431,11 +431,11 @@ namespace Device
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callPause (
-      UaString& answer
-  )
-  {
+}
+UaStatus DIoLaserSystem::callPause (
+    UaString& answer
+)
+{
     const std::string lbl = "pause";
     std::ostringstream msg("");
     bool got_exception = false;
@@ -474,12 +474,11 @@ namespace Device
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
-    return OpcUa_BadNotImplemented;
-  }
-  UaStatus DIoLaserSystem::callStandby (
-      UaString& answer
-  )
-  {
+}
+UaStatus DIoLaserSystem::callStandby (
+    UaString& answer
+)
+{
     const std::string lbl = "standby";
     std::ostringstream msg("");
     bool got_exception = false;
@@ -515,11 +514,11 @@ namespace Device
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callResume (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLaserSystem::callResume (
+    UaString& response
+)
+{
     const std::string lbl = "resume";
     std::ostringstream msg("");
     bool got_exception = false;
@@ -554,11 +553,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callWarmup_laser (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLaserSystem::callWarmup_laser (
+    UaString& response
+)
+{
     const std::string lbl = "warmup";
     std::ostringstream msg("");
     bool got_exception = false;
@@ -594,11 +593,11 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good; 
-  }
-  UaStatus DIoLaserSystem::callShutdown (
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLaserSystem::callShutdown (
+    UaString& response
+)
+{
     std::ostringstream msg("");
     const std::string lbl = "shutdown";
     bool got_exception = false;
@@ -633,12 +632,12 @@ namespace Device
       resp["statuscode"] = OpcUa_Bad;
     }
     response = UaString(resp.dump().c_str()); return OpcUa_Good;
-  }
-  UaStatus DIoLaserSystem::callMove_to_pos (
-      const UaString&  arguments,
-      UaString& response
-  )
-  {
+}
+UaStatus DIoLaserSystem::callMove_to_pos (
+    const UaString&  arguments,
+    UaString& response
+)
+{
     const std::string lbl = "move_to_pos";
     std::ostringstream msg("");
     bool got_exception = false;
@@ -654,7 +653,6 @@ namespace Device
         response = UaString(resp.dump().c_str());
         return OpcUa_BadInvalidArgument;
       }
-
       st = move_to_pos(target_pos, approach, resp); // convert to an array that //std::string appr(approach.toUtf8()); st = move_to_pos(target_pos,approach,resp);  catch(json::exception &e)
     }
     catch (json::exception &e)
@@ -683,13 +681,59 @@ namespace Device
     }
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
+}
+UaStatus DIoLaserSystem::callClear_error (
+    UaString& response
+)
+{
+  const std::string lbl = "clear_error";
+  std::ostringstream msg("");
+  bool got_exception = false;
+  json resp;
+  UaStatus st;
+  // Validate and parse the input arguments
+  std::vector<int32_t> target_pos;
+  std::string approach;
+  try
+  {
+    st = clear_error(resp); // convert to an array that //std::string appr(approach.toUtf8()); st = move_to_pos(target_pos,approach,resp);  catch(json::exception &e)
   }
+  catch (json::exception &e)
+  {
+    msg.clear();
+    msg.str("");
+    msg << log_e(lbl.c_str(), "Caught JSON exception : ") << e.what();
+    got_exception = true;
+  }
+  catch (std::exception &e)
+  {
+    msg.clear();
+    msg.str("");
+    msg << log_e(lbl.c_str(), "Caught JSON exception : ") << e.what();
+    got_exception = true;
+  }
+  catch (...)
+  {
+    msg.clear();
+    msg.str("");
+    msg << log_e(lbl.c_str(), "Caught an unknown exception");
+    got_exception = true;
+  }
+  if (got_exception)
+  {
+    resp["status"] = "ERROR";
+    resp["messages"].push_back(msg.str());
+    resp["statuscode"] = OpcUa_Bad;
+  }
+  response = UaString(resp.dump().c_str());
+  return OpcUa_Good;
+}
 
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
-  // 3     FULLY CUSTOM CODE STARTS HERE                                     3
-  // 3     Below you put bodies for custom methods defined for this class.   3
-  // 3     You can do whatever you want, but please be decent.               3
-  // 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
+// 3     FULLY CUSTOM CODE STARTS HERE                                     3
+// 3     Below you put bodies for custom methods defined for this class.   3
+// 3     You can do whatever you want, but please be decent.               3
+// 3333333333333333333333333333333333333333333333333333333333333333333333333
   UaStatus DIoLaserSystem::config(json &conf, json &resp)
     {
       const std::string lbl = "config";
@@ -869,7 +913,7 @@ namespace Device
         msg << log_e(lbl.c_str(),"Caught runtime error : ") << e.what();
         got_exception = true;
 
-      }
+}
       catch(std::exception &e)
       {
         msg.clear(); msg.str("");
@@ -1554,7 +1598,7 @@ namespace Device
       {
         is_moving |= lmotor->is_moving();
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     // step 6: switch back to pause
     // st = iollaserunit()->pause(resp);
@@ -1855,17 +1899,17 @@ namespace Device
        * The power meter is always ready, as far as it is configured
        * The attenuator is always ready
        */
-      if (m_state == sOffline)
-      {
-        // system is not even configured. Nothing to be done
-        reset(msg);
-        resp["status"] = "ERROR";
-        msg << log_e(lbl.c_str(),"System is not ready to operate. Check the status of the various subsystems.");
-        resp["messages"].push_back(msg.str());
-        resp["statuscode"] = OpcUa_BadInvalidState;
-        LOG(Log::ERR) << msg.str();
-        return OpcUa_BadInvalidState;
-      }
+      // if (m_state == sOffline)
+      // {
+      //   // system is not even configured. Nothing to be done
+      //   reset(msg);
+      //   resp["status"] = "ERROR";
+      //   msg << log_e(lbl.c_str(),"System is not ready to operate. Check the status of the various subsystems.");
+      //   resp["messages"].push_back(msg.str());
+      //   resp["statuscode"] = OpcUa_BadInvalidState;
+      //   LOG(Log::ERR) << msg.str();
+      //   return OpcUa_BadInvalidState;
+      // }
       st= iollaserunit()->pause(resp);
       if (st != OpcUa_Good)
       {
@@ -1939,17 +1983,17 @@ namespace Device
        * The power meter is always ready, as far as it is configured
        * The attenuator is always ready
        */
-      if (m_state == sOffline)
-      {
-        // system is not even configured. Nothing to be done
-        reset(msg);
-        resp["status"] = "ERROR";
-        msg << log_e(lbl.c_str(),"System is not ready to operate. Check the status of the various subsystems.");
-        resp["messages"].push_back(msg.str());
-        resp["statuscode"] = OpcUa_BadInvalidState;
-        LOG(Log::ERR) << msg.str();
-        return OpcUa_BadInvalidState;
-      }
+      // if (m_state == sOffline)
+      // {
+      //   // system is not even configured. Nothing to be done
+      //   reset(msg);
+      //   resp["status"] = "ERROR";
+      //   msg << log_e(lbl.c_str(),"System is not ready to operate. Check the status of the various subsystems.");
+      //   resp["messages"].push_back(msg.str());
+      //   resp["statuscode"] = OpcUa_BadInvalidState;
+      //   LOG(Log::ERR) << msg.str();
+      //   return OpcUa_BadInvalidState;
+      // }
       st= iollaserunit()->standby(resp);
       if (st != OpcUa_Good)
       {
@@ -2007,8 +2051,6 @@ namespace Device
     }
     return OpcUa_Good;
   }
-  //FIXME: This method does not really make much sense
-  //       It should be removed
   UaStatus DIoLaserSystem::resume(json &resp)
   {
     // this is largely aimed at the laser
@@ -2023,7 +2065,7 @@ namespace Device
       // system is not in a state that can be resumed from
       reset(msg);
       resp["status"] = "ERROR";
-      msg << log_e(lbl.c_str(), "System is neither in sPause or sStandby. Current state :") << m_state_map.at(m_state);
+      msg << log_e(lbl.c_str(), "System is neither in sPause, sLansing or sStandby. Current state :") << m_state_map.at(m_state);
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
       LOG(Log::ERR) << msg.str();
@@ -2178,63 +2220,25 @@ namespace Device
     }
   }
 
-  UaStatus DIoLaserSystem::move_to_pos(
-      const std::vector<OpcUa_Int32>&  position,const std::string approach, json &resp)
+  void DIoLaserSystem::move_task(const std::vector<OpcUa_Int32> &position, const std::string approach)
   {
-    const std::string lbl = "move_to_pos";
     const uint32_t overstep = 200;
     std::ostringstream msg("");
-    UaStatus st = OpcUa_Good;
-    // bool error_moving = false;
-    // before we do anything check the valid approaches
-    // this was already done when the method was called
-    // bool failed_validation = false;
-    // if ((position.size() != 3) || (approach.size()!= 3))
-    // {
-    //   msg.clear(); msg.str("");
-    //   msg << log_e(lbl.c_str(),"Arguments do not have the right size. Both should have dimension 3. ")
-    //           << "Got pos " << position.size() << " approach " << approach.size() << " : " << approach;
-    //   resp["status"] = "ERROR";
-    //   resp["messages"].push_back(msg.str());
-    //   resp["statuscode"] = OpcUa_BadInvalidArgument;
-    //   LOG(Log::ERR) << msg.str();
-    //   return OpcUa_BadInvalidArgument;
-    // }
-    // for (size_t idx = 0; idx < approach.size(); idx++)
-    // {
-    //   switch (approach.at(idx))
-    //   {
-    //     case 'u':
-    //     case 'd':
-    //     case '-':
-    //       break;
-    //     default:
-    //       msg.clear(); msg.str("");
-    //       msg << log_e(lbl.c_str(),"Failed to validate the approach options ")
-    //               << " for entry " << idx << ". Should be one of ('u', 'd','-')";
-    //       resp["messages"].push_back(msg.str());
-    //       failed_validation = true;
-    //       break;
-    //   }
-    // }
-    // if (failed_validation)
-    // {
-    //   resp["status"] = "ERROR";
-    //   resp["statuscode"] = OpcUa_BadInvalidArgument;
-    //   return OpcUa_BadInvalidArgument;
-    // }
+    const std::string lbl = "move_task";
+    UaStatus st;
+    json resp;
     // -- Validations passed. Starting the work
     for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < position.size(); idx++)
     {
       // get the motor that is responsible for this coordinate
-      Device::DIoLMotor* lmotor = iolmotors().at(m_map_motor_coordinates.at(idx));
+      Device::DIoLMotor *lmotor = iolmotors().at(m_map_motor_coordinates.at(idx));
       // get its current position
       int32_t c_pos;
-      st = lmotor->get_position_motor(c_pos,resp);
+      st = lmotor->get_position_motor(c_pos, resp);
       if (st != OpcUa_Good)
       {
-        // failed to query the motor. Fail here as well
-        return st;
+        update_state(sError);
+        return;
       }
       // we have the current position, decide whether the approach is good or requires some overstepping
       if (c_pos < position.at(idx))
@@ -2243,18 +2247,19 @@ namespace Device
         if (approach.at(idx) == 'd')
         {
           int32_t interim_target = position.at(idx) + overstep;
-          st = lmotor->move_wrapper(interim_target,resp);
+          st = lmotor->move_wrapper(interim_target, resp);
           if (st != OpcUa_Good)
           {
             resp["status"] = "ERROR";
             reset(msg);
-            msg << log_e(lbl.c_str(),"Failed to set target position for motor (id : ")
-                                                            << lmotor->get_id() << ").";
+            msg << log_e(lbl.c_str(), "Failed to set target position for motor (id : ")
+                << lmotor->get_id() << ").";
             resp["messages"].push_back(msg.str());
             resp["statuscode"] = static_cast<uint32_t>(st);
             LOG(Log::ERR) << msg.str();
             // nothing is being done, so just terminate this task
-            return st;
+            update_state(sError);
+            return;
           }
         }
         // now we can move to the *real* target position
@@ -2266,7 +2271,7 @@ namespace Device
         if (approach.at(idx) == 'u')
         {
           int32_t interim_target = position.at(idx) - overstep;
-          st = lmotor->move_wrapper(interim_target,resp);
+          st = lmotor->move_wrapper(interim_target, resp);
           if (st != OpcUa_Good)
           {
             resp["status"] = "ERROR";
@@ -2277,12 +2282,20 @@ namespace Device
             resp["statuscode"] = static_cast<uint32_t>(st);
             LOG(Log::ERR) << msg.str();
             // nothing is being done, so just terminate this task
-            return st;
+            update_state(sError);
+            return;
           }
         }
       }
+      // if the motor was ordered to overstep, we have to wait for the movement to complete
+      bool is_moving = true;
+      while (is_moving)
+      {
+        is_moving = lmotor->is_moving();
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      }
       // if we reached this point, we are ready to go to the *real* target position
-      st = lmotor->move_wrapper(position.at(idx),resp);
+      st = lmotor->move_wrapper(position.at(idx), resp);
       if (st != OpcUa_Good)
       {
         resp["status"] = "ERROR";
@@ -2293,10 +2306,47 @@ namespace Device
         resp["statuscode"] = static_cast<uint32_t>(st);
         LOG(Log::ERR) << msg.str();
         // nothing is being done, so just terminate this task
-        return st;
+        update_state(sError);
+        return;
       }
     }
     // nothin failed so far...we should be where we want.
+  }
+
+      UaStatus DIoLaserSystem::move_to_pos(
+          const std::vector<OpcUa_Int32> &position, const std::string approach, json &resp)
+  {
+ 
+    // actually, this should run asynchronously, since with the overstep we 
+    // may have to wait for the motors for a long time
+    std::thread([this, position, approach]()
+                {
+      move_task(position,approach);
+      // once the task is done check if there is an error
+      if (m_state == sError)
+      {
+        LOG(Log::ERR) << log_e("move_task","Bugger. Movement failed.");
+      }
+      else
+      {
+        // we should update state back to sPause
+        std::ostringstream msg("");
+        reset(msg);
+        if (!m_task_message_queue.contains("status"))
+        {
+          m_task_message_queue["status"] = "OK";
+        }
+        msg << log_e("move_to_pos","Operation was successful.");
+        m_task_message_queue["messages"].push_back(msg.str());
+        if (!m_task_message_queue.contains("statuscode"))
+        {
+          m_task_message_queue["statuscode"] = OpcUa_Good;
+        }
+      } 
+      })
+        .detach();
+      // FIXME: Need to add functionality to fetch the task_message_queue
+      // or at least empty it
 
     // don't implement this yet
     return OpcUa_Good;
@@ -2919,4 +2969,14 @@ namespace Device
       return;
     }
   }
+  UaStatus DIoLaserSystem::clear_error(json &resp)
+  {
+    
+    resp = m_task_message_queue;
+    m_task_message_queue.clear();
+    update_state(sReady);
+
+    return OpcUa_Good;
+  }
+
 } // namespace Device

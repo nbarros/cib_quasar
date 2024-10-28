@@ -1712,6 +1712,7 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
       //    update_status(sOffline);
       if (m_att) delete m_att;
       m_att = nullptr;
+      set_status(sOffline);
     }
     catch(serial::PortNotOpenedException &e)
     {

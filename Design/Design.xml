@@ -583,6 +583,8 @@
     <d:method name="move_to_pos" executionSynchronicity="synchronous">
     	<d:argument dataType="UaString" name="arguments"></d:argument>
     	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
+    <d:method name="clear_error" executionSynchronicity="synchronous">
+    	<d:returnvalue dataType="UaString" name="response"></d:returnvalue></d:method>
     
 
 
