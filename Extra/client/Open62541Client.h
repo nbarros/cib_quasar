@@ -22,9 +22,9 @@ public:
     void write_variable(const std::string &nodeId, const UA_Variant &value, FeedbackManager &feedback);
     void browse(const std::string &nodeId, std::vector<UA_BrowseResult> &results, FeedbackManager &feedback);
     void call_method(const std::string &objectId, const std::string &methodId, const std::vector<UA_Variant> &inputArguments, std::vector<UA_Variant> &outputArguments, FeedbackManager &feedback);
+    void call_method_2(const std::string &objectId, const std::string &methodId, const std::vector<UA_Variant> &inputArguments, std::vector<UA_Variant> &outputArguments, FeedbackManager &feedback);
 
-private:
-    UA_Client *m_client;
+        private : UA_Client *m_client;
     bool m_connected;
     mutable std::mutex m_mutex; // Mutex to protect shared resources
 

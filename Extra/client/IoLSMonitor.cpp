@@ -163,15 +163,15 @@ bool IoLSMonitor::config(const std::string &location, FeedbackManager &feedback)
     // if the json config makes sense, need to put it into a UA_Variant
     UA_Variant configVariant;
     UA_Variant_init(&configVariant);
-    std::string configString = jconf.dump();
-    UA_String uaConfigString = UA_STRING_ALLOC(configString.c_str());
+    //std::string configString = jconf.dump();
+    UA_String uaConfigString = UA_String_fromChars(jconf.dump().c_str()); //UA_STRING_ALLOC(configString.c_str());
     UA_Variant_setScalarCopy(&configVariant, &uaConfigString, &UA_TYPES[UA_TYPES_STRING]);
     UA_String_clear(&uaConfigString);
     std::vector<UA_Variant> outputArguments;
 
     try
     {
-      m_client.call_method(node_base, method, {configVariant}, outputArguments, feedback);
+      m_client.call_method_2(node_base, method, {configVariant}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
@@ -202,10 +202,10 @@ bool IoLSMonitor::config(const std::string &location, FeedbackManager &feedback)
     }
 
     UA_Variant_clear(&configVariant);
-    for (auto &output : outputArguments)
-    {
-      UA_Variant_clear(&output);
-    }
+    // for (auto &output : outputArguments)
+    // {
+    //   UA_Variant_clear(&output);
+    // }
 
     return true;
   }
@@ -763,18 +763,18 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, FeedbackMan
     }
 
     // Prepare the request variant (no specific input needed for simple methods)
-    UA_Variant requestVariant;
-    UA_Variant_init(&requestVariant);
+    // UA_Variant requestVariant;
+    // UA_Variant_init(&requestVariant);
 
     // Call the method under the specified node
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method("LS1", method_node, {requestVariant}, outputArguments, feedback);
+      m_client.call_method_2("LS1", method_node, {}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
-      feedback.add_message(Severity::ERROR, "Exception in fire_segment: " + std::string(e.what()));
+      feedback.add_message(Severity::ERROR, "Exception in exec_simple: " + std::string(e.what()));
     }
 
     // Convert the single output argument into a string and parse it into the response JSON variable
@@ -803,7 +803,7 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, FeedbackMan
     {
       feedback.add_message(Severity::ERROR, "No valid response received from server.");
       // Clean up the UA_Variant
-      UA_Variant_clear(&requestVariant);
+      // UA_Variant_clear(&requestVariant);
       for (auto &output : outputArguments)
       {
         UA_Variant_clear(&output);
@@ -813,7 +813,7 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, FeedbackMan
     }
 
     // Clean up the UA_Variant
-    UA_Variant_clear(&requestVariant);
+    // UA_Variant_clear(&requestVariant);
     for (auto &output : outputArguments)
     {
       UA_Variant_clear(&output);

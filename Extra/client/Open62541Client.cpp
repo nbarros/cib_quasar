@@ -118,6 +118,36 @@ void Open62541Client::browse(const std::string &nodeId, std::vector<UA_BrowseRes
   UA_BrowseResponse_clear(&bResp);
 }
 
+void Open62541Client::call_method_2(const std::string &objectId, const std::string &methodId, const std::vector<UA_Variant> &inputArguments, std::vector<UA_Variant> &outputArguments, FeedbackManager &feedback)
+{
+  size_t outputSize;
+  UA_Variant *output;
+
+  UA_StatusCode retval = UA_Client_call(m_client, 
+                                        UA_NODEID_STRING_ALLOC(2, objectId.c_str()), 
+                                        UA_NODEID_STRING_ALLOC(2, methodId.c_str()), 
+                                        inputArguments.size(), 
+                                        inputArguments.data(), 
+                                        &outputSize, &output);
+
+  if (retval == UA_STATUSCODE_GOOD)
+  {
+    feedback.add_message(Severity::INFO, "Method called successfully. Returned " + std::to_string(outputSize) + " arguments (1 expected)");
+    outputArguments.push_back(output[0]);
+    // // actually, this returns a typical response string
+    // std::string response((char *)static_cast<UA_String *>(output[0].data)->data, (size_t)static_cast<UA_String *>(output[0].data)->length);
+    UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
+  }
+  else
+  {
+    feedback.add_message(Severity::ERROR, "Failed to execute method. Got error " + std::to_string(retval) + " : " + UA_StatusCode_name(retval));
+  }
+
+
+
+  //
+}
+
 void Open62541Client::call_method(const std::string &objectId, const std::string &methodId, const std::vector<UA_Variant> &inputArguments, std::vector<UA_Variant> &outputArguments, FeedbackManager &feedback)
 {
   std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
@@ -134,13 +164,14 @@ void Open62541Client::call_method(const std::string &objectId, const std::string
   UA_CallResponse callResponse = UA_Client_Service_call(m_client, callRequest);
   if (callResponse.responseHeader.serviceResult != UA_STATUSCODE_GOOD)
   {
+    printf("Failed to call method: %s\n", UA_StatusCode_name(callResponse.responseHeader.serviceResult));
     UA_CallRequest_clear(&callRequest);
     UA_CallResponse_clear(&callResponse);
-
+    
     log_error("Failed to call method", callResponse.responseHeader.serviceResult, feedback);
     throw std::runtime_error("Failed to call method: " + methodId + " on object: " + objectId);
   }
-
+  printf("Dealing with a response\n");
   outputArguments.assign(callResponse.results[0].outputArguments, callResponse.results[0].outputArguments + callResponse.results[0].outputArgumentsSize);
   feedback.add_message(Severity::INFO, "Successfully called method: " + methodId + " on object: " + objectId);
 
