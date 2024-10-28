@@ -1,0 +1,142 @@
+{
+"id":"LS1",
+"cib":{
+	"dac_threshold":3000,
+	"lbls_width_clks":2,
+	"alignment_laser" : {
+		"enabled":false,
+		"width" : 10,
+		"period":6250000
+	},
+	"mmap" : 
+	{
+	"pdts_status": [0,0,3,0],
+	"pdts_reset" : [0,1,31,31],
+	"trigger_pulser" : [5,0,29,29],
+	"trigger_external" : [5,0,30,30],
+	"daq_queue_state"  : [5,0,26,26],
+	"lbls_queue_state" : [5,0,31,31],
+	"lbls_width"  : [5,0,7,0],
+	"align_width" : [3,1,15,0],
+	"align_period": [3,0,23,0],
+	"align_state" : [3,0,31,31]
+	}
+},
+"motors": [
+	{
+	"id":"RNN800",
+	"coordinate_index":0,
+	"server_address":"10.73.137.154",
+	"server_port":5000,
+	"speed":200,
+	"range":[78661,136995],
+	"acceleration":200,
+	"deceleration":200,
+	"refresh_period_ms":500,
+	"refresh_movement_ms":10,
+	"motor_com_timeout_ms" : 500,
+	"mmap": 
+		{
+		 "direction" : [6,0,31,31],
+		"load"		: [6,0,30,30],		 
+		 "init_pos" : [6,0,21,0],
+		 "cur_pos" : [6,1,21,0]
+		}
+	},
+	{
+	"id":"RNN600",
+	"coordinate_index":1,
+	"server_address":"10.73.137.154",
+	"server_port":5001,
+	"speed":20,
+	"range":[-680000,680000],
+	"acceleration":200,
+	"deceleration":200,
+	"refresh_period_ms":500,
+	"refresh_movement_ms":10,
+	"mmap": 
+		{
+		 "direction" : [7,0,31,31],
+		 "load"		: [7,0,30,30],		 
+		 "init_pos" : [7,0,21,0],
+		 "cur_pos" : [7,1,21,0]
+		}
+	
+	},
+	{
+	"id":"LSTAGE",
+	"coordinate_index":2,
+	"server_address":"10.73.137.154",
+	"server_port":5002,
+	"speed":20,
+	"range":[-3100,28786],
+	"acceleration":200,
+	"deceleration":200,
+	"refresh_period_ms":500,
+	"refresh_movement_ms":10,
+	"mmap": 
+		{
+		"direction" : [8,0,31,31],
+		"load"		: [8,0,30,30],
+		 "init_pos" : [8,0,16,0],
+		 "cur_pos" : [8,1,16,0]
+		}
+	}
+],
+"power_meter" : {
+	"name" : "PM1",
+	"serial_number":"A9LMFBRZ",
+	"port":"auto",
+	"baud_rate":9600,
+	"measurement_mode":3,
+	"select_range":4,
+	"wavelength":266,
+	"energy_threshold":200,
+	"average_setting":1,
+	"pulse_width":2,
+	"measurement_interval_ms" : 500
+},
+"attenuator" : {
+	"name":"A1",
+	"serial_number":"6ATT1787D",
+	"port":"auto",
+	"baud_rate":38400,
+	"acceleration":0,
+	"deceleration":0,
+	"current_idle":36,
+	"current_move":114,
+	"max_speed":59000,
+	"attenuator_position" : 4751,
+	"resolution":2,
+	"calibration" : {
+		"offset" : 3900,
+		"scale"	 : -43.333333	
+	},
+	"position_range" : [-10000,10000]
+},
+"laser" : {
+		"id": "L1",
+		"serial_number": "A9L5Y58Y",
+		"port": "auto",
+		"baud_rate": 9600,
+		"repetition_rate": 10.0,
+		"repetition_rate_divider": 0,
+		"discharge_voltage": 1.19,
+		"pause_timeout_min": 10,
+		"standby_timeout_min": 60,
+		"warmup_timer_min": 1,
+		"qswitch_delay_us": 195	,
+		"qswitch_width_us": 10,
+		"fire_width_us": 10,
+		"mmap": 
+		{
+			"fire_width": [4,0,11,0],
+			"qs_width": [4,0,11,0],
+			"qs_delay": [4,1,14,0],
+			"fire_state": [4,0,31,31],
+			"force_shutter": [5,0,28,28],
+			"qs_state": [4,1,31,31],
+			"shot_count": [-1,-1,-1,-1]
+		}
+	}
+}
