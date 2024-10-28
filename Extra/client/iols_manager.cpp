@@ -65,6 +65,8 @@ void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int heigh
   std::vector<std::string> labels = {"RNN800", "RNN600", "LSTAGE", "A1", "PM1", "L1"};
   while (running)
   {
+    try
+    {
     iols_monitor_t status;
     if (monitor.is_connected())
     {
@@ -127,7 +129,7 @@ void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int heigh
     hpos += 2;
     // A few laser updates
     mvwprintw(right_pane, hpos, 2, "Laser status code : %d", 
-              status.count("LS1.L1.laser_status_code") ? std::get<int>(status["LS1.L1.laser_status_code"]) : -1);
+              status.count("LS1.L1.laser_status_code") ? std::get<uint16_t>(status["LS1.L1.laser_status_code"]) : -1);
 
     hpos += 2;
     // Add a horizontal line 
@@ -158,6 +160,11 @@ void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int heigh
     set_label_color(right_pane, hpos, 25, std::string(1, fire_active), std::string(1, fire_active));
     mvwprintw(right_pane, hpos, 28, "QSWITCH : ");
     set_label_color(right_pane, hpos, 38, std::string(1, qswitch_active), std::string(1, qswitch_active));
+    } 
+    catch(const std::exception &e)
+    {
+      //add_feedback(Severity::ERROR, "Exception in update_right_pane: " + std::string(e.what()));
+    }
     wrefresh(right_pane);
 
     // Sleep for 500 ms
