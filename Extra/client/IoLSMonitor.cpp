@@ -315,7 +315,7 @@ bool IoLSMonitor::move_to_position(const std::string &position, const std::strin
       return false;
     }
     // Check that the position input has the format [x,y,z] with x, y, and z being integers
-    std::regex position_regex(R"(\[\s*(-?\d+),\s*(-?\d+),\s*(-?\d+)\s*\])");
+    std::regex position_regex(R"(\[\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\])");
     std::smatch position_match;
     if (!std::regex_match(position, position_match, position_regex))
     {
@@ -408,7 +408,7 @@ bool IoLSMonitor::fire_at_position(const std::string &position, const uint32_t n
     }
 
     // Check that the position input has the format [x,y,z], with x, y, and z being integer values
-    std::regex position_regex(R"(\[\s*(-?\d+),\s*(-?\d+),\s*(-?\d+)\s*\])");
+    std::regex position_regex(R"(\[\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\])");
     std::smatch position_match;
     if (!std::regex_match(position, position_match, position_regex))
     {
@@ -522,7 +522,7 @@ bool IoLSMonitor::fire_segment(const std::string &start_position, const std::str
       return false;
     }
     // Check that the start_position and end_position inputs have the format [x,y,z], with x, y, and z being integer values
-    std::regex position_regex(R"(\[\s*(-?\d+),\s*(-?\d+),\s*(-?\d+)\s*\])");
+    std::regex position_regex(R"(\[\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\])");
     std::smatch start_position_match, end_position_match;
     if (!std::regex_match(start_position, start_position_match, position_regex))
     {

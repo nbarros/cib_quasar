@@ -1867,7 +1867,6 @@ namespace Device
         return OpcUa_BadInvalidState;
       }
       st= iollaserunit()->pause(resp);
-      //FIXME: Should we also tell the motors to stop?
       if (st != OpcUa_Good)
       {
         reset(msg);
@@ -1876,7 +1875,7 @@ namespace Device
         resp["messages"].push_back(msg.str());
         if (!m_task_message_queue.contains("statuscode"))
         {
-          m_task_message_queue["statuscode"] = OpcUa_Good;
+          m_task_message_queue["statuscode"] = OpcUa_BadInvalidState;
         }
         return OpcUa_BadInvalidState;
       }
@@ -1961,7 +1960,7 @@ namespace Device
         resp["messages"].push_back(msg.str());
         if (!m_task_message_queue.contains("statuscode"))
         {
-          m_task_message_queue["statuscode"] = OpcUa_Good;
+          m_task_message_queue["statuscode"] = OpcUa_BadInvalidState;
         }
         return OpcUa_BadInvalidState;
       }
@@ -2042,6 +2041,7 @@ namespace Device
       {
         m_task_message_queue["statuscode"] = OpcUa_Bad;
       }
+      LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
     }
     update_state(sOperating);

@@ -1553,6 +1553,17 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return st;
     }
+    // actually, we should not allow this to be called from anything but sLasing and sStandby
+    if ((m_status != sStandby) && (m_status == sLasing))
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Laser not in a state that can be paused. Nothing to be done.");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidState;
+      return OpcUa_BadInvalidState;
+    }
     try
     {
       // if it is in one of the previous stages redo the whole procedure
@@ -1600,9 +1611,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (got_exception)
     {
-#ifdef DEBUG
-    LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1651,6 +1660,17 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
       return OpcUa_Good;
+    }
+    // if the laser is not on sLasing or sPause, we can't do anything
+    if ((m_status != sLasing) && (m_status != sPause))
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Laser not in a state that can be switched to standby. Nothing to be done.");
+      LOG(Log::ERR) << msg.str();
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidState;
+      return OpcUa_BadInvalidState;
     }
     try
     {
@@ -3215,7 +3235,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
-      return OpcUa_Good;
+      return OpcUa_BadInvalidState;
     }
     // FIXME:We may want to specifically force the state of the parameters
     // now start the proper work
@@ -3239,6 +3259,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      return OpcUa_Bad;
     }
     else
     {
