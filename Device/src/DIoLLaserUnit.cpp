@@ -1554,7 +1554,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       return st;
     }
     // actually, we should not allow this to be called from anything but sLasing and sStandby
-    if ((m_status != sStandby) && (m_status == sLasing))
+    if ((m_status != sStandby) && (m_status != sLasing))
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Laser not in a state that can be paused. Nothing to be done.");

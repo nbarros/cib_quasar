@@ -2572,7 +2572,7 @@ namespace Device
     Device::DIoLAttenuator::Status sa =iolattenuator()->get_state();
     Device::DIoLPowerMeter::Status sp = iolpowermeter()->get_state();
     Device::DIoLCIB::Status sc = iolcib()->get_state();
-    Device::DIoLMotor::Status sm;
+    Device::DIoLMotor::Status sm = DIoLMotor::sReady;
 
     for (auto m: iolmotors())
     {
@@ -2611,7 +2611,8 @@ namespace Device
       update_state(sOffline);
       return;
     }
-    else if ((sl == DIoLLaserUnit::sReady) && (sc == DIoLCIB::sReady) && (sa == DIoLAttenuator::sReady) && (sp == DIoLPowerMeter::sReady) && (sm == DIoLMotor::sReady))
+    // the power meter is ignored specifically because it can be in operating state even if the laser is not
+    else if ((sl == DIoLLaserUnit::sReady) && (sc == DIoLCIB::sReady) && (sa == DIoLAttenuator::sReady) && (sm == DIoLMotor::sReady))
     {
       update_state(sReady);
       return;
