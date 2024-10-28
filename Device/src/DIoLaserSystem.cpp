@@ -2315,6 +2315,11 @@ UaStatus DIoLaserSystem::callClear_error (
         is_moving = lmotor->is_moving();
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
       }
+      reset(msg);
+      msg << log_i(lbl.c_str(), "Now reaching for target position for motor (id : ")
+          << lmotor->get_id() << ") : " << position.at(idx);
+      LOG(Log::INF) << msg.str();
+
       // if we reached this point, we are ready to go to the *real* target position
       st = lmotor->move_wrapper(position.at(idx), resp);
       if (st != OpcUa_Good)
@@ -2338,6 +2343,9 @@ UaStatus DIoLaserSystem::callClear_error (
       }
     }
     // nothin failed so far...we should be where we want.
+    reset(msg);
+    msg << log_i(lbl.c_str(), "Task done");
+    LOG(Log::INF) << msg.str();
   }
 
       UaStatus DIoLaserSystem::move_to_pos(
