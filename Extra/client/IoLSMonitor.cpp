@@ -76,6 +76,7 @@ void IoLSMonitor::monitor_loop()
 
 void IoLSMonitor::monitor_server()
 {
+  return;
   for (auto &item : m_monitored_vars)
   {
     try

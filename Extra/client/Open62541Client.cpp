@@ -120,14 +120,28 @@ void Open62541Client::browse(const std::string &nodeId, std::vector<UA_BrowseRes
 
 void Open62541Client::call_method_2(const std::string &objectId, const std::string &methodId, const std::vector<UA_Variant> &inputArguments, std::vector<UA_Variant> &outputArguments, FeedbackManager &feedback)
 {
+  std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
   size_t outputSize;
   UA_Variant *output;
+
+  UA_Variant input;
+  UA_Variant_init(&input);
+
+  UA_Variant *in_ptr;
+  if (inputArguments.size() == 0)
+  {
+    in_ptr = &input;
+  }
+  else
+  {
+    in_ptr = const_cast<UA_Variant *>(inputArguments.data());
+  }
 
   UA_StatusCode retval = UA_Client_call(m_client, 
                                         UA_NODEID_STRING_ALLOC(2, objectId.c_str()), 
                                         UA_NODEID_STRING_ALLOC(2, methodId.c_str()), 
                                         inputArguments.size(), 
-                                        inputArguments.data(), 
+                                        in_ptr, 
                                         &outputSize, &output);
 
   if (retval == UA_STATUSCODE_GOOD)
@@ -136,15 +150,12 @@ void Open62541Client::call_method_2(const std::string &objectId, const std::stri
     outputArguments.push_back(output[0]);
     // // actually, this returns a typical response string
     // std::string response((char *)static_cast<UA_String *>(output[0].data)->data, (size_t)static_cast<UA_String *>(output[0].data)->length);
-    UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
+    //UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
   }
   else
   {
     feedback.add_message(Severity::ERROR, "Failed to execute method. Got error " + std::to_string(retval) + " : " + UA_StatusCode_name(retval));
   }
-
-
-
   //
 }
 
