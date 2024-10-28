@@ -2241,13 +2241,15 @@ UaStatus DIoLaserSystem::callClear_error (
         update_state(sError);
         return;
       }
+      int32_t interim_target = c_pos;
+
       // we have the current position, decide whether the approach is good or requires some overstepping
       if (c_pos < position.at(idx))
       {
         // current position is "below" the target, only 'd' requires overstepping
         if (approach.at(idx) == 'd')
         {
-          int32_t interim_target = position.at(idx) + overstep;
+          interim_target = position.at(idx) + overstep;
           reset(msg);
           msg << log_i(lbl.c_str(), "Setting overstep position for motor (id : ")
               << lmotor->get_id() << ") : " << interim_target;
@@ -2285,7 +2287,7 @@ UaStatus DIoLaserSystem::callClear_error (
         // current position is "below" the target, only 'u' requires overstepping
         if (approach.at(idx) == 'u')
         {
-          int32_t interim_target = position.at(idx) - overstep;
+          interim_target = position.at(idx) - overstep;
           st = lmotor->move_wrapper(interim_target, resp);
           if (st != OpcUa_Good)
           {
@@ -2312,8 +2314,10 @@ UaStatus DIoLaserSystem::callClear_error (
       bool is_moving = true;
       while (is_moving)
       {
+        lmotor->get_position_motor(c_pos, resp);        
+        is_moving = (std::abs(c_pos-interim_target) > 10);
+        is_moving |= lmotor->is_moving();
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        is_moving = lmotor->is_moving();
       }
 
       lmotor->get_position_motor(c_pos, resp);
