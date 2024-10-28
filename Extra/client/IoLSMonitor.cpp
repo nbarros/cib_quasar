@@ -778,7 +778,9 @@ bool IoLSMonitor::exec_method_arg(const std::string &method_node, const UA_Varia
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method("LS1", method_node, {val}, outputArguments, feedback);
+      // the node basically just a trim out of the method node
+      std::string parent_node = method_node.substr(0, method_node.find_last_of('.')); 
+      m_client.call_method(parent_node, method_node, {val}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
