@@ -205,6 +205,10 @@ void refresh_left_panel(WINDOW *pane, int height)
         label = "ERROR";
         color_pair = 1;
         break;
+      case Severity::REPORT:
+        label = "     ";
+        color_pair = 4;
+        break;
       default:
         label = "      ";
         color_pair = 0;
@@ -785,6 +789,7 @@ int main(int argc, char** argv)
   init_pair(1, COLOR_BLACK, COLOR_RED);
   init_pair(2, COLOR_BLACK, COLOR_GREEN);
   init_pair(3, COLOR_BLACK, COLOR_YELLOW);
+  init_pair(4, COLOR_BLACK, COLOR_BLUE);
 
   //int height = LINES - 2;
   g_height = LINES - 2;

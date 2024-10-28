@@ -359,7 +359,7 @@ bool IoLSMonitor::move_to_position(const std::string &position, const std::strin
       {
         for (const auto &msg : server_response["messages"])
         {
-          feedback.add_message(Severity::ERROR, msg);
+          feedback.add_message(Severity::REPORT, msg);
         }
       }
       if (server_response.contains("statuscode"))

@@ -10,7 +10,8 @@ enum class Severity
 {
     INFO,
     WARN,
-    ERROR
+    ERROR,
+    REPORT
 };
 
 struct FeedbackMessage
