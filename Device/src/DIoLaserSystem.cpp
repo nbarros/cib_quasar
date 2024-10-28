@@ -2227,6 +2227,7 @@ UaStatus DIoLaserSystem::callClear_error (
     const std::string lbl = "move_task";
     UaStatus st;
     json resp;
+    resp["messages"] = json::array();
     // -- Validations passed. Starting the work
     for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < position.size(); idx++)
     {
@@ -2247,6 +2248,11 @@ UaStatus DIoLaserSystem::callClear_error (
         if (approach.at(idx) == 'd')
         {
           int32_t interim_target = position.at(idx) + overstep;
+          reset(msg);
+          msg << log_i(lbl.c_str(), "Setting overstep position for motor (id : ")
+              << lmotor->get_id() << ") : " << interim_target;
+          LOG(Log::INF) << msg.str();
+          resp["messages"].push_back(msg.str());
           st = lmotor->move_wrapper(interim_target, resp);
           if (st != OpcUa_Good)
           {
