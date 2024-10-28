@@ -342,7 +342,7 @@ bool IoLSMonitor::move_to_position(const std::string &position, const std::strin
     UA_String_clear(&uaRequestString);
 
     std::vector<UA_Variant> outputArguments;
-    m_client.call_method("LS1", "LS1.move_to_pos", {requestVariant}, outputArguments, feedback);
+    m_client.call_method_2("LS1", "LS1.move_to_pos", {requestVariant}, outputArguments, feedback);
 
     // Convert the single output argument into a string and parse it into the response JSON variable
     if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
