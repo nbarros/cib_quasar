@@ -1234,6 +1234,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         if (m_status != sWarmup)
         {
           // stop the timer
+          LOG(Log::WRN) << "Warmup timer canceled before reaching the end.";
           getAddressSpaceLink()->setWarmup_timer_s(0,OpcUa_Good);
           return;
         }
@@ -1553,6 +1554,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return st;
     }
+    // if it is already in pause, do nothing
+    if (m_status == sPause)
+    {
+      return OpcUa_Good;
+    }
     // actually, we should not allow this to be called from anything but sLasing and sStandby
     if ((m_status != sStandby) && (m_status != sLasing))
     {
@@ -1651,14 +1657,6 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // if it is either in warmup or standby do nothing
     if ((m_status == sWarmup) or (m_status == sStandby))
     {
-      msg.clear(); msg.str("");
-      msg << log_w(lbl.c_str(),"Laser already in warmup or standby state. Nothing to be done.");
-#ifdef DEBUG
-      LOG(Log::WRN) << msg.str();
-#endif
-      resp["status"] = "WARN";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = OpcUa_BadInvalidState;
       return OpcUa_Good;
     }
     // if the laser is not on sLasing or sPause, we can't do anything
@@ -3214,6 +3212,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     if(st != OpcUa_Good)
     {
       return st;
+    }
+    // we're already in lasing state
+    if (m_status == sLasing)
+    {
+      return OpcUa_Good;
     }
     // check that we are in a valid state for this call
     if ((m_status != sPause) && (m_status != sStandby))

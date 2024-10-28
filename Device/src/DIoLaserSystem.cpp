@@ -1951,7 +1951,6 @@ namespace Device
         return OpcUa_BadInvalidState;
       }
       st= iollaserunit()->standby(resp);
-      //FIXME: Should we also tell the motors to stop?
       if (st != OpcUa_Good)
       {
         reset(msg);
@@ -2018,8 +2017,9 @@ namespace Device
     const std::string lbl("resume");
     // once again, this is primarily aimed at the laser
     // also, make sure to activate the
-    if ((m_state != sPause) and (m_state != sStandby))
-    {
+    Device::DIoLLaserUnit::Status sl = iollaserunit()->get_state();
+    if ((sl != DIoLLaserUnit::sLasing) && (sl != DIoLLaserUnit::sPause) && (sl != DIoLLaserUnit::sStandby))
+ {
       // system is not in a state that can be resumed from
       reset(msg);
       resp["status"] = "ERROR";
@@ -2028,7 +2028,6 @@ namespace Device
       resp["statuscode"] = OpcUa_BadInvalidState;
       LOG(Log::ERR) << msg.str();
       return OpcUa_BadInvalidState;
-
     }
     st= iollaserunit()->resume(resp);
     if (st != OpcUa_Good)
@@ -2619,7 +2618,7 @@ namespace Device
     }
     else // neither all are ready neither all are offline
     {
-      if ((sc == DIoLCIB::sReady) && (sa == DIoLAttenuator::sReady) && (sp == DIoLPowerMeter::sReady))
+      if ((sc == DIoLCIB::sReady) && (sa == DIoLAttenuator::sReady))
       {
         // in this case the state will depend on the laser
         if (sl == DIoLLaserUnit::sWarmup)

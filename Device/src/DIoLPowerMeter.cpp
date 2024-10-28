@@ -191,7 +191,7 @@ UaStatus DIoLPowerMeter::callSet_range (
 )
 {
     json resp;
-    set_average(target_value,resp);
+    set_range(target_value,resp);
     // complete the structure of the response object
     if (!resp.contains("status"))
     {
