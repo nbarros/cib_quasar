@@ -103,7 +103,7 @@ void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int heigh
     auto it = status.find("LS1.state");
     std::string v = (it != status.end()) ? std::get<std::string>(it->second) : "UNKNOWN";
     mvwprintw(right_pane, vpos, 2, "IoLS");
-    set_label_color(right_pane, vpos, 15, v, v);
+    set_label_color(right_pane, vpos, 12, v, v);
     // set_label_color(right_pane, hpos, 15, v, v);
     vpos += 2;
     // Add a horizontal line below the title

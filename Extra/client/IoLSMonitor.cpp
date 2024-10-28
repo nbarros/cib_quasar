@@ -168,10 +168,9 @@ bool IoLSMonitor::config(const std::string &location, FeedbackManager &feedback)
     UA_Variant_setScalarCopy(&configVariant, &uaConfigString, &UA_TYPES[UA_TYPES_STRING]);
     UA_String_clear(&uaConfigString);
     std::vector<UA_Variant> outputArguments;
-
     try
     {
-      m_client.call_method_2(node_base, method, {configVariant}, outputArguments, feedback);
+      m_client.call_method(node_base, method, {configVariant}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
@@ -268,7 +267,7 @@ bool IoLSMonitor::move_to_position(const std::string &position, const std::strin
     UA_String_clear(&uaRequestString);
 
     std::vector<UA_Variant> outputArguments;
-    m_client.call_method_2("LS1", "LS1.move_to_pos", {requestVariant}, outputArguments, feedback);
+    m_client.call_method("LS1", "LS1.move_to_pos", {requestVariant}, outputArguments, feedback);
 
     // Convert the single output argument into a string and parse it into the response JSON variable
     if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
@@ -367,7 +366,7 @@ bool IoLSMonitor::fire_at_position(const std::string &position, const uint32_t n
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method_2("LS1", "LS1.fire_at_position", {requestVariant}, outputArguments, feedback);
+      m_client.call_method("LS1", "LS1.fire_at_position", {requestVariant}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
@@ -479,7 +478,7 @@ bool IoLSMonitor::fire_segment(const std::string &start_position, const std::str
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method_2("LS1", "LS1.fire_segment", {requestVariant}, outputArguments,feedback);
+      m_client.call_method("LS1", "LS1.fire_segment", {requestVariant}, outputArguments,feedback);
     }
     catch (const std::exception &e)
     {
@@ -609,7 +608,7 @@ bool IoLSMonitor::execute_scan(const std::string &run_plan, FeedbackManager &fee
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method_2("LS1", "LS1.execute_scan", {requestVariant}, outputArguments, feedback);
+      m_client.call_method("LS1", "LS1.execute_scan", {requestVariant}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
@@ -696,7 +695,7 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, FeedbackMan
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method_2("LS1", method_node, {}, outputArguments, feedback);
+      m_client.call_method("LS1", method_node, {}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
@@ -779,7 +778,7 @@ bool IoLSMonitor::exec_method_arg(const std::string &method_node, const UA_Varia
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method_2("LS1", method_node, {val}, outputArguments, feedback);
+      m_client.call_method("LS1", method_node, {val}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
@@ -942,9 +941,26 @@ bool IoLSMonitor::read_variable(const std::string &variable, UA_Variant &value, 
     }
 
     // Read the variable
-    m_client.read_variable(variable, value,feedback);
-    feedback.add_message(Severity::INFO, "Successfully read variable: " + variable);
-    return true;
+    bool success = false;
+    try
+    {
+      success = m_client.read_variable(variable, value, feedback);
+    }
+    catch(const std::exception& e)
+    {
+      feedback.add_message(Severity::ERROR, std::string("Exception in read_variable: ") + e.what());
+      return false;
+    }
+    if (!success)
+    {
+      feedback.add_message(Severity::ERROR, "Failed to read variable: " + variable);
+      return false;
+    }
+    else
+    {
+      feedback.add_message(Severity::INFO, "Successfully read variable: " + variable);
+      return true;
+    }    
   }
   catch (const std::exception &e)
   {
