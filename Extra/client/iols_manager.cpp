@@ -21,7 +21,7 @@
   Global variables to be manipulated
 */
 int g_height;
-IoLSMonitor g_monitor;
+IoLSMonitor g_monitor;  
 std::deque<FeedbackMessage> g_feedback;
 std::vector<std::string> g_vars_to_monitor = {"LS1.state", "LS1.RNN800.state", "LS1.RNN600.state", "LS1.LSTAGE.state", "LS1.A1.state", "LS1.L1.state", "LS1.PM1.state", "LS1.PM1.energy_reading", "LS1.PM1.average_reading", "LS1.RNN800.current_position_motor", "LS1.RNN800.current_position_cib", "LS1.RNN600.current_position_motor", "LS1.RNN600.current_position_cib", "LS1.LSTAGE.current_position_motor", "LS1.LSTAGE.current_position_cib", "LS1.A1.position",
                                               "LS1.L1.ext_shutter_open", "LS1.L1.laser_shutter_open", "LS1.L1.laser_status_code", "LS1.L1.standby_timer_s", "LS1.L1.pause_timer_s",  "LS1.L1.warmup_timer_s", "LS1.L1.fire_active","LS1.L1.qswitch_active",
@@ -73,93 +73,105 @@ void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int heigh
       monitor.get_status(status);
     }
     reset_right_pane(right_pane);
+    int vpos = 2;
     int hpos = 2;
     // redraw everything
     // first the states
     wattron(right_pane, A_BOLD);
-    mvwprintw(right_pane, hpos, 1, "Status Monitor");
+    mvwprintw(right_pane, hpos, 1, " Status Monitor ");
     wattroff(right_pane, A_BOLD);
+    vpos += 3;
     for (size_t i = 0; i < labels.size(); i++)
     {
-      hpos = 3+i;
-      mvwprintw(right_pane, hpos, 2, labels[i].c_str());
+      if (i%2 == 0)
+      {
+        vpos++;
+        hpos = 2;
+      }
+      else
+      {
+        hpos = 25;
+      }
+      mvwprintw(right_pane, vpos, hpos, labels[i].c_str());
       std::string entry = "LS1." + labels[i] + ".state";
       auto it = status.find(entry);
-      std::string v = (it != status.end()) ? std::get<std::string>(it->second) : "unknown";
-
-      set_label_color(right_pane, hpos, 15, v, v);
+      std::string v = (it != status.end()) ? std::get<std::string>(it->second) : "UNKNOWN";
+      set_label_color(right_pane, vpos, hpos + 10, v, v);
     }
-    hpos = 3 + labels.size();
+    vpos += 2;
     // iols
     auto it = status.find("LS1.state");
-    std::string v = (it != status.end()) ? std::get<std::string>(it->second) : "unknown";
-    mvwprintw(right_pane, hpos, 2, "IoLS");
-    set_label_color(right_pane, hpos, 15, v, v);
+    std::string v = (it != status.end()) ? std::get<std::string>(it->second) : "UNKNOWN";
+    mvwprintw(right_pane, vpos, 2, "IoLS");
+    set_label_color(right_pane, vpos, 15, v, v);
     // set_label_color(right_pane, hpos, 15, v, v);
-    hpos += 2;
+    vpos += 2;
     // Add a horizontal line below the title
-    wmove(right_pane, hpos, 1);
+    wmove(right_pane, vpos, 1);
     whline(right_pane, ACS_HLINE, getmaxx(right_pane) - 2);
-    hpos += 2;
+    vpos += 2;
     // now add in the other monitored items
-    mvwprintw(right_pane, hpos, 2, "Motor : [%d, %d, %d]", 
+    mvwprintw(right_pane, vpos, 2, "Motor : [%d, %d, %d]",
               status.count("LS1.RNN800.current_position_motor") ? std::get<int>(status["LS1.RNN800.current_position_motor"]) : -1,
               status.count("LS1.RNN600.current_position_motor") ? std::get<int>(status["LS1.RNN600.current_position_motor"]) : -1,
               status.count("LS1.LSTAGE.current_position_motor") ? std::get<int>(status["LS1.LSTAGE.current_position_motor"]) : -1);
-    hpos += 1;
-    mvwprintw(right_pane, hpos, 2, "CIB   : [%d, %d, %d]", 
+    vpos += 1;
+    mvwprintw(right_pane, vpos, 2, "CIB   : [%d, %d, %d]", 
               status.count("LS1.RNN800.current_position_cib") ? std::get<int>(status["LS1.RNN800.current_position_cib"]) : -1,
               status.count("LS1.RNN600.current_position_cib") ? std::get<int>(status["LS1.RNN600.current_position_cib"]) : -1,
               status.count("LS1.LSTAGE.current_position_cib") ? std::get<int>(status["LS1.LSTAGE.current_position_cib"]) : -1);
-    hpos += 2;
-    mvwprintw(right_pane, hpos, 2, "Attenuator position : %d", 
+    vpos += 2;
+    mvwprintw(right_pane, vpos, 2, "Attenuator position : %d", 
               status.count("LS1.A1.position") ? std::get<int>(status["LS1.A1.position"]) : -1);
-    // attenuator position
-    // mvwprintw(right_pane, hpos, 2, "Attenuator position : %d", std::get<int>(status["LS1.A1.attenuator_position"]));
-    hpos += 2;
-    mvwprintw(right_pane, hpos, 2, "Power Meter latest energy   : %.2f", 
-              status.count("LS1.PM1.energy_reading") ? std::get<double>(status["LS1.PM1.energy_reading"]) : -1.0);
-    hpos += 1;
-    mvwprintw(right_pane, hpos, 2, "Power Meter average energy  : %.2f", 
-              status.count("LS1.PM1.average_energy") ? std::get<double>(status["LS1.PM1.average_energy"]) : -1.0);
-    hpos += 2;
-    // Add a horizontal line below the title
-    wmove(right_pane, hpos, 1);
-    whline(right_pane, ACS_HLINE, getmaxx(right_pane) - 2);
-    hpos += 2;
+    vpos += 2;
+    mvwprintw(right_pane, vpos, 2, "DAC : %d",
+              status.count("LS1.CIB1.dac_threshold") ? std::get<int>(status["LS1.CIB1.dac_threshold"]) : -1);
+    vpos += 2;
     // A few laser updates
-    mvwprintw(right_pane, hpos, 2, "Laser status code : %d", 
+    mvwprintw(right_pane, vpos, 2, "Laser status code : %02d",
               status.count("LS1.L1.laser_status_code") ? std::get<uint16_t>(status["LS1.L1.laser_status_code"]) : -1);
 
-    hpos += 2;
-    // Add a horizontal line 
-    wmove(right_pane, hpos, 1);
+    vpos += 2;
+    wmove(right_pane, vpos, 1);
     whline(right_pane, ACS_HLINE, getmaxx(right_pane) - 2);
-    mvwprintw(right_pane, hpos, 2, "Laser Timers");
-    hpos += 2;
-    mvwprintw(right_pane, hpos, 2, "Warmup timer : %d s", status.count("LS1.L1.warmup_timer_s") ? std::get<uint32_t>(status["LS1.L1.warmup_timer_s"]) : 0);
-    hpos += 1;
-    mvwprintw(right_pane, hpos, 2, "Standby timer : %d s", status.count("LS1.L1.standby_timer_s") ? std::get<uint32_t>(status["LS1.L1.standby_timer_s"]) : 0);
-    hpos += 1;
-    mvwprintw(right_pane, hpos, 2, "Pause timer : %d s", status.count("LS1.L1.pause_timer_s") ? std::get<uint32_t>(status["LS1.L1.pause_timer_s"]) : 0);
-    hpos += 2;
+    // attenuator position
+    // mvwprintw(right_pane, hpos, 2, "Attenuator position : %d", std::get<int>(status["LS1.A1.attenuator_position"]));
+    vpos += 2;
+    mvwprintw(right_pane, vpos, 2, "Power Meter :  energy   : %.3g J \t\t average : %.3g  J",
+              status.count("LS1.PM1.energy_reading") ? std::get<double>(status["LS1.PM1.energy_reading"]) : -1.0,
+              status.count("LS1.PM1.average_reading") ? std::get<double>(status["LS1.PM1.average_reading"]) : -1.0);
+
+    vpos += 2;
     // Add a horizontal line
-    wmove(right_pane, hpos, 1);
+    wmove(right_pane, vpos, 1);
     whline(right_pane, ACS_HLINE, getmaxx(right_pane) - 2);
-    hpos += 2;
+    mvwprintw(right_pane, vpos, 2, " Laser Timers ");
+    vpos += 2;
+    mvwprintw(right_pane, vpos, 2, "Warmup timer : %d s", status.count("LS1.L1.warmup_timer_s") ? std::get<uint32_t>(status["LS1.L1.warmup_timer_s"]) : 0);
+    vpos += 1;
+    mvwprintw(right_pane, vpos, 2, "Standby timer : %d s", status.count("LS1.L1.standby_timer_s") ? std::get<uint32_t>(status["LS1.L1.standby_timer_s"]) : 0);
+    vpos += 1;
+    mvwprintw(right_pane, vpos, 2, "Pause timer : %d s", status.count("LS1.L1.pause_timer_s") ? std::get<uint32_t>(status["LS1.L1.pause_timer_s"]) : 0);
+    vpos += 2;
+    // Add a horizontal line
+    wmove(right_pane, vpos, 1);
+    whline(right_pane, ACS_HLINE, getmaxx(right_pane) - 2);
+    mvwprintw(right_pane, vpos, 2, " Laser Part States ");
+
+    vpos += 2;
     // -- now show the states of the interesting parts
     char esh_open = status.count("LS1.L1.ext_shutter_open") ? (std::get<bool>(status["LS1.L1.ext_shutter_open"])?'Y':'N') : '?';
     char ish_open = status.count("LS1.L1.laser_shutter_open") ? (std::get<bool>(status["LS1.L1.laser_shutter_open"]) ? 'Y' : 'N') : '?';
     char fire_active = status.count("LS1.L1.fire_active") ? (std::get<bool>(status["LS1.L1.fire_active"]) ? 'Y' : 'N') : '?';
     char qswitch_active = status.count("LS1.L1.qswitch_active") ? (std::get<bool>(status["LS1.L1.qswitch_active"]) ? 'Y' : 'N') : '?';
-    mvwprintw(right_pane, hpos, 2, "ESH : ");
-    set_label_color(right_pane, hpos, 7, std::string(1, esh_open), std::string(1, esh_open));
-    mvwprintw(right_pane, hpos, 10, "LSH : ");
-    set_label_color(right_pane, hpos, 15, std::string(1, ish_open), std::string(1, ish_open));
-    mvwprintw(right_pane, hpos, 18, "FIRE : ");
-    set_label_color(right_pane, hpos, 25, std::string(1, fire_active), std::string(1, fire_active));
-    mvwprintw(right_pane, hpos, 28, "QSWITCH : ");
-    set_label_color(right_pane, hpos, 38, std::string(1, qswitch_active), std::string(1, qswitch_active));
+    mvwprintw(right_pane, vpos, 2, "ESH OPEN : ");
+    set_label_color(right_pane, vpos, 14, std::string(1, esh_open), std::string(1, esh_open));
+    mvwprintw(right_pane, vpos, 17, "LSH OPEN : ");
+    set_label_color(right_pane, vpos, 29, std::string(1, ish_open), std::string(1, ish_open));
+    mvwprintw(right_pane, vpos, 31, "FIRE : ");
+    set_label_color(right_pane, vpos, 39, std::string(1, fire_active), std::string(1, fire_active));
+    mvwprintw(right_pane, vpos, 41, "QSWITCH : ");
+    set_label_color(right_pane, vpos, 52, std::string(1, qswitch_active), std::string(1, qswitch_active));
     } 
     catch(const std::exception &e)
     {
@@ -265,7 +277,7 @@ void print_help()
   add_feedback(Severity::INFO, "   warmup");
   add_feedback(Severity::INFO, "       Start warmup of the laser. During this stage only motors can be moved.");
   add_feedback(Severity::INFO, "   pause");
-  add_feedback(Severity::INFO, "       Pause the system. This will *keep* the laser from firing, but shutter is closed.");
+  add_feedback(Severity::INFO, "       Pause the system. This will *keep* the laser firing, but shutter is closed.");
   add_feedback(Severity::INFO, "   standby");
   add_feedback(Severity::INFO, "       Pause the system. This will close the internal shutter and stop QSWITCH.");
   add_feedback(Severity::INFO, "   resume");
@@ -285,6 +297,14 @@ void print_help()
   // add_feedback(Severity::INFO, "       Add a variable to the monitor list. Variable must be a fully qualified OPC-UA node");
   add_feedback(Severity::INFO, "   read_variable <variable>");
   add_feedback(Severity::INFO, "       Read the value of a variable. Variable must be a fully qualified OPC-UA node");
+  add_feedback(Severity::INFO, "   set_pm_range <setting>");
+  add_feedback(Severity::INFO, "       Check the variable LS1.PM1.range_options for reference");
+  add_feedback(Severity::INFO, "   set_pm_threshold <setting>");
+  add_feedback(Severity::INFO, "       Threshold should be something above 100 (units of 0.01%)");
+  add_feedback(Severity::INFO, "   set_att_position <setting>");
+  add_feedback(Severity::INFO, "       Position should be a value in [-10000; 10000]");
+  add_feedback(Severity::INFO, "   set_dac <value>");
+  add_feedback(Severity::INFO, "       Value cannot be above 4095");
   add_feedback(Severity::INFO, "  exit");
   add_feedback(Severity::INFO, "       Exit the program");
 }
@@ -729,6 +749,10 @@ int run_command(int argc, char**argv)
     {
       msg << *static_cast<uint16_t *>(value.data);
     }
+    else if (value.type == &UA_TYPES[UA_TYPES_BOOLEAN])
+    {
+      msg << *static_cast<bool *>(value.data);
+    }
     else
     {
       msg << "Unknown type";
@@ -736,6 +760,107 @@ int run_command(int argc, char**argv)
     add_feedback(Severity::INFO, msg.str());
     UA_Variant_clear(&value);
   }
+  else if (cmd == "set_pm_range")
+  {
+    if (!g_monitor.is_connected())
+    {
+      add_feedback(Severity::ERROR, "Not connected to a server.");
+      return 0;
+    }
+    if (argc != 2)
+    {
+      add_feedback(Severity::WARN, "Usage: set_pm_range <setting>");
+      add_feedback(Severity::WARN, "      Check the variable LS1.PM1.range_options for reference");
+      return 0;
+    }
+    int16_t setting = std::stoi(argv[1]);
+    FeedbackManager feedback;
+    g_monitor.set_pm_range(setting, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+  }
+  else if (cmd == "set_pm_threshold")
+  {
+    if (!g_monitor.is_connected())
+    {
+      add_feedback(Severity::ERROR, "Not connected to a server.");
+      return 0;
+    }
+    if (argc != 2)
+    {
+      add_feedback(Severity::WARN, "Usage: set_pm_threshold <setting>");
+      add_feedback(Severity::WARN, "      Threshold should be something above 100");
+      return 0;
+    }
+    uint16_t setting = std::stoi(argv[1]);
+    FeedbackManager feedback;
+    g_monitor.set_pm_threshold(setting, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+  }
+  else if (cmd == "set_att_position")
+  {
+    if (!g_monitor.is_connected())
+    {
+      add_feedback(Severity::ERROR, "Not connected to a server.");
+      return 0;
+    }
+    if (argc != 2)
+    {
+      add_feedback(Severity::WARN, "Usage: set_att_position <setting>");
+      add_feedback(Severity::WARN, "      Position should be a value in [-10000; 10000]");
+      return 0;
+    }
+    uint32_t setting = std::stoi(argv[1]);
+    //= std::stoi(argv[1]);
+    FeedbackManager feedback;
+    g_monitor.set_att_pos(setting, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+  }
+  else if (cmd == "set_dac")
+  {
+    if (!g_monitor.is_connected())
+    {
+      add_feedback(Severity::ERROR, "Not connected to a server.");
+      return 0;
+    }
+    if (argc != 2)
+    {
+      add_feedback(Severity::WARN, "Usage: set_dac <value>");
+      add_feedback(Severity::WARN, "      Value cannot be above 4095");
+      return 0;
+    }
+    uint16_t value = std::stoi(argv[1]);
+    if (value > 4095)
+    {
+      add_feedback(Severity::ERROR, "Value cannot be above 4095");
+      return 0;
+    }
+    FeedbackManager feedback;
+    g_monitor.set_dac_threshold(value, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+  }
+  else if (cmd == "add_monitor")
+  {
+    if (!g_monitor.is_connected())
+    {
+      add_feedback(Severity::ERROR, "Not connected to a server.");
+      return 0;
+    }
+    if (argc != 2)
+    {
+      add_feedback(Severity::WARN, "Usage: add_monitor <variable>");
+      return 0;
+    }
+    std::string variable(argv[1]);
+    g_vars_to_monitor.push_back(variable);
+    FeedbackManager feedback;
+    g_monitor.set_monitored_vars(g_vars_to_monitor);
+    add_feedback(Severity::INFO, "Added variable to monitor list.");
+  }
+
   else if (cmd == "add_monitor")
   {
     if (!g_monitor.is_connected())

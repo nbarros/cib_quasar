@@ -41,11 +41,17 @@ public:
     void get_status(iols_monitor_t &status) { status = m_monitored_items; }
     void set_monitored_vars(const std::vector<std::string> &var_names);
     bool read_variable(const std::string &variable, UA_Variant &value, FeedbackManager &feedback);
+    bool set_pm_range(const int16_t &selection, FeedbackManager &feedback);
+    bool set_pm_threshold(const uint16_t &selection, FeedbackManager &feedback);
+    bool set_dac_threshold(const uint16_t &selection, FeedbackManager &feedback);
+
+    bool set_att_pos(const uint32_t &value, FeedbackManager &feedback);
 
 private:
     void monitor_loop();
     void monitor_server();
     bool exec_method_simple(const std::string &method_node, FeedbackManager &feedback);
+    bool exec_method_arg(const std::string &method_node, const UA_Variant &val, FeedbackManager &feedback);
     void update_monitored_item(const std::string &key, const iols_opc_variant_t &value);
 
     Open62541Client m_client;

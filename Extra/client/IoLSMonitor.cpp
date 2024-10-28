@@ -197,7 +197,7 @@ bool IoLSMonitor::config(const std::string &location, FeedbackManager &feedback)
     {
       for (const auto &msg : server_response["messages"])
       {
-        feedback.add_message(Severity::INFO, msg);
+        feedback.add_message(Severity::REPORT, msg);
       }
       if (server_response.contains("statuscode"))
       {
@@ -229,84 +229,6 @@ bool IoLSMonitor::config(const std::string &location, FeedbackManager &feedback)
     return false;
   }
 }
-
-// bool IoLSMonitor::move_to_position(const std::string &position, const std::string &approach, FeedbackManager &feedback)
-// {
-//   try
-//   {
-//     std::regex position_regex(R"(\[\s*(-?\d+),\s*(-?\d+),\s*(-?\d+)\s*\])");
-//     std::smatch position_match;
-//     if (!std::regex_match(position, position_match, position_regex))
-//     {
-//       feedback.add_message(Severity::ERROR, "Invalid position format: " + position);
-//       return false;
-//     }
-
-//     if (approach.size() != 3 || !std::all_of(approach.begin(), approach.end(), [](char c)
-//                                              { return c == 'u' || c == 'd' || c == '-'; }))
-//     {
-//       feedback.add_message(Severity::ERROR, "Invalid approach format: " + approach);
-//       return false;
-//     }
-
-//     json jrequest;
-//     jrequest["target"] = json::array({std::stoi(position_match[1].str()), std::stoi(position_match[2].str()), std::stoi(position_match[3].str())});
-//     jrequest["approach"] = approach;
-
-//     UA_Variant requestVariant;
-//     UA_Variant_init(&requestVariant);
-//     std::string requestString = jrequest.dump();
-//     UA_String uaRequestString = UA_STRING_ALLOC(requestString.c_str());
-//     UA_Variant_setScalarCopy(&requestVariant, &uaRequestString, &UA_TYPES[UA_TYPES_STRING]);
-//     UA_String_clear(&uaRequestString);
-
-//     std::vector<UA_Variant> outputArguments;
-//     m_client.call_method("LS1", "LS1.move_to_pos", {requestVariant}, outputArguments, feedback);
-
-//     if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
-//     {
-//       UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
-//       std::string responseString(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
-//       json response = json::parse(responseString);
-
-//       if (response.contains("messages"))
-//       {
-//         for (const auto &msg : response["messages"])
-//         {
-//           feedback.add_message(Severity::INFO, msg);
-//         }
-//       }
-//     }
-//     else
-//     {
-//       feedback.add_message(Severity::ERROR, "No valid response received from server.");
-//     }
-
-//     UA_Variant_clear(&requestVariant);
-//     for (auto &output : outputArguments)
-//     {
-//       UA_Variant_clear(&output);
-//     }
-
-//     return true;
-//   }
-//   catch (const json::exception &e)
-//   {
-//     feedback.add_message(Severity::ERROR, "JSON exception in move_to_position: " + std::string(e.what()));
-//     return false;
-//   }
-//   catch (const std::exception &e)
-//   {
-//     feedback.add_message(Severity::ERROR, "Exception in move_to_position: " + std::string(e.what()));
-//     return false;
-//   }
-//   catch (...)
-//   {
-//     feedback.add_message(Severity::ERROR, "Unknown exception in move_to_position");
-//     return false;
-//   }
-// }
-
 
 bool IoLSMonitor::move_to_position(const std::string &position, const std::string &approach, FeedbackManager &feedback)
 {
@@ -445,7 +367,7 @@ bool IoLSMonitor::fire_at_position(const std::string &position, const uint32_t n
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method("LS1", "LS1.fire_at_position", {requestVariant}, outputArguments, feedback);
+      m_client.call_method_2("LS1", "LS1.fire_at_position", {requestVariant}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
@@ -459,7 +381,7 @@ bool IoLSMonitor::fire_at_position(const std::string &position, const uint32_t n
       json server_response = json::parse(responseString);
 
       // Merge the messages from the server response into the existing response
-      Severity severity = Severity::INFO;
+      Severity severity = Severity::REPORT;
       if (server_response.contains("statuscode"))
       {
         if (server_response["statuscode"].get<int>() != 0)
@@ -557,7 +479,7 @@ bool IoLSMonitor::fire_segment(const std::string &start_position, const std::str
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method("LS1", "LS1.fire_segment", {requestVariant}, outputArguments,feedback);
+      m_client.call_method_2("LS1", "LS1.fire_segment", {requestVariant}, outputArguments,feedback);
     }
     catch (const std::exception &e)
     {
@@ -573,7 +495,7 @@ bool IoLSMonitor::fire_segment(const std::string &start_position, const std::str
 
       // Merge the messages from the server response into the existing response
       json server_response = json::parse(responseString);
-      Severity severity = Severity::INFO;
+      Severity severity = Severity::REPORT;
       if (server_response.contains("statuscode"))
       {
         feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
@@ -687,7 +609,7 @@ bool IoLSMonitor::execute_scan(const std::string &run_plan, FeedbackManager &fee
     std::vector<UA_Variant> outputArguments;
     try
     {
-      m_client.call_method("LS1", "LS1.execute_scan", {requestVariant}, outputArguments, feedback);
+      m_client.call_method_2("LS1", "LS1.execute_scan", {requestVariant}, outputArguments, feedback);
     }
     catch (const std::exception &e)
     {
@@ -702,7 +624,7 @@ bool IoLSMonitor::execute_scan(const std::string &run_plan, FeedbackManager &fee
 
       // Merge the messages from the server response into the existing response
       json server_response = json::parse(responseString);
-      Severity severity = Severity::INFO;
+      Severity severity = Severity::REPORT;
       if (server_response.contains("statuscode"))
       {
         feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
@@ -789,7 +711,7 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, FeedbackMan
 
       // Merge the messages from the server response into the existing response
       json server_response = json::parse(responseString);
-      Severity severity = Severity::INFO;
+      Severity severity = Severity::REPORT;
       if (server_response.contains("statuscode"))
       {
         feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
@@ -840,6 +762,127 @@ bool IoLSMonitor::exec_method_simple(const std::string &method_node, FeedbackMan
     feedback.add_message(Severity::ERROR, "Unknown exception in " + method_node);
     return false;
   }
+}
+
+bool IoLSMonitor::exec_method_arg(const std::string &method_node, const UA_Variant& val, FeedbackManager &feedback)
+{
+  try
+  {
+    // Check that the client is connected
+    if (!m_client.is_connected())
+    {
+      feedback.add_message(Severity::ERROR, "Client is not connected.");
+      return false;
+    }
+
+    // Call the method under the specified node
+    std::vector<UA_Variant> outputArguments;
+    try
+    {
+      m_client.call_method_2("LS1", method_node, {val}, outputArguments, feedback);
+    }
+    catch (const std::exception &e)
+    {
+      feedback.add_message(Severity::ERROR, "Exception in exec_arg: " + std::string(e.what()));
+    }
+
+    // Convert the single output argument into a string and parse it into the response JSON variable
+    if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
+    {
+      UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
+      std::string responseString(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
+
+      // Merge the messages from the server response into the existing response
+      json server_response = json::parse(responseString);
+      Severity severity = Severity::REPORT;
+      if (server_response.contains("statuscode"))
+      {
+        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
+        severity = Severity::ERROR;
+      }
+      if (server_response.contains("messages"))
+      {
+        for (const auto &msg : server_response["messages"])
+        {
+          feedback.add_message(severity, msg);
+        }
+      }
+    }
+    else
+    {
+      feedback.add_message(Severity::ERROR, "No valid response received from server.");
+      // Clean up the UA_Variant
+      // UA_Variant_clear(&requestVariant);
+      for (auto &output : outputArguments)
+      {
+        UA_Variant_clear(&output);
+      }
+
+      return false;
+    }
+
+    // Clean up the UA_Variant
+    // UA_Variant_clear(&requestVariant);
+    for (auto &output : outputArguments)
+    {
+      UA_Variant_clear(&output);
+    }
+    return true;
+  }
+  catch (const json::exception &e)
+  {
+    feedback.add_message(Severity::ERROR, "JSON exception in " + method_node + ": " + std::string(e.what()));
+    return false;
+  }
+  catch (const std::exception &e)
+  {
+    feedback.add_message(Severity::ERROR, "Exception in " + method_node + ": " + std::string(e.what()));
+    return false;
+  }
+  catch (...)
+  {
+    feedback.add_message(Severity::ERROR, "Unknown exception in " + method_node);
+    return false;
+  }
+}
+
+bool IoLSMonitor::set_pm_range(const int16_t &selection, FeedbackManager &feedback)
+{
+  UA_Variant input;
+  UA_Variant_init(&input);
+  UA_Variant_setScalarCopy(&input, &selection, &UA_TYPES[UA_TYPES_INT16]);
+  bool success = exec_method_arg("LS1.PM1.set_range", input, feedback);
+  UA_Variant_clear(&input);
+  return success;
+}
+
+bool IoLSMonitor::set_pm_threshold(const uint16_t &selection, FeedbackManager &feedback)
+{
+  UA_Variant input;
+  UA_Variant_init(&input);
+  UA_Variant_setScalarCopy(&input, &selection, &UA_TYPES[UA_TYPES_UINT16]);
+  bool success = exec_method_arg("LS1.PM1.set_threshold", input, feedback);
+  UA_Variant_clear(&input);
+  return success;
+}
+
+bool IoLSMonitor::set_dac_threshold(const uint16_t &selection, FeedbackManager &feedback)
+{
+  UA_Variant input;
+  UA_Variant_init(&input);
+  UA_Variant_setScalarCopy(&input, &selection, &UA_TYPES[UA_TYPES_UINT16]);
+  bool success = exec_method_arg("LS1.CIB1.set_dac_threshold", input, feedback);
+  UA_Variant_clear(&input);
+  return success;
+}
+bool IoLSMonitor::set_att_pos(const uint32_t &value, FeedbackManager &feedback)
+{
+  UA_Variant input;
+  UA_Variant_init(&input);
+  UA_Variant_setScalarCopy(&input, &value, &UA_TYPES[UA_TYPES_UINT32]);
+  bool success = exec_method_arg("LS1.A1.set_position", input, feedback);
+  UA_Variant_clear(&input);
+  return success;
 }
 
 bool IoLSMonitor::pause(FeedbackManager &feedback)
