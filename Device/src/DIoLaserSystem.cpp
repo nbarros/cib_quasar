@@ -2312,10 +2312,10 @@ UaStatus DIoLaserSystem::callClear_error (
       bool is_moving = true;
       while (is_moving)
       {
-        is_moving = lmotor->is_moving();
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        is_moving = lmotor->is_moving();
       }
-      
+
       lmotor->get_position_motor(c_pos, resp);
 
       reset(msg);
