@@ -2220,7 +2220,7 @@ UaStatus DIoLaserSystem::callClear_error (
     }
   }
 
-  void DIoLaserSystem::move_task(const std::vector<OpcUa_Int32> &position, const std::string approach)
+  void DIoLaserSystem::move_task(const std::vector<OpcUa_Int32> position, const std::string approach)
   {
     const uint32_t overstep = 200;
     std::ostringstream msg("");
