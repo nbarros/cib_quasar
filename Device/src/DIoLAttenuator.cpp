@@ -95,6 +95,8 @@ DIoLAttenuator::DIoLAttenuator (
         ,m_current_idle(10)
         ,m_current_moving(10)
         ,m_transmission(0.0)
+        ,m_range_min(-10000)
+        ,m_range_max(10000)
         ,m_status(sOffline)
         //    ,m_serial_busy(false)
 {
@@ -195,7 +197,9 @@ UaStatus DIoLAttenuator::callSet_transmission (
     UaString& response
 )
 {
+#ifdef DEBUG
     LOG(Log::INF) << log_i("set_transmission","Setting transmission to ") << transmission;
+#endif
     json resp;
     ostringstream msg("");
     UaStatus ret = set_transmission(transmission,resp);
@@ -210,7 +214,7 @@ UaStatus DIoLAttenuator::callSet_transmission (
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i("set_config","Operation successful!");
+      msg << log_i("set_transmission", "Operation successful!");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -223,7 +227,32 @@ UaStatus DIoLAttenuator::callSet_position (
     UaString& response
 )
 {
-    return OpcUa_BadNotImplemented;
+#ifdef DEBUG
+  LOG(Log::INF) << log_i("set_position", "Setting position to ") << position;
+#endif
+  json resp;
+  ostringstream msg("");
+  UaStatus ret = set_position(position, resp);
+  if (ret != OpcUa_Good)
+  {
+    msg.clear();
+    msg.str("");
+    msg << log_e("set_position", "Operation failed!");
+    resp["status"] = "ERROR";
+    resp["messages"].push_back(msg.str());
+    resp["statuscode"] = OpcUa_Bad;
+  }
+  else
+  {
+    msg.clear();
+    msg.str("");
+    msg << log_i("set_position", "Operation successful!");
+    resp["status"] = "OK";
+    resp["messages"].push_back(msg.str());
+    resp["statuscode"] = OpcUa_Good;
+  }
+  response = UaString(resp.dump().c_str());
+  return OpcUa_Good;
 }
 UaStatus DIoLAttenuator::callSet_conn_details (
     const UaString&  port,
@@ -814,6 +843,38 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
       }
       set_status(sReady);
       // everything good so far... loop over the whole configuration
+      // load the position range first of all, since we want to know the range
+      // before we risk of setting the value
+      if (!config.contains("position_range"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e((lbl.c_str()),"Malformed configuration. Can't find position_range parameter");
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["statuscode"] = OpcUa_BadInvalidArgument;
+        LOG(Log::ERR) << msg.str();
+        terminate(resp);
+        return OpcUa_BadInvalidArgument;
+      }
+      else
+      {
+        if ((!config.at("position_range").is_array()) || (!(config.at("position_range").size() == 2)))
+        {
+          msg.clear(); msg.str("");
+          msg << log_e((lbl.c_str()),"Malformed configuration. position_range should be an array of 2 elements");
+          resp["status"] = "ERROR";
+          resp["messages"].push_back(msg.str());
+          resp["statuscode"] = OpcUa_BadInvalidArgument;
+          LOG(Log::ERR) << msg.str();
+          terminate(resp);
+          return OpcUa_BadInvalidArgument;
+        }
+        else
+        {
+          m_range_min = config.at("position_range")[0].get<int>();
+          m_range_max = config.at("position_range")[1].get<int>();
+        }
+      }
 
       for (json::iterator it = config.begin(); it != config.end(); ++it)
       {
@@ -860,8 +921,10 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
         }
         if (it.key() == "attenuator_position")
         {
+         // first force to grab the position range
+         // even if has already been defined
           int32_t v = it.value();
-          ret = ret | set_position(v,resp);
+          ret = ret | set_position(v, resp);
         }
         if (it.key() == "calibration")
         {
@@ -1524,20 +1587,20 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
       resp["messages"].push_back(msg.str());
       return OpcUa_BadInvalidState;
     }
+    if ((v < m_range_min) || (v > m_range_max))
+    {
+      // invalid argument
+      msg.clear(); msg.str("");
+      msg << log_e(label,"Invalid argument. Valid range [") << m_range_min << "," << m_range_max << "]";
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
+
+      return OpcUa_BadInvalidArgument;
+    }
     int32_t position;
-    // FIXME: Should check the range
-    //    if (v > 0xFF)
-    //    {
-    //      // invalid argument
-    //      msg.clear(); msg.str("");
-    //      msg << log_e(label,"Invalid argument. Valid range ]0,255].");
-    //      resp["messages"].push_back(msg.str());
-    //      return OpcUa_BadInvalidArgument;
-    //    }
-    // all should be good now
     try
     {
-
       {
         const std::lock_guard<std::mutex> lock(m_serial_mutex);
         m_att->go(v,position,true);

@@ -168,6 +168,8 @@ private:
     uint16_t m_current_idle;
     uint16_t m_current_moving;
     double m_transmission;
+    int32_t m_range_min;
+    int32_t m_range_max;
     // maps
     std::map<uint16_t,std::string> m_motor_states;
     std::map<uint16_t,std::string> m_resolution_states;
