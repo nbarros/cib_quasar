@@ -2346,7 +2346,9 @@ UaStatus DIoLaserSystem::callClear_error (
       // once the task is done check if there is an error
       if (m_state == sError)
       {
-        LOG(Log::ERR) << log_e("move_task","Bugger. Movement failed.");
+        LOG(Log::ERR) << log_e("move_task","Bugger. Movement failed with movement [")
+        << position.at(0) << "," << position.at(1) << "," << position.at(2)
+        << " approach " << approach;
       }
       else
       {
