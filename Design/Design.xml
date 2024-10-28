@@ -470,6 +470,10 @@
 		<d:argument dataType="OpcUa_Double" name="transmission"></d:argument>
 		<d:returnvalue dataType="UaString" name="response"></d:returnvalue>	
 	</d:method>
+	<d:method name="set_position" executionSynchronicity="synchronous">
+		<d:argument dataType="OpcUa_UInt32" name="position"></d:argument>
+		<d:returnvalue dataType="UaString" name="response"></d:returnvalue>	
+	</d:method>
 	<!-- Below this point, these are 'advanced' methods, to refine the settings -->
     <d:method name="set_conn_details" executionSynchronicity="synchronous">
 		<d:argument dataType="UaString" name="port"></d:argument>

@@ -2240,7 +2240,7 @@ namespace Device
       if (c_pos < position.at(idx))
       {
         // current position is "below" the target, only 'u' requires overstepping
-        if (approach.at(idx) == 'u')
+        if (approach.at(idx) == 'd')
         {
           int32_t interim_target = position.at(idx) + overstep;
           st = lmotor->move_wrapper(interim_target,resp);
@@ -2263,7 +2263,7 @@ namespace Device
       {
         // we are above. If approach is 'd', we have to overstep
         // current position is "below" the target, only 'u' requires overstepping
-        if (approach.at(idx) == 'd')
+        if (approach.at(idx) == 'u')
         {
           int32_t interim_target = position.at(idx) - overstep;
           st = lmotor->move_wrapper(interim_target,resp);

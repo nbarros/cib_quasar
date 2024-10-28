@@ -60,6 +60,10 @@ public:
         OpcUa_Double transmission,
         UaString& response
     ) ;
+    UaStatus callSet_position (
+        OpcUa_UInt32 position,
+        UaString& response
+    ) ;
     UaStatus callSet_conn_details (
         const UaString&  port,
         OpcUa_UInt16 baud_rate,

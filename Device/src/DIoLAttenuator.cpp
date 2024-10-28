@@ -218,6 +218,13 @@ UaStatus DIoLAttenuator::callSet_transmission (
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
 }
+UaStatus DIoLAttenuator::callSet_position (
+    OpcUa_UInt32 position,
+    UaString& response
+)
+{
+    return OpcUa_BadNotImplemented;
+}
 UaStatus DIoLAttenuator::callSet_conn_details (
     const UaString&  port,
     OpcUa_UInt16 baud_rate,
