@@ -23,7 +23,10 @@
 int g_height;
 IoLSMonitor g_monitor;
 std::deque<FeedbackMessage> g_feedback;
-std::vector<std::string> g_vars_to_monitor = {"LS1.state", "LS1.RNN800.state", "LS1.RNN600.state", "LS1.LSTAGE.state", "LS1.A1.state", "LS1.L1.state","LS1.PM1.state", "LS1.PM1.energy_reading", "LS1.PM1.average_reading", "LS1.RNN800.current_position_motor", "LS1.RNN800.current_position_cib", "LS1.RNN600.current_position_motor", "LS1.RNN600.current_position_cib", "LS1.LSTAGE.current_position_motor", "LS1.LSTAGE.current_position_cib", "LS1.A1.position"};
+std::vector<std::string> g_vars_to_monitor = {"LS1.state", "LS1.RNN800.state", "LS1.RNN600.state", "LS1.LSTAGE.state", "LS1.A1.state", "LS1.L1.state", "LS1.PM1.state", "LS1.PM1.energy_reading", "LS1.PM1.average_reading", "LS1.RNN800.current_position_motor", "LS1.RNN800.current_position_cib", "LS1.RNN600.current_position_motor", "LS1.RNN600.current_position_cib", "LS1.LSTAGE.current_position_motor", "LS1.LSTAGE.current_position_cib", "LS1.A1.position",
+                                              "LS1.L1.ext_shutter_open", "LS1.L1.laser_shutter_open", "LS1.L1.laser_status_code", "LS1.L1.standby_timer_s", "LS1.L1.pause_timer_s",  "LS1.L1.warmup_timer_s", "LS1.L1.fire_active","LS1.L1.qswitch_active",
+                                              "LS1.CIB1.dac_threshold"
+                                              };
 
 void initialize_pane(WINDOW *&pane, int height, int width, int starty, int startx, const std::string &title)
 {
@@ -42,11 +45,11 @@ void write_to_pane(WINDOW *pane, int y, int x, const std::string &text)
 void set_label_color(WINDOW *pane, int y, int x, const std::string &label, const std::string &status)
 {
   int color_pair;
-  if (status == "offline")
+  if (status == "offline" || status == "N")
     color_pair = 1;
-  else if (status == "ready")
+  else if (status == "ready" || status == 'Y')
     color_pair = 2;
-  else if (status == "warmup" || status == "pause" || status == "standby")
+  else if (status == "warmup" || status == "pause" || status == "standby" || status == "operating" || status == "?")
     color_pair = 3;
   else
     color_pair = 0; // Default color
@@ -117,7 +120,44 @@ void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int heigh
     hpos += 1;
     mvwprintw(right_pane, hpos, 2, "Power Meter average energy  : %.2f", 
               status.count("LS1.PM1.average_energy") ? std::get<double>(status["LS1.PM1.average_energy"]) : -1.0);
+    hpos += 2;
+    // Add a horizontal line below the title
+    wmove(right_pane, hpos, 1);
+    whline(right_pane, ACS_HLINE, getmaxx(right_pane) - 2);
+    hpos += 2;
+    // A few laser updates
+    mvwprintw(right_pane, hpos, 2, "Laser status code : %d", 
+              status.count("LS1.L1.laser_status_code") ? std::get<int>(status["LS1.L1.laser_status_code"]) : -1);
+
+    hpos += 2;
+    // Add a horizontal line 
+    wmove(right_pane, hpos, 1);
+    whline(right_pane, ACS_HLINE, getmaxx(right_pane) - 2);
+    mvwprintw(right_pane, hpos, 2, "Laser Timers");
+    hpos += 2;
+    mvwprintw(right_pane, hpos, 2, "Warmup timer : %d s", status.count("LS1.L1.warmup_timer_s") ? std::get<uint32_t>(status["LS1.L1.warmup_timer_s"]) : 0);
     hpos += 1;
+    mvwprintw(right_pane, hpos, 2, "Standby timer : %d s", status.count("LS1.L1.standby_timer_s") ? std::get<uint32_t>(status["LS1.L1.standby_timer_s"]) : 0);
+    hpos += 1;
+    mvwprintw(right_pane, hpos, 2, "Pause timer : %d s", status.count("LS1.L1.pause_timer_s") ? std::get<uint32_t>(status["LS1.L1.pause_timer_s"]) : 0);
+    hpos += 2;
+    // Add a horizontal line
+    wmove(right_pane, hpos, 1);
+    whline(right_pane, ACS_HLINE, getmaxx(right_pane) - 2);
+    hpos += 2;
+    // -- now show the states of the interesting parts
+    char esh_open = status.count("LS1.L1.ext_shutter_open") ? (std::get<bool>(status["LS1.L1.ext_shutter_open"])?'Y':'N') : '?';
+    char ish_open = status.count("LS1.L1.laser_shutter_open") ? (std::get<bool>(status["LS1.L1.laser_shutter_open"]) ? 'Y' : 'N') : '?';
+    char fire_active = status.count("LS1.L1.fire_active") ? (std::get<bool>(status["LS1.L1.fire_active"]) ? 'Y' : 'N') : '?';
+    char qswitch_active = status.count("LS1.L1.qswitch_active") ? (std::get<bool>(status["LS1.L1.qswitch_active"]) ? 'Y' : 'N') : '?';
+    mvwprintw(right_pane, hpos, 2, "ESH : ");
+    set_label_color(right_pane, hpos, 7, std::string(1, esh_open), std::string(1, esh_open));
+    mvwprintw(right_pane, hpos, 10, "LSH : ");
+    set_label_color(right_pane, hpos, 15, std::string(1, ish_open), std::string(1, ish_open));
+    mvwprintw(right_pane, hpos, 18, "FIRE : ");
+    set_label_color(right_pane, hpos, 25, std::string(1, fire_active), std::string(1, fire_active));
+    mvwprintw(right_pane, hpos, 28, "QSWITCH : ");
+    set_label_color(right_pane, hpos, 38, std::string(1, qswitch_active), std::string(1, qswitch_active));
     wrefresh(right_pane);
 
     // Sleep for 500 ms
