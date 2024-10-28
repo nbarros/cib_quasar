@@ -47,7 +47,7 @@ void set_label_color(WINDOW *pane, int y, int x, const std::string &label, const
   int color_pair;
   if (status == "offline" || status == "N")
     color_pair = 1;
-  else if (status == "ready" || status == 'Y')
+  else if (status == "ready" || status == "Y")
     color_pair = 2;
   else if (status == "warmup" || status == "pause" || status == "standby" || status == "operating" || status == "?")
     color_pair = 3;
