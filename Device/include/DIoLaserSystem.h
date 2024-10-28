@@ -148,7 +148,12 @@ private:
     void init_scan_task(json &segments);
     void get_message_queue(json &resp, bool clear);
     bool validate_scan_plan(json &plan, json &resp);
-public:
+    // crappy method necessary because damn motor code is a freaking nightmare
+    void wait_for_motor(DIoLMotor*motor, int32_t target);
+    void wait_for_motors(const std::vector<int32_t> &target);
+    void update_task_message_queue(json &resp);
+
+public : 
     UaStatus clear_error(json &resp);
     // makes a roll call for each system to update itself
     void update();

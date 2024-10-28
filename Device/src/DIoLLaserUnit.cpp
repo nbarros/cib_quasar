@@ -2409,7 +2409,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     if (!m_part_state.state.fire_enable)
     {
       msg.clear(); msg.str("");
-      msg << log_e("fire_discrete_shots","The laser is operating") << " (current state " << m_status_map.at(m_status) << ")";
+      msg << log_e("fire_discrete_shots","The laser is NOT operating") << " (current state " << m_status_map.at(m_status) << ")";
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -2434,7 +2434,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       std::this_thread::sleep_for(std::chrono::milliseconds(80));
     }
     // we are done. Close the shutter.
-    st = standby(resp);
+    st = pause(resp);
     return st;
   }
 

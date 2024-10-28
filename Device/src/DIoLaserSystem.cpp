@@ -2311,17 +2311,8 @@ UaStatus DIoLaserSystem::callClear_error (
         }
       }
       // if the motor was ordered to overstep, we have to wait for the movement to complete
-      bool is_moving = true;
-      while (is_moving)
-      {
-        lmotor->get_position_motor(c_pos, resp);        
-        is_moving = (std::abs(c_pos-interim_target) > 20);
-        is_moving |= lmotor->is_moving();
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-      }
-
+      wait_for_motor(lmotor,interim_target);
       lmotor->get_position_motor(c_pos, resp);
-
       reset(msg);
       msg << log_i(lbl.c_str(), "Interim position for motor (id : ")
           << lmotor->get_id() << ") : " << c_pos;
@@ -2879,6 +2870,10 @@ UaStatus DIoLaserSystem::callClear_error (
     // the task does not need base checks
     std::thread([this, target, num_pulses]()
                 {
+        if (!m_task_message_queue.contains("messages"))
+        {
+          m_task_message_queue["messages"] = json::array();
+        }
         fire_point_task(target,num_pulses);
         // once the task is done check if there is an error
         if (m_state == sError)
@@ -2936,7 +2931,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       LOG(Log::ERR) << msg.str();
       resp["statuscode"] = static_cast<uint32_t>(st);
-      m_task_message_queue = resp;
+      update_task_message_queue(resp);
       // nothing is being done, so just terminate this task
       // update the state to error
       // -- if we cannot go into pause, force a shutdown
@@ -2956,7 +2951,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       resp["statuscode"] = static_cast<uint32_t>(st);
       LOG(Log::ERR) << msg.str();
-      m_task_message_queue = resp;
+      update_task_message_queue(resp);
       // nothing is being done, so just terminate this task
       // update the state to error
       update_state(sError);
@@ -2964,16 +2959,18 @@ UaStatus DIoLaserSystem::callClear_error (
     }
     // step 1.2: wait until motors are in place
     // since this is a separate task, we *must* wait for things to be ready
-    bool is_moving = true;
-    while (is_moving)
-    {
-      is_moving = false;
-      for (Device::DIoLMotor *lmotor : iolmotors())
-      {
-        is_moving |= lmotor->is_moving();
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
+
+    wait_for_motors(target);
+    //  bool is_moving = true;
+    // while (is_moving)
+    // {
+    //   is_moving = false;
+    //   for (Device::DIoLMotor *lmotor : iolmotors())
+    //   {
+    //     is_moving |= lmotor->is_moving();
+    //   }
+    //   std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // }
     //
     //
     // we have reached the destination
@@ -2981,17 +2978,17 @@ UaStatus DIoLaserSystem::callClear_error (
     st = iolpowermeter()->start_readings(resp);
     if (st != OpcUa_Good)
     {
-      msg.clear();
-      msg.str("");
+      reset(msg);
       msg << log_e(lbl.c_str(), "Failed to start power meter");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = static_cast<uint32_t>(st);
       LOG(Log::ERR) << msg.str();
-      m_task_message_queue = resp;
+      update_task_message_queue(resp);
       update_state(sError);
       return;
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     // step 2: resume operation of the laser unit
     st = iollaserunit()->fire_discrete_shots(num_pulses, resp);
     if (st != OpcUa_Good)
@@ -3003,7 +3000,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["statuscode"] = static_cast<uint32_t>(st);
       // force a pause (again)
       pause(resp);
-      m_task_message_queue = resp;
+      update_task_message_queue(resp);
       update_state(sError);
       return;
     }
@@ -3017,7 +3014,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = static_cast<uint32_t>(st);
       standby(resp);
-      m_task_message_queue = resp;
+      update_task_message_queue(resp);
       update_state(sError);
       return;
     }
@@ -3030,6 +3027,56 @@ UaStatus DIoLaserSystem::callClear_error (
     update_state(sReady);
 
     return OpcUa_Good;
+  }
+  void DIoLaserSystem::wait_for_motor(DIoLMotor *motor, int32_t target)
+  {
+    bool is_moving = true;
+    json resp;
+    int32_t c_pos;
+    while (is_moving)
+    {
+      motor->get_position_motor(c_pos, resp);
+      is_moving = (std::abs(c_pos - target) > 20);
+      is_moving |= motor->is_moving();
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+  }
+  void DIoLaserSystem::wait_for_motors(const std::vector<int32_t> &target)
+  {
+    for (Device::DIoLMotor *lmotor : iolmotors())
+    {
+      wait_for_motor(lmotor, target.at(lmotor->get_coordinate_index()));
+    }
+  }
+  void DIoLaserSystem::update_task_message_queue(json &resp)
+  {
+    if (!m_task_message_queue.contains("messages"))
+    {
+      m_task_message_queue["messages"] = json::array();
+    }
+    if (!m_task_message_queue.contains("status"))
+    {
+      if (resp.contains("status"))
+      {
+        m_task_message_queue["status"] = resp.at("status");
+      }
+      else
+      {
+        m_task_message_queue["status"] = "OK";
+      }
+    }
+    if (!m_task_message_queue.contains("statuscode"))
+    {
+      if (resp.contains("statuscode"))
+      {
+        m_task_message_queue["statuscode"] = resp.at("statuscode");
+      }
+      else
+      {
+        m_task_message_queue["statuscode"] = OpcUa_Good;
+      }
+    }
+    m_task_message_queue["messages"].insert(m_task_message_queue["messages"].end(), resp.at("messages").begin(), resp.at("messages").end());
   }
 
 } // namespace Device
