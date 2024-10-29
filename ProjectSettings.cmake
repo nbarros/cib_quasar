@@ -8,6 +8,7 @@ set(CUSTOM_SERVER_MODULES LaserControl LaserUtils)
 include_directories( ${PROJECT_SOURCE_DIR}/LaserUtils/i2c/ )
 include_directories( ${PROJECT_SOURCE_DIR}/LaserUtils/common/ )
 add_subdirectory(${PROJECT_SOURCE_DIR}/Extra/client)
+add_subdirectory(${PROJECT_SOURCE_DIR}/Extra/client/standalone_clients)
 
 set(BUILD_SPDLOG_FMT_EXTERNAL OFF)
 
