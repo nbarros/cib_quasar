@@ -229,6 +229,7 @@ config -> init -> start_cib -> [pause, standby, resume, force_ext_shutter] -> st
     UaStatus fire_standalone(uint32_t num_pulses,json &resp);
     UaStatus switch_laser_shutter(const ShutterState nstate, json &resp);
     Status get_state() const {return m_status;}
+    const std::string get_state_description() { return m_status_map[m_status]; }
     bool good_for_operation() {return ((m_status == sPause) || (m_status == sStandby) || (m_status == sLasing));}
     UaStatus force_ext_shutter(const ShutterState nstate, json &resp);
     UaStatus terminate(json &resp);

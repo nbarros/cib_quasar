@@ -116,6 +116,7 @@ public:
     void update();
     bool is_ready();
     Status get_state() {return m_status;}
+    const std::string get_state_description() {return m_status_map[m_status];}
     UaStatus set_conn(const std::string port, const uint16_t baud, json &resp);
     // variable proxy setters. These can be called internally (unlike the others)
     UaStatus set_average(const uint16_t ave, json &resp);

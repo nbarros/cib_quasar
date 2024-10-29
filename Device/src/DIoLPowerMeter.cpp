@@ -1503,6 +1503,11 @@ UaStatus DIoLPowerMeter::callTerminate (
   }
   void DIoLPowerMeter::update_status(Status s)
   {
+    if (m_status == s)
+    {
+      // nothing to be done
+      return;
+    }
     m_status = s;
     UaString ss(m_status_map.at(m_status).c_str());
     getAddressSpaceLink()->setState(ss,OpcUa_Good);

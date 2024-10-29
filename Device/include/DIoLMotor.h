@@ -134,6 +134,7 @@ public:
     void update();
     bool is_ready();
     Status get_state() {return m_status;}
+    const std::string get_state_description() { return m_status_map[m_status]; }
     // -- wrapper for interface commands commands
     UaStatus move_wrapper(int32_t dest, json &resp);
     UaStatus reset_wrapper(json &resp);

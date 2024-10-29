@@ -272,9 +272,18 @@ UaStatus DIoLMotor::callReset (
     UaString& response
 )
 {
-    // a reset is the same as a clear alarm
-    //FIXME: Implement it
-    return OpcUa_BadNotImplemented;
+  json resp;
+  UaStatus st = OpcUa_Good;
+  st = motor_clear_alarm(resp);
+#ifdef DEBUG
+  if (st != OpcUa_Good)
+  {
+    LOG(Log::ERR) << "Remote command execution failed.";
+  }
+#endif
+  response = UaString(resp.dump().c_str());
+
+  return OpcUa_Good;
 }
 UaStatus DIoLMotor::callClear_alarm (
     UaString& response
@@ -343,7 +352,7 @@ UaStatus DIoLMotor::callClear_alarm (
       msg.clear(); msg.str("");
       msg << log_w("start_move","Motor is already at destination") << " (" << m_position_motor << " vs " << m_position_setpoint << ")";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
 #ifdef DEBUG
       LOG(Log::WRN) << msg.str();
 #endif
@@ -352,6 +361,10 @@ UaStatus DIoLMotor::callClear_alarm (
     //
     // if it reaches this point we can initiate the movement
     st = motor_move(resp);
+    if (st == OpcUa_Good)
+    {
+      update_status(sOperating);
+    }
     //
     return st;
   }
@@ -449,16 +462,7 @@ UaStatus DIoLMotor::callClear_alarm (
     //	bool msg_printed = false;
     if (m_monitor_status != OpcUa_Good)
     {
-      //		if (!msg_printed)
-      //		{
-      //			LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
-      //			msg_printed = true;
-      //		}
       status = OpcUa_BadResourceUnavailable;
-      //	} else
-      //	{
-      //		// reset the state until connection is lost again
-      //		msg_printed = false;
 }
     // i.e., form the server to the client
     //position_ = {static_cast<double>(rand()),static_cast<double>(rand()),static_cast<double>(rand())};
@@ -607,7 +611,7 @@ UaStatus DIoLMotor::callClear_alarm (
                 {
       int32_t cpos;
       int32_t prev_pos = m_position_cib;
-      int32_t prev_prev_pos = prev_pos;
+      int32_t prev_prev_pos = m_position_cib;
 
       // fancy new try
       // since we know the speed of the motor, we can check the CIB only 
@@ -745,19 +749,6 @@ UaStatus DIoLMotor::callClear_alarm (
       {
         m_position_motor = reply.at("cur_pos").get<int32_t>();
       }
-      // -- this gives a bunch of warnings that do not make any sense
-      //       if (reply.contains("tar_pos"))
-      //       {
-      //         int32_t tpos = reply.at("tar_pos").get<int32_t>();
-      //         if ((tpos < (m_position_setpoint-5)) || (tpos > (m_position_setpoint+5)))
-      //         {
-      //           // something is wrong, the target is not what we think
-      //           // FIXME: What to do in this case?
-      // #ifdef DEBUG
-      //           LOG(Log::ERR) << log_e("get_info","Mismatch in set_point. Got ") << tpos << " expected " << m_position_setpoint;
-      // #endif
-      //           }
-      //       }
       if (reply.contains("cur_speed"))
       {
         m_speed_readout = reply.at("cur_speed").get<uint32_t>();
@@ -818,7 +809,7 @@ UaStatus DIoLMotor::callClear_alarm (
       msg << log_i(lbl.c_str(),"Remote command successful");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
 #ifdef DEBUG
       LOG(Log::INF) << msg.str();
 #endif
@@ -830,7 +821,7 @@ UaStatus DIoLMotor::callClear_alarm (
       msg << log_e(lbl.c_str(),"Failed to execute remote command successful");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
 #endif
@@ -858,7 +849,7 @@ UaStatus DIoLMotor::callClear_alarm (
       msg << log_i(lbl.c_str(),"Remote command successful");
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Good;
+      resp["statuscode"] = OpcUa_Good;
 #ifdef DEBUG
       LOG(Log::INF) << msg.str();
 #endif
@@ -870,7 +861,7 @@ UaStatus DIoLMotor::callClear_alarm (
       msg << log_e(lbl.c_str(),"Failed to execute remote command successful");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_Bad;
+      resp["statuscode"] = OpcUa_Bad;
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
 #endif
@@ -1472,7 +1463,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "WARNING";
       msg << log_e("mon_status","Bad motor monitor status ") << m_monitor_status;
       resp["messages"].push_back(msg.str());
-      resp["status_code"] = OpcUa_BadInvalidState;
+      resp["statuscode"] = OpcUa_BadInvalidState;
 #ifdef DEBUG
       LOG(Log::ERR) << msg.str();
 #endif
@@ -1545,6 +1536,11 @@ UaStatus DIoLMotor::callClear_alarm (
   }
   void DIoLMotor::update_status(Status s)
   {
+    if (m_status == s)
+    {
+      // no change. do nothing
+      return;
+    }
     m_status = s;
     UaString ss(m_status_map.at(m_status).c_str());
     getAddressSpaceLink()->setState(ss,OpcUa_Good);

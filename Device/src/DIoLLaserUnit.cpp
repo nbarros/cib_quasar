@@ -1193,10 +1193,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       uint32_t n_ticks = 0;
       const uint32_t n_ticks_per_sec = 10;
       uint32_t nsecs = 0;
-      while (nsecs < (m_pause_timeout*60*n_ticks_per_sec))
+      while (nsecs < (m_pause_timeout*60))
       {
         if (!m_part_state.state.ext_shutter_closed)
         {
+          // why not query directly the memory?
           // stop the timer
           getAddressSpaceLink()->setPause_timer_s(0,OpcUa_Good);
 
@@ -1299,6 +1300,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 #endif
         resp["messages"].push_back(msg.str());
         //FIXME: What happens we if we lose the serial connection while the laser is connected?
+        // Answer... it really goes belly up. The problem is that 
+        // there is no way of knowing
         // Should we try to reconnect?
         // what happens if we delete this pointer after a serial exception?
         delete m_laser;
@@ -1339,12 +1342,16 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 #endif
       // potential source of trouble here...close/open shutter
       // also lock the mutex, which will put them hanging, since the mutex is already on hold here
+    
+    // also need to tell the laser to stop
 
     switch_laser_shutter(ShutterState::sClose,resp);
+    // stop the fire sequence in the laser itself
+    stop_fire(resp);
+
     // at this stage, nothing else to be done.
     // just delete the device and go into offline mode
     // -- now just delete the device
-    // FIXME: There is a potential rate condition here... if while we are terminating, other requests sit on a queue
     const std::lock_guard<std::mutex> lock(m_serial_mutex);
     update_status(sOffline);
     if (m_laser)
@@ -1579,10 +1586,18 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // make sure qswitch enable is asserted
       // if it was already, it won't change anything and it only costs a
       // handful of microseconds
+      // -- close the external shutter
       (void)force_ext_shutter(ShutterState::sClose,resp);
       // this in itself will also trigger a timer
-      // that will be checked e very second for the state of the shutter
-      enable_qswitch();
+      // sleep for a little so the shutter, closes
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      // -- open the internal shutter
+      st = switch_laser_shutter(ShutterState::sOpen, resp);
+      if (st != OpcUa_Good)
+      {
+        // what should we do? in this case this would mean we are in the 
+        // standby state, but the shutter is closed
+      }
       // downgrade anything above ready to ready to operate
       // can wereally be considered to be in pause?
       if (!m_part_state.state.fire_enable)
@@ -1599,6 +1614,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       }
       else
       {
+        enable_qswitch();
         update_status(sPause);
       }
       // requery the laser system for its present status, in case there are issues to report
@@ -1680,7 +1696,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // close the shutter
       switch_laser_shutter(ShutterState::sClose,resp);
       // if the external shutter is closed, open it
-      force_ext_shutter(ShutterState::sOpen,resp);
+      //force_ext_shutter(ShutterState::sClose,resp);
       // if we are in sReady, sPause and sLasing, we can move to standby
       if (m_part_state.state.fire_enable)
       {
@@ -2880,6 +2896,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   }
   void DIoLLaserUnit::update_status(Status s)
   {
+    if (m_status == s)
+    {
+      // status is not changing. Do nothing
+      return;
+    }
     m_status = s;
     UaString ss(m_status_map.at(m_status).c_str());
     getAddressSpaceLink()->setState(ss,OpcUa_Good);
@@ -3247,16 +3268,32 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // now start the proper work
     // the logic is slightly different whether we are coming out of sPause
     // or sStandby states
-    if (m_status == sPause)
+    // do both changes regardless of the state
+    // open the laser shutter first
+    st = switch_laser_shutter(ShutterState::sOpen, resp);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (st == OpcUa_Good)
     {
-      // if we are in pause, all we should do is reopen the shutter
-      st = force_ext_shutter(ShutterState::sOpen,resp);
+      st = force_ext_shutter(ShutterState::sOpen, resp);
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-    if (m_status == sStandby)
+    else
     {
-      // if we are on standby, the order is a bit different.
-      st = switch_laser_shutter(ShutterState::sOpen,resp);
+      // failed to open the shutter. This is trouble.
+      // pause and return failure 
+      pause(resp);
     }
+
+    // if (m_status == sPause)
+    // {
+    //   // if we are in pause, all we should do is reopen the shutter
+    //   st = force_ext_shutter(ShutterState::sOpen,resp);
+    // }
+    // if (m_status == sStandby)
+    // {
+    //   // if we are on standby, the order is a bit different.
+    //   st = switch_laser_shutter(ShutterState::sOpen,resp);
+    // }
     if (st != OpcUa_Good)
     {
       msg.clear(); msg.str("");

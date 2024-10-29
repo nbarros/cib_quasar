@@ -120,6 +120,7 @@ public:
     bool is_ready() {return (m_status == sReady);}
     void update();
     Status get_state() {return m_status;}
+    const std::string get_state_description() {return m_status_map[m_status];}
     UaStatus terminate(json &resp);
     UaStatus set_id(const std::string &id);
     const std::string get_id() {return m_id;}

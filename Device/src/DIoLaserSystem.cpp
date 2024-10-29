@@ -77,11 +77,12 @@ DIoLaserSystem::DIoLaserSystem (
     // this had to be in the constructor
 
     m_state_map.insert({sOffline,"offline"});
+    //m_state_map.insert({sGood,"good"});
     m_state_map.insert({sReady,"ready"});
-    m_state_map.insert({sWarmup,"warmup"});
-    m_state_map.insert({sPause,"pause"});
-    m_state_map.insert({sStandby,"standby"});
-    m_state_map.insert({sOperating,"operating"});
+    // m_state_map.insert({sWarmup,"warmup"});
+    // m_state_map.insert({sPause,"pause"});
+    // m_state_map.insert({sStandby,"standby"});
+    // m_state_map.insert({sOperating,"operating"});
     m_state_map.insert({sError,"sError"});
 
 
@@ -945,7 +946,7 @@ UaStatus DIoLaserSystem::callClear_error (
           }
         } // loop json
         // if we reached this point, the configurations are all good
-        update_state(sReady);
+        //update_state(sReady);
       }
       catch(json::exception &e)
       {
@@ -1005,7 +1006,6 @@ UaStatus DIoLaserSystem::callClear_error (
       // first thing to be stopped is the laser
       // this should only fail if something is not configured
       //st = iollaserunit()->stop(resp);
-      //FIXME: Should we set another method that does *really* stop the laser?
       st = iollaserunit()->stop(resp);
       if (st != OpcUa_Good)
       {
@@ -1054,7 +1054,6 @@ UaStatus DIoLaserSystem::callClear_error (
       }
       // in this case we should not go back to ready, or we 
       // will have to warmup again
-      update_state(sReady);
     }
     catch(json::exception &e)
     {
@@ -1086,6 +1085,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
     }
     else
@@ -1098,7 +1098,6 @@ UaStatus DIoLaserSystem::callClear_error (
     }
     return OpcUa_Good;
   }
-
   UaStatus DIoLaserSystem::fire_at_position(const std::vector<int32_t>&  target_pos, uint32_t num_pulses, json &resp)
   {
     const std::string lbl = "fire_at_position";
@@ -1170,115 +1169,8 @@ UaStatus DIoLaserSystem::callClear_error (
       //
       // ready to operate
       // below this point this becomes a separate thread, as the motors will be moving
-      update_state(sOperating);
+      //update_state(sOperating);
       init_fire_point_task(target_pos,num_pulses);
-
-      // // -- be sure to set the shutter closed until destination is reached
-      // // the logic is the following
-      // // 1. Call each of the the motors to move to the desired position
-      // // 2. open the shutter
-      // // 3. fire a discrete number of shots
-      // // 4. close the shutter
-      // // step 1
-      // for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < target_pos.size(); idx++)
-      // {
-      //   for (Device::DIoLMotor* lmotor : iolmotors ())
-      //   {
-      //     if (lmotor->get_coordinate_index() == idx)
-      //     {
-      //       st = lmotor->set_position_setpoint(target_pos[idx]);
-      //       if (st != OpcUa_Good)
-      //       {
-      //         resp["status"] = "ERROR";
-      //         std::ostringstream msg("");
-      //         msg << log_e(lbl.c_str(),"Failed to set target position for motor (id : ")
-      //                                                               << lmotor->get_id() << ").";
-      //         resp["messages"].push_back(msg.str());
-      //         resp["statuscode"] = static_cast<uint32_t>(st);
-      //         return st;
-      //       }
-      //       // now move the motor
-      //       st = lmotor->motor_move(resp);
-      //       if (st != OpcUa_Good)
-      //       {
-      //         resp["status"] = "ERROR";
-      //         std::ostringstream msg("");
-      //         msg << log_e(lbl.c_str(),"Failed to initiate motor movement on motor (id : ")
-      //                                                               << lmotor->get_id() << ").";
-      //         resp["messages"].push_back(msg.str());
-      //         resp["statuscode"] = static_cast<uint32_t>(st);
-      //         return st;
-      //       }
-      //     }
-      //   }
-      // }
-      // // step 1.2: wait until motors are in place
-      // // does this really make sense? This is a synchronous method
-      // // one could be for a long wait until it
-      // // executes
-      // // FIXME: ideally, this should spawn a separate process that would complete the execution when
-      // // the motors reach the destination
-      // // for now, as a stopgap measure, we do wait
-      // bool is_moving = true;
-      // while (is_moving)
-      // {
-      //   is_moving = false;
-      //   for (Device::DIoLMotor* lmotor : iolmotors ())
-      //   {
-      //     is_moving |= lmotor->is_moving();
-      //     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-      //   }
-      // }
-      // //
-      // //
-      // // we have reached the destination
-      // // step 2.0 : start power meter readings
-      // st = iolpowermeter()->start_readings(resp);
-      // if (st != OpcUa_Good)
-      // {
-      //   msg.clear(); msg.str("");
-      //   msg << log_e(lbl.c_str(),"Failed to start power meter");
-      //   resp["status"] = "ERROR";
-      //   resp["messages"].push_back(msg.str());
-      //   resp["statuscode"] = static_cast<uint32_t>(st);
-      //   LOG(Log::ERR) << msg.str();
-      //   return st;
-      // }
-      // // for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
-      // // {
-      // //   st = lmeter->start_readings(resp);
-      // // }
-      // // step 2: resume operation of the laser unit
-      // st = iollaserunit()->fire_discrete_shots(num_pulses,resp);
-      // if (st != OpcUa_Good)
-      // {
-      //   reset(msg);
-      //   resp["status"] = "ERROR";
-      //   msg << log_e(lbl.c_str(),"Failed to fire laser. Check previous messages.");
-      //   resp["messages"].push_back(msg.str());
-      //   resp["statuscode"] = static_cast<uint32_t>(st);
-      //   // force a pause (again)
-      //   iollaserunit()->pause(resp);
-      //   return static_cast<UaStatus>(resp["statuscode"].get<uint32_t>());
-      // }
-      // // at this stage we are done
-      // // make sure that the laser is in pause state
-      // st = iollaserunit()->pause(resp);
-      // if (st != OpcUa_Good)
-      // {
-      //   reset(msg);
-      //   msg << log_e(lbl.c_str(),"Failed to set later in pause mode.");
-      //   resp["status"] = "ERROR";
-      //   resp["messages"].push_back(msg.str());
-      //   resp["statuscode"] = static_cast<uint32_t>(st);
-      //   return st;
-      // }
-      // st = iolpowermeter()->stop_readings(resp);
-      // // for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
-      // // {
-      // //   st = lmeter->stop_readings(resp);
-      // // }
-
     }
     catch(json::exception &e)
     {
@@ -1310,6 +1202,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
     }
     else
@@ -1429,7 +1322,7 @@ UaStatus DIoLaserSystem::callClear_error (
       // all conditions are checked. Now start the operation
       // the status is set to sOperating and a separate thread is ran to process it
       // however, during this time, nothing else can be done with the system
-      update_state(sOperating);
+      // update_state(sOperating);
       init_segment_task(spos,lpos);
       // this is the poor mans equivalent of an async method
       // for now consider the task done
@@ -1509,7 +1402,7 @@ UaStatus DIoLaserSystem::callClear_error (
         {
           m_task_message_queue["statuscode"] = OpcUa_Good;
         }
-        update_state(sPause);
+        // update_state(sPause);
       }
                 }
     ).detach();
@@ -1522,6 +1415,10 @@ UaStatus DIoLaserSystem::callClear_error (
     UaStatus st;
     std::ostringstream msg("");
     json resp;
+    if (!resp.contains("messages"))
+    {
+      resp["messages"] = json::array();
+    }
     //
     // ready to operate
     // -- be sure to set the shutter closed until destination is reached
@@ -1547,11 +1444,11 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       LOG(Log::ERR) << msg.str();
       resp["statuscode"] = static_cast<uint32_t>(st);
-      update_task_message_queue(resp);
       // nothing is being done, so just terminate this task
       // update the state to error
       // -- if we cannot go into pause, force a shutdown
       standby(resp);
+      update_task_message_queue(resp);
       update_state(sError);
       return;
     }
@@ -1638,16 +1535,6 @@ UaStatus DIoLaserSystem::callClear_error (
       return;
     }
     // step 5: wait for motors to report stopped
-    // is_moving = true;
-    // while (is_moving)
-    // {
-    //   is_moving = false;
-    //   for (Device::DIoLMotor* lmotor : iolmotors ())
-    //   {
-    //     is_moving |= lmotor->is_moving();
-    //   }
-    //   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    // }
     wait_for_motors(lpos);
     // step 6: switch back to pause
     // st = iollaserunit()->pause(resp);
@@ -1666,12 +1553,8 @@ UaStatus DIoLaserSystem::callClear_error (
       update_state(sError);
       return;
     }
-    // if it reached this stage, all is well and work is done
-    // for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
-    // {
-    //   st = lmeter->stop_readings(resp);
-    // }
-
+    // if it reached this point, just update the queue
+    update_task_message_queue(resp);
   }
 
 
@@ -1763,7 +1646,7 @@ UaStatus DIoLaserSystem::callClear_error (
       }
       // all is good. Let's sell ketchup
       // the operation itself will run on a detached thread
-      update_state(sOperating);
+      // update_state(sOperating);
       init_scan_task(plan);
     }
     catch(json::exception &e)
@@ -1848,17 +1731,18 @@ UaStatus DIoLaserSystem::callClear_error (
       st = pause(resp);
       if (st != OpcUa_Good)
       {
-        reset(msg);
-        msg << log_e(lbl.c_str(),"Failed to set laser into Pause state");
-        if (!m_task_message_queue.contains("status"))
-        {
-          m_task_message_queue["status"] = "ERROR";
-        }
-        m_task_message_queue["messages"].push_back(msg.str());
-        if (!m_task_message_queue.contains("statuscode"))
-        {
-          m_task_message_queue["statuscode"] = static_cast<uint32_t>(st);
-        }
+        update_task_message_queue(resp);
+        // reset(msg);
+        // msg << log_e(lbl.c_str(),"Failed to set laser into Pause state");
+        // if (!m_task_message_queue.contains("status"))
+        // {
+        //   m_task_message_queue["status"] = "ERROR";
+        // }
+        // m_task_message_queue["messages"].push_back(msg.str());
+        // if (!m_task_message_queue.contains("statuscode"))
+        // {
+        //   m_task_message_queue["statuscode"] = static_cast<uint32_t>(st);
+        // }
         // nothing is being done, so just terminate this task
         // update the state to error
         update_state(sError);
@@ -1899,6 +1783,7 @@ UaStatus DIoLaserSystem::callClear_error (
       st = pause(resp);
       if (st != OpcUa_Good)
       {
+        update_task_message_queue(resp);
         reset(msg);
         msg << log_e(lbl.c_str(), "Failed to pause laser at the end. Check previous messages.");
         if (!m_task_message_queue.contains("status"))
@@ -1915,7 +1800,8 @@ UaStatus DIoLaserSystem::callClear_error (
       }
       // if it reached this stage, all is well and we should update the state back to
       // sPause
-      pause(m_task_message_queue);
+      pause(resp);
+      update_task_message_queue(resp);
       reset(msg);
       msg << log_i(lbl.c_str(), "Operation was successful.");
       if (!m_task_message_queue.contains("status"))
@@ -1927,7 +1813,6 @@ UaStatus DIoLaserSystem::callClear_error (
       {
         m_task_message_queue["statuscode"] = OpcUa_Good;
       }
-      update_state(sPause);
                 }
     ).detach();
   }
@@ -1966,13 +1851,13 @@ UaStatus DIoLaserSystem::callClear_error (
         resp["status"] = "ERROR";
         msg << log_e(lbl.c_str(), "Laser failed to pause. Check previous messages.");
         resp["messages"].push_back(msg.str());
-        if (!m_task_message_queue.contains("statuscode"))
+        if (!resp.contains("statuscode"))
         {
-          m_task_message_queue["statuscode"] = OpcUa_BadInvalidState;
+          resp["statuscode"] = OpcUa_BadInvalidState;
         }
         return OpcUa_BadInvalidState;
       }
-      update_state(sPause);
+      // update_state(sPause);
     }
     catch(json::exception &e)
     {
@@ -2003,6 +1888,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
     }
     else
@@ -2050,13 +1936,13 @@ UaStatus DIoLaserSystem::callClear_error (
         resp["status"] = "ERROR";
         msg << log_e(lbl.c_str(),"Laser failed to pause. Check previous messages.");
         resp["messages"].push_back(msg.str());
-        if (!m_task_message_queue.contains("statuscode"))
+        if (!resp.contains("statuscode"))
         {
-          m_task_message_queue["statuscode"] = OpcUa_BadInvalidState;
+          resp["statuscode"] = OpcUa_BadInvalidState;
         }
         return OpcUa_BadInvalidState;
       }
-      update_state(sStandby);
+      // update_state(sStandby);
     }
     catch(json::exception &e)
     {
@@ -2088,6 +1974,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
     }
     else
@@ -2114,7 +2001,8 @@ UaStatus DIoLaserSystem::callClear_error (
       // system is not in a state that can be resumed from
       reset(msg);
       resp["status"] = "ERROR";
-      msg << log_e(lbl.c_str(), "System is neither in sPause, sLansing or sStandby. Current state :") << m_state_map.at(m_state);
+      msg << log_e(lbl.c_str(), "System is neither in sPause, sLansing or sStandby. Current state :") 
+          << iollaserunit()->get_state_description();
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
       LOG(Log::ERR) << msg.str();
@@ -2127,14 +2015,13 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       msg << log_e(lbl.c_str(), "Laser failed to resume. Check previous messages.");
       resp["messages"].push_back(msg.str());
-      if (!m_task_message_queue.contains("statuscode"))
+      if (!resp.contains("statuscode"))
       {
-        m_task_message_queue["statuscode"] = OpcUa_Bad;
+        resp["statuscode"] = OpcUa_BadInvalidState;
       }
       LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
     }
-    update_state(sOperating);
     return OpcUa_Good;
   }
   UaStatus DIoLaserSystem::warmup(json &resp)
@@ -2152,6 +2039,7 @@ UaStatus DIoLaserSystem::callClear_error (
       msg << log_e(lbl.c_str(),"Laser system is not in ready state, as it should.");
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
+      LOG(Log::ERR) << msg.str();
       return OpcUa_BadInvalidState;
     }
     st = iollaserunit()->start_cib(resp);
@@ -2163,7 +2051,6 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
       LOG(Log::ERR) << msg.str();
-      update_state(sError);
       return OpcUa_Bad;
     }
     // confirm that the laser is in warmup state
@@ -2175,13 +2062,13 @@ UaStatus DIoLaserSystem::callClear_error (
           << " (expected " << DIoLLaserUnit::sWarmup << ")";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      update_state(sError);
+      LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
     }
     // if it reached this point, we are now in warmup state.
     // update the local state
     // during this time, no laser related commands are accepted
-    update_state(sWarmup);
+    //update_state(sWarmup);
     return OpcUa_Good;
   }
   UaStatus DIoLaserSystem::shutdown(json &resp)
@@ -2260,8 +2147,7 @@ UaStatus DIoLaserSystem::callClear_error (
     update_state(sOffline);
     if (trouble)
     {
-      update_state(sError);      
-      return OpcUa_Uncertain;
+      return OpcUa_Bad;
     }
     else
     {
@@ -2287,6 +2173,7 @@ UaStatus DIoLaserSystem::callClear_error (
       st = lmotor->get_position_motor(c_pos, resp);
       if (st != OpcUa_Good)
       {
+        update_task_message_queue(resp);
         update_state(sError);
         return;
       }
@@ -2315,15 +2202,7 @@ UaStatus DIoLaserSystem::callClear_error (
             resp["statuscode"] = static_cast<uint32_t>(st);
             LOG(Log::ERR) << msg.str();
             // nothing is being done, so just terminate this task
-
-            if (!m_task_message_queue.contains("messages"))
-            {
-              m_task_message_queue["messages"] = json::array();
-            }
-            m_task_message_queue["status"] = "ERROR";
-            m_task_message_queue["statuscode"] = resp.at("statuscode").get<int>();
-            m_task_message_queue["messages"].insert(resp.at("messages").begin(), resp.at("messages").end());
-            //m_task_message_queue = resp;
+            update_task_message_queue(resp);
             update_state(sError);
             return;
           }
@@ -2347,13 +2226,7 @@ UaStatus DIoLaserSystem::callClear_error (
             resp["messages"].push_back(msg.str());
             resp["statuscode"] = static_cast<uint32_t>(st);
             LOG(Log::ERR) << msg.str();
-            if (!m_task_message_queue.contains("messages"))
-            {
-              m_task_message_queue["messages"] = json::array();
-            }
-            m_task_message_queue["status"] = "ERROR";
-            m_task_message_queue["statuscode"] = resp.at("statuscode").get<int>();
-            m_task_message_queue["messages"].insert(resp.at("messages").begin(), resp.at("messages").end());
+            update_task_message_queue(resp);
             update_state(sError);
             return;
           }
@@ -2383,17 +2256,12 @@ UaStatus DIoLaserSystem::callClear_error (
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = static_cast<uint32_t>(st);
         LOG(Log::ERR) << msg.str();
-        if (!m_task_message_queue.contains("messages"))
-        {
-          m_task_message_queue["messages"] = json::array();
-        }
-        m_task_message_queue["status"] = "ERROR";
-        m_task_message_queue["statuscode"] = resp.at("statuscode").get<int>();
-        m_task_message_queue["messages"].insert(resp.at("messages").begin(), resp.at("messages").end());
+        update_task_message_queue(resp);
         update_state(sError);
         return;
       }
     }
+    update_task_message_queue(resp);
     // nothin failed so far...we should be where we want.
     reset(msg);
     msg << log_i(lbl.c_str(), "Task done");
@@ -2438,8 +2306,6 @@ UaStatus DIoLaserSystem::callClear_error (
       } 
       })
         .detach();
-      // FIXME: Need to add functionality to fetch the task_message_queue
-      // or at least empty it
 
     // don't implement this yet
     return OpcUa_Good;
@@ -2506,7 +2372,7 @@ UaStatus DIoLaserSystem::callClear_error (
     // if any of the systems is in an error state, the whole system is in error
     // if any of the systems is in a warmup state, the whole system is in warmup
     // this is to check if one of the systems went belly up
-    refresh_state();
+    //refresh_state();
     // call update over all daughters
     for (Device::DIoLLaserUnit* lunit : iollaserunits())
     {
@@ -2575,6 +2441,11 @@ UaStatus DIoLaserSystem::callClear_error (
   }
   void DIoLaserSystem::update_state(State s)
   {
+    if (m_state == s)
+    {
+      // nothing to be done
+      return;
+    }
     m_state = s;
     UaString ss(m_state_map.at(m_state).c_str());
     getAddressSpaceLink()->setState(ss,OpcUa_Good);
@@ -2702,6 +2573,8 @@ UaStatus DIoLaserSystem::callClear_error (
 
   void DIoLaserSystem::refresh_state()
   {
+    // this is no longer needed
+    return;
     /**
     * A few edges cases. 
     *  - If all devices are offline, the system is offline
@@ -2709,89 +2582,89 @@ UaStatus DIoLaserSystem::callClear_error (
     *  - If one device is offline and the others are in other states, the system is in error
     *  
     */
-    // this is the one that actually dictates the state of the whole system
-    Device::DIoLLaserUnit::Status sl = iollaserunit()->get_state();
-    Device::DIoLAttenuator::Status sa =iolattenuator()->get_state();
-    Device::DIoLPowerMeter::Status sp = iolpowermeter()->get_state();
-    Device::DIoLCIB::Status sc = iolcib()->get_state();
-    Device::DIoLMotor::Status sm = DIoLMotor::sReady;
+    // // this is the one that actually dictates the state of the whole system
+    // Device::DIoLLaserUnit::Status sl = iollaserunit()->get_state();
+    // Device::DIoLAttenuator::Status sa =iolattenuator()->get_state();
+    // Device::DIoLPowerMeter::Status sp = iolpowermeter()->get_state();
+    // Device::DIoLCIB::Status sc = iolcib()->get_state();
+    // Device::DIoLMotor::Status sm = DIoLMotor::sReady;
 
-    for (auto m: iolmotors())
-    {
-      sm = Device::DIoLMotor::Status::sReady;
-      if (m->get_state() == DIoLMotor::sError)
-      {
-        update_state(sError);
-        return;
-      }
-      if (m->get_state() == DIoLMotor::sOffline)
-      {
-        sm = DIoLMotor::sOffline;
-      }
-    }
-    // now the logic
-    // if any is in error, the system itself is in error
-    if (sl == DIoLLaserUnit::sError)
-    {
-      update_state(sError);
-      return;
-    }
-    if (sc == DIoLCIB::sError)
-    {
-      update_state(sError);
-      return;
-    }
-    if (sa == DIoLAttenuator::sError)
-    {
-      update_state(sError);
-      return;
-    }
+    // for (auto m: iolmotors())
+    // {
+    //   sm = Device::DIoLMotor::Status::sReady;
+    //   if (m->get_state() == DIoLMotor::sError)
+    //   {
+    //     update_state(sError);
+    //     return;
+    //   }
+    //   if (m->get_state() == DIoLMotor::sOffline)
+    //   {
+    //     sm = DIoLMotor::sOffline;
+    //   }
+    // }
+    // // now the logic
+    // // if any is in error, the system itself is in error
+    // if (sl == DIoLLaserUnit::sError)
+    // {
+    //   update_state(sError);
+    //   return;
+    // }
+    // if (sc == DIoLCIB::sError)
+    // {
+    //   update_state(sError);
+    //   return;
+    // }
+    // if (sa == DIoLAttenuator::sError)
+    // {
+    //   update_state(sError);
+    //   return;
+    // }
 
-    // if all are offline the system is offline
-    if ((sl == DIoLLaserUnit::sOffline) && (sc == DIoLCIB::sOffline) && (sa == DIoLAttenuator::sOffline) && (sp == DIoLPowerMeter::sOffline) && (sm == DIoLMotor::sOffline))
-    {
-      update_state(sOffline);
-      return;
-    }
-    // the power meter is ignored specifically because it can be in operating state even if the laser is not
-    else if ((sl == DIoLLaserUnit::sReady) && (sc == DIoLCIB::sReady) && (sa == DIoLAttenuator::sReady) && (sm == DIoLMotor::sReady))
-    {
-      update_state(sReady);
-      return;
-    }
-    else // neither all are ready neither all are offline
-    {
-      if ((sc == DIoLCIB::sReady) && (sa == DIoLAttenuator::sReady))
-      {
-        // in this case the state will depend on the laser
-        if (sl == DIoLLaserUnit::sWarmup)
-        {
-          update_state(sWarmup);
-          return;
-        }
-        else if (sl == DIoLLaserUnit::sLasing)
-        {
-          update_state(sOperating);
-          return;
-        }
-        else if (sl == DIoLLaserUnit::sPause)
-        {
-          update_state(sPause);
-          return;
-        }
-        else if (sl == DIoLLaserUnit::sStandby)
-        {
-          update_state(sStandby);
-          return;
-        }
-        else
-        {
-          // someone is not ready. Error state
-          update_state(sError);
-          return;
-        }
-      }
-    }
+    // // if all are offline the system is offline
+    // if ((sl == DIoLLaserUnit::sOffline) && (sc == DIoLCIB::sOffline) && (sa == DIoLAttenuator::sOffline) && (sp == DIoLPowerMeter::sOffline) && (sm == DIoLMotor::sOffline))
+    // {
+    //   update_state(sOffline);
+    //   return;
+    // }
+    // // the power meter is ignored specifically because it can be in operating state even if the laser is not
+    // else if ((sl == DIoLLaserUnit::sReady) && (sc == DIoLCIB::sReady) && (sa == DIoLAttenuator::sReady) && (sm == DIoLMotor::sReady))
+    // {
+    //   update_state(sReady);
+    //   return;
+    // }
+    // else // neither all are ready neither all are offline
+    // {
+    //   if ((sc == DIoLCIB::sReady) && (sa == DIoLAttenuator::sReady))
+    //   {
+    //     // in this case the state will depend on the laser
+    //     if (sl == DIoLLaserUnit::sWarmup)
+    //     {
+    //       update_state(sWarmup);
+    //       return;
+    //     }
+    //     else if (sl == DIoLLaserUnit::sLasing)
+    //     {
+    //       update_state(sOperating);
+    //       return;
+    //     }
+    //     else if (sl == DIoLLaserUnit::sPause)
+    //     {
+    //       update_state(sPause);
+    //       return;
+    //     }
+    //     else if (sl == DIoLLaserUnit::sStandby)
+    //     {
+    //       update_state(sStandby);
+    //       return;
+    //     }
+    //     else
+    //     {
+    //       // someone is not ready. Error state
+    //       update_state(sError);
+    //       return;
+    //     }
+    //   }
+    // }
   }
   bool DIoLaserSystem::process_move_arguments(const UaString &arguments, std::vector<int32_t> &target_pos, std::string &approach, json &response)
   {
@@ -2980,11 +2853,11 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       LOG(Log::ERR) << msg.str();
       resp["statuscode"] = static_cast<uint32_t>(st);
-      update_task_message_queue(resp);
       // nothing is being done, so just terminate this task
       // update the state to error
       // -- if we cannot go into pause, force a shutdown
       standby(resp);
+      update_task_message_queue(resp);
       update_state(sError);
       return;
     }
@@ -3067,14 +2940,18 @@ UaStatus DIoLaserSystem::callClear_error (
       update_state(sError);
       return;
     }
+    // reached the end. Push any existing messages to the queue
+    update_task_message_queue(resp);
   }
   UaStatus DIoLaserSystem::clear_error(json &resp)
   {
     
     resp = m_task_message_queue;
     m_task_message_queue.clear();
-    update_state(sReady);
-
+    if (m_state == sError)
+    { 
+      update_state(sReady);
+    }
     return OpcUa_Good;
   }
   void DIoLaserSystem::wait_for_motor(DIoLMotor *motor, int32_t target)
@@ -3241,7 +3118,6 @@ UaStatus DIoLaserSystem::callClear_error (
       z_start = center[2] - range[2];
       z_end = center[2] + range[2];
     }
-
     for (int32_t x = center[0] - static_cast<int32_t>(range[0]); x <= (center[0] + static_cast<int32_t>(range[0])); x += step[0])
     {
       for (int32_t y = center[1] - static_cast<int32_t>(range[1]); y <= (center[1] + static_cast<int32_t>(range[1])); y += step[1])
@@ -3261,17 +3137,24 @@ UaStatus DIoLaserSystem::callClear_error (
 
     // Log the generated scan plan
     resp["scan_plan"] = scan_plan;
-  // #ifdef DEBUG
+    // #ifdef DEBUG
     LOG(Log::INF) << "Generated scan plan: " << scan_plan.dump(2);
-  // #endif
+    // #endif
+    resp["messages"].push_back(scan_plan.dump(0));
+
     resp["messages"].push_back("Grid scan plan generated successfully.");
 
+
+    // don't execute it right now
+    //FIXME: Get rid of this
+    return OpcUa_Good;
     // Execute the scan plan
-    UaStatus st = execute_scan(scan_plan, resp);
-    if (st != OpcUa_Good)
-    {
-      resp["messages"].push_back("Failed to execute grid scan plan.");
-      return st;
-    }
+    //FIXME: Uncomment this when we're done
+    // UaStatus st = execute_scan(scan_plan, resp);
+    // if (st != OpcUa_Good)
+    // {
+    //   resp["messages"].push_back("Failed to execute grid scan plan.");
+    //   return st;
+    // }
   }
 } // namespace Device
