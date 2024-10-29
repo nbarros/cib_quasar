@@ -147,11 +147,11 @@ void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int heigh
     whline(right_pane, ACS_HLINE, getmaxx(right_pane) - 2);
     mvwprintw(right_pane, vpos, 2, " Laser Timers ");
     vpos += 2;
-    mvwprintw(right_pane, vpos, 2, "Warmup timer : %d s", status.count("LS1.L1.warmup_timer_s") ? std::get<uint32_t>(status["LS1.L1.warmup_timer_s"]) : 0);
+    mvwprintw(right_pane, vpos, 2, "Warmup timer : %" PRIu32 " s", status.count("LS1.L1.warmup_timer_s") ? std::get<uint32_t>(status["LS1.L1.warmup_timer_s"]) : 0);
     vpos += 1;
-    mvwprintw(right_pane, vpos, 2, "Standby timer : %d s", status.count("LS1.L1.standby_timer_s") ? std::get<uint32_t>(status["LS1.L1.standby_timer_s"]) : 0);
+    mvwprintw(right_pane, vpos, 2, "Standby timer : %" PRIu32" s", status.count("LS1.L1.standby_timer_s") ? std::get<uint32_t>(status["LS1.L1.standby_timer_s"]) : 0);
     vpos += 1;
-    mvwprintw(right_pane, vpos, 2, "Pause timer : %d s", status.count("LS1.L1.pause_timer_s") ? std::get<uint32_t>(status["LS1.L1.pause_timer_s"]) : 0);
+    mvwprintw(right_pane, vpos, 2, "Pause timer : %" PRIu32 " s", status.count("LS1.L1.pause_timer_s") ? std::get<uint32_t>(status["LS1.L1.pause_timer_s"]) : 0);
     vpos += 2;
     // Add a horizontal line
     wmove(right_pane, vpos, 1);
