@@ -29,7 +29,7 @@ public:
 
     bool config(const std::string &location, FeedbackManager &feedback);
     bool move_to_position(const std::string &position, const std::string &approach, FeedbackManager &feedback);
-    bool fire_at_position(const std::string &position, const uint32_t num_shots, FeedbackManager &feedback);
+    bool fire_at_position(const std::string &position, const std::string &approach, const uint32_t num_shots, FeedbackManager &feedback);
     bool fire_segment(const std::string &start_position, const std::string &end_position, FeedbackManager &feedback);
     bool execute_scan(const std::string &run_plan, FeedbackManager &feedback);
     bool execute_grid_scan(const std::string &run_plan, FeedbackManager &feedback);
