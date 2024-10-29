@@ -45,12 +45,14 @@ void write_to_pane(WINDOW *pane, int y, int x, const std::string &text)
 void set_label_color(WINDOW *pane, int y, int x, const std::string &label, const std::string &status)
 {
   int color_pair;
-  if (status == "offline" || status == "N")
+  if (status == "offline" || status == "N" || status == "error")
     color_pair = 1;
-  else if (status == "ready" || status == "Y")
+  else if (status == "ready" || status == "Y" || status == "good")
     color_pair = 2;
   else if (status == "warmup" || status == "pause" || status == "standby" || status == "operating" || status == "?")
     color_pair = 3;
+  else if (status == "error")
+    color_pair = 5;
   else
     color_pair = 0; // Default color
 
@@ -989,6 +991,7 @@ int main(int argc, char** argv)
   init_pair(2, COLOR_BLACK, COLOR_GREEN);
   init_pair(3, COLOR_BLACK, COLOR_YELLOW);
   init_pair(4, COLOR_BLACK, COLOR_BLUE);
+  init_pair(5, COLOR_RED, COLOR_BLACK);
 
   //int height = LINES - 2;
   g_height = LINES - 2;
