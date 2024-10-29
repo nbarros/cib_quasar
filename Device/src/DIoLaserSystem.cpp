@@ -3085,30 +3085,148 @@ UaStatus DIoLaserSystem::callClear_error (
   UaStatus DIoLaserSystem::validate_grid_parameters(const json &plan, json &resp)
   {
     const std::vector<std::string> keys = {"center", "range", "step", "approach"};
+    if (!resp.contains("messages"))
+    {
+      resp["messages"] = json::array();
+    }
+    // Check if all required keys are present
+    for (const auto &key : keys)
+    {
+      if (!plan.contains(key))
+      {
+        resp["messages"].push_back("Missing key: " + key);
+        return OpcUa_BadInvalidArgument;
+      }
+    }
 
+    // Validate "center"
+    if (!plan["center"].is_array() || plan["center"].size() != 3)
+    {
+      resp["messages"].push_back("Invalid 'center' format. Expected an array of 3 integers.");
+      return OpcUa_BadInvalidArgument;
+    }
+    for (const auto &val : plan["center"])
+    {
+      if (!val.is_number_integer())
+      {
+        resp["messages"].push_back("Invalid 'center' value. Expected an integer.");
+        return OpcUa_BadInvalidArgument;
+      }
+    }
+
+    // Validate "range"
+    if (!plan["range"].is_array() || plan["range"].size() != 3)
+    {
+      resp["messages"].push_back("Invalid 'range' format. Expected an array of 3 unsigned integers.");
+      return OpcUa_BadInvalidArgument;
+    }
+    for (const auto &val : plan["range"])
+    {
+      if (!val.is_number_unsigned())
+      {
+        resp["messages"].push_back("Invalid 'range' value. Expected an unsigned integer.");
+        return OpcUa_BadInvalidArgument;
+      }
+    }
+
+    // Validate "step"
+    if (!plan["step"].is_array() || plan["step"].size() != 3)
+    {
+      resp["messages"].push_back("Invalid 'step' format. Expected an array of 3 unsigned integers.");
+      return OpcUa_BadInvalidArgument;
+    }
+    for (const auto &val : plan["step"])
+    {
+      if (!val.is_number_unsigned())
+      {
+        resp["messages"].push_back("Invalid 'step' value. Expected an unsigned integer.");
+        return OpcUa_BadInvalidArgument;
+      }
+    }
+
+    // Validate "approach"
+    if (!plan["approach"].is_string() || plan["approach"].size() != 3)
+    {
+      resp["messages"].push_back("Invalid 'approach' format. Expected a string of 3 characters.");
+      return OpcUa_BadInvalidArgument;
+    }
+    std::string approach = plan["approach"];
+    if (!std::all_of(approach.begin(), approach.end(), [](char c)
+                     { return c == 'u' || c == 'd' || c == '-'; }))
+    {
+      resp["messages"].push_back("Invalid 'approach' value. Expected characters 'u', 'd', or '-'.");
+      return OpcUa_BadInvalidArgument;
+    }
+
+    resp["messages"].push_back("Grid parameters validated successfully.");
+    return OpcUa_Good;
   }
+
   UaStatus DIoLaserSystem::execute_grid_scan(json &plan, json &resp)
   {
-    // ultimatelu, this method just calculates the grid scan
-    // this implements the same functionality as in the python script
-    // the plan is validated in this call
-    // the plan is a JSON structure that contains several arrays (all with 3 entries):
-    // 1. "center" : the center position around which the scan will happen
-    // 2. "range" : the range of the scan (in both directions): total scanned range is [center-range,center+range]
-    // 3. "step" : the step size for the scan
-    // 4. "approach" : the approach for the motors
-    // after validation, a scan plan is generated and passed to execute_scan
-
-    // first validate the plan
+    // Validate the plan
     if (validate_grid_parameters(plan, resp) != OpcUa_Good)
     {
       return OpcUa_BadInvalidArgument;
     }
+
+    // Extract the parameters
+    std::vector<int32_t> center = plan["center"];
+    std::vector<uint32_t> range = plan["range"];
+    std::vector<uint32_t> step = plan["step"];
+    std::string approach = plan["approach"];
+
+    // Generate the scan plan
+    json scan_plan;
+    int32_t z_start, z_end;
+
+    if (approach == "u")
     {
-      return OpcUa_BadInvalidArgument;
+      z_start = center[2] - range[2];
+      z_end = center[2] + range[2];
+    }
+    else if (approach == "d")
+    {
+      z_start = center[2] + range[2];
+      z_end = center[2] - range[2];
+    }
+    else
+    {
+      // Default to 'u' if approach is '-'
+      z_start = center[2] - range[2];
+      z_end = center[2] + range[2];
     }
 
+    for (int32_t x = center[0] - range[0]; x <= (center[0] + range[0]); x += step[0])
+    {
+      for (int32_t y = center[1] - range[1]; y <= (center[1] + range[1]); y += step[1])
+      {
+        if (approach == "u" || approach == "-")
+        {
+          scan_plan["scan_plan"].push_back({{"start", {x, y, z_start}},
+                                            {"end", {x, y, z_end}}});
+        }
+        else if (approach == "d")
+        {
+          scan_plan["scan_plan"].push_back({{"start", {x, y, z_end}},
+                                            {"end", {x, y, z_start}}});
+        }
+      }
+    }
 
+    // Log the generated scan plan
+    resp["scan_plan"] = scan_plan;
+  // #ifdef DEBUG
+    LOG(Log::INF) << "Generated scan plan: " << scan_plan.dump(2);
+  // #endif
+    resp["messages"].push_back("Grid scan plan generated successfully.");
 
+    // Execute the scan plan
+    UaStatus st = execute_scan(scan_plan, resp);
+    if (st != OpcUa_Good)
+    {
+      resp["messages"].push_back("Failed to execute grid scan plan.");
+      return st;
+    }
   }
 } // namespace Device
