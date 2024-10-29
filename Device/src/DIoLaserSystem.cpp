@@ -947,7 +947,7 @@ UaStatus DIoLaserSystem::callClear_error (
           }
         } // loop json
         // if we reached this point, the configurations are all good
-        //update_state(sReady);
+        update_state(sReady);
       }
       catch(json::exception &e)
       {
@@ -960,8 +960,7 @@ UaStatus DIoLaserSystem::callClear_error (
         msg.clear(); msg.str("");
         msg << log_e(lbl.c_str(),"Caught runtime error : ") << e.what();
         got_exception = true;
-
-}
+      }
       catch(std::exception &e)
       {
         msg.clear(); msg.str("");
@@ -980,6 +979,7 @@ UaStatus DIoLaserSystem::callClear_error (
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_Bad;
+        LOG(Log::ERR) << msg.str();
         return OpcUa_Bad;
       }
       else

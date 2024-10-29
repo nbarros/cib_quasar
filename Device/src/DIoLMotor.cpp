@@ -421,6 +421,7 @@ UaStatus DIoLMotor::callClear_alarm (
     {
       return status;
     }
+    update_status(sOperating);
     /**
      * Typical answer: {"status":"OK"}
      */
@@ -440,9 +441,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "ERROR";
       std::ostringstream msg("");
       msg << log_e(lbl.c_str(),"Failed to execute remote command : ") << answer["status"];
-#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
-#endif
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
       status =  OpcUa_Bad;
@@ -1541,6 +1540,7 @@ UaStatus DIoLMotor::callClear_alarm (
       // no change. do nothing
       return;
     }
+    LOG(Log::INF) << "Motor " << m_id << " status changed from " << m_status_map.at(m_status) << " to " << m_status_map.at(s);
     m_status = s;
     UaString ss(m_status_map.at(m_status).c_str());
     getAddressSpaceLink()->setState(ss,OpcUa_Good);
