@@ -433,6 +433,51 @@ UaStatus DIoLaserSystem::callExecute_scan (
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
 }
+UaStatus DIoLaserSystem::callExecute_grid_scan (
+    const UaString&  plan,
+    UaString& answer
+)
+{
+  std::ostringstream msg("");
+  bool got_exception = false;
+  json resp;
+
+  UaStatus st;
+  try
+  {
+    json scan = json::parse(plan.toUtf8());
+    st = execute_grid_scan(scan, resp);
+  }
+  catch (json::exception &e)
+  {
+    msg.clear();
+    msg.str("");
+    msg << log_e("grid_scan", "Caught JSON exception : ") << e.what();
+    got_exception = true;
+  }
+  catch (std::exception &e)
+  {
+    msg.clear();
+    msg.str("");
+    msg << log_e("grid_scan", "Caught JSON exception : ") << e.what();
+    got_exception = true;
+  }
+  catch (...)
+  {
+    msg.clear();
+    msg.str("");
+    msg << log_e("grid_scan", "Caught an unknown exception");
+    got_exception = true;
+  }
+  if (got_exception)
+  {
+    resp["status"] = "ERROR";
+    resp["messages"].push_back(msg.str());
+    resp["statuscode"] = OpcUa_Bad;
+  }
+  answer = UaString(resp.dump().c_str());
+  return OpcUa_Good;
+}
 UaStatus DIoLaserSystem::callPause (
     UaString& answer
 )

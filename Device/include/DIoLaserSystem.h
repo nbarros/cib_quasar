@@ -70,6 +70,10 @@ public:
         const UaString&  plan,
         UaString& answer
     ) ;
+    UaStatus callExecute_grid_scan (
+        const UaString&  plan,
+        UaString& answer
+    ) ;
     UaStatus callPause (
         UaString& answer
     ) ;
@@ -155,7 +159,8 @@ private:
     UaStatus validate_grid_parameters(const json &plan, json &resp);
     UaStatus execute_grid_scan(json &plan, json &resp);
 
-public : 
+public:
+
     UaStatus clear_error(json &resp);
     // makes a roll call for each system to update itself
     void update();
