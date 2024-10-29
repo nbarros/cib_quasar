@@ -284,15 +284,18 @@ void print_help()
   add_feedback(Severity::INFO, "       Resume the system. This will open the shutters and start QSWITCH.");
   add_feedback(Severity::INFO, "   stop");
   add_feedback(Severity::INFO, "       Stop the system. This will stop the system (fire, qswitch, and return shutters to default position).");
-  add_feedback(Severity::INFO, "   fire_at_position <position> <num_shots>");
+  add_feedback(Severity::INFO, "   fire_at_position <position> <approach> <num_shots>");
   add_feedback(Severity::INFO, "       Fire at a specified position. Number of shots is optional.");
-  add_feedback(Severity::INFO, "       Example: fire_at_position [1,2,3] 10");
+  add_feedback(Severity::INFO, "       Example: fire_at_position [1,2,3] uud 10");
   add_feedback(Severity::INFO, "   fire_segment <start_position> <end_position>");
   add_feedback(Severity::INFO, "       Fire at a segment between two positions.");
   add_feedback(Severity::INFO, "       Example: fire_segment [1,2,3] [4,5,6]");
   add_feedback(Severity::INFO, "   execute_scan <run_plan>");
   add_feedback(Severity::INFO, "       Execute a scan plan. The run plan should be a JSON object with a 'scan_plan' array.");
   add_feedback(Severity::INFO, "       Example: execute_scan '{\"scan_plan\":[{\"start\":[1,2,3],\"end\":[4,5,6]}, {\"start\":[7,8,9],\"end\":[10,11,12]}]}'");
+  add_feedback(Severity::INFO, "   grid_scan <run_plan>");
+  add_feedback(Severity::INFO, "       Generate and execute a scan plan.");
+  add_feedback(Severity::INFO, "       Example: grid_scan '{\"center\":[1,2,3],\"range\":[0,1000,1000],\"step\":[0,100,1000],\"approach\":\"uuu\"}'");
   // add_feedback(Severity::INFO, "   add_monitor <variable>");
   // add_feedback(Severity::INFO, "       Add a variable to the monitor list. Variable must be a fully qualified OPC-UA node");
   add_feedback(Severity::INFO, "   read_variable <variable>");
@@ -613,15 +616,16 @@ int run_command(int argc, char**argv)
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
-    if (argc != 3)
+    if (argc != 4)
     {
-      add_feedback(Severity::WARN, "Usage: fire_at_position <position> <num_shots>");
+      add_feedback(Severity::WARN, "Usage: fire_at_position <position> <approach> <num_shots>");
       return 0;
     }
     std::string position(argv[1]);
-    uint32_t num_shots = std::stoi(argv[2]);
+    std::string approach(argv[2]);
+    uint32_t num_shots = std::stoi(argv[3]);
     FeedbackManager feedback;
-    bool res = g_monitor.fire_at_position(position, num_shots, feedback);
+    bool res = g_monitor.fire_at_position(position, approach, num_shots, feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -675,6 +679,32 @@ int run_command(int argc, char**argv)
     std::string run_plan(argv[1]);
     FeedbackManager feedback;
     bool res = g_monitor.execute_scan(run_plan, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (res)
+    {
+      add_feedback(Severity::INFO, "Execute scan successful.");
+    }
+    else
+    {
+      add_feedback(Severity::ERROR, "Execute scan failed.");
+    }
+  }
+  else if (cmd == "grid_scan")
+  {
+    if (!g_monitor.is_connected())
+    {
+      add_feedback(Severity::ERROR, "Not connected to a server.");
+      return 0;
+    }
+    if (argc != 2)
+    {
+      add_feedback(Severity::WARN, "Usage: grid_scan <run_plan>");
+      return 0;
+    }
+    std::string run_plan(argv[1]);
+    FeedbackManager feedback;
+    bool res = g_monitor.execute_grid_scan(run_plan, feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
     if (res)
@@ -831,6 +861,26 @@ int run_command(int argc, char**argv)
     //= std::stoi(argv[1]);
     FeedbackManager feedback;
     g_monitor.set_att_pos(setting, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+  }
+  else if (cmd == "exec_method")
+  {
+    if (!g_monitor.is_connected())
+    {
+      add_feedback(Severity::ERROR, "Not connected to a server.");
+      return 0;
+    }
+    if (argc != 2)
+    {
+      add_feedback(Severity::WARN, "Usage: exec_method <method> <value>");
+      add_feedback(Severity::WARN, "      Method can only have one argument");
+      return 0;
+    }
+    // the trouble here is to cast the value into the right type
+    //FIXME: Implement this
+    FeedbackManager feedback;
+    g_monitor.set_dac_threshold(value, feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
   }

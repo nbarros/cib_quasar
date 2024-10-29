@@ -321,7 +321,7 @@ bool IoLSMonitor::move_to_position(const std::string &position, const std::strin
   }
 }
 
-bool IoLSMonitor::fire_at_position(const std::string &position, const uint32_t num_shots, FeedbackManager &feedback)
+bool IoLSMonitor::fire_at_position(const std::string &position, const std::string &approach, const uint32_t num_shots, FeedbackManager &feedback)
 {
   try
   {
@@ -341,6 +341,13 @@ bool IoLSMonitor::fire_at_position(const std::string &position, const uint32_t n
       return false;
     }
 
+    if (approach.size() != 3 || !std::all_of(approach.begin(), approach.end(), [](char c)
+                                             { return c == 'u' || c == 'd' || c == '-'; }))
+    {
+      feedback.add_message(Severity::ERROR, "Invalid approach format: " + approach);
+      return false;
+    }
+
     // Check that num_shots is a value above 0
     if (num_shots <= 0)
     {
@@ -351,6 +358,7 @@ bool IoLSMonitor::fire_at_position(const std::string &position, const uint32_t n
     // Convert the two input strings into a JSON variable
     json jrequest;
     jrequest["target"] = json::array({std::stoi(position_match[1].str()), std::stoi(position_match[2].str()), std::stoi(position_match[3].str())});
+    jrequest["approach"] = approach;
     jrequest["num_pulses"] = num_shots;
     jrequest["lbls"] = false;
 

@@ -265,10 +265,11 @@ UaStatus DIoLaserSystem::callFire_at_position (
     try
     {
       std::vector<int32_t> target_pos;
+      std::string approach;
       uint32_t num_pulses;
       bool lbls;
       resp["messages"] = json::array();
-      if (!process_fap_arguments(arguments,target_pos,num_pulses,lbls,resp))
+      if (!process_fap_arguments(arguments,target_pos,approach,num_pulses,lbls,resp))
       {
         reset(msg);
         msg << log_e(lbl.c_str(),"Failed to parse arguments");
@@ -279,7 +280,7 @@ UaStatus DIoLaserSystem::callFire_at_position (
         return OpcUa_Good;
       }
       //FIXME: Implement the lbls part (not setting it yet)
-      st = fire_at_position(target_pos,num_pulses,resp);
+      st = fire_at_position(target_pos,approach,num_pulses,resp);
     }
     catch(json::exception &e)
     {
@@ -1098,7 +1099,7 @@ UaStatus DIoLaserSystem::callClear_error (
     }
     return OpcUa_Good;
   }
-  UaStatus DIoLaserSystem::fire_at_position(const std::vector<int32_t>&  target_pos, uint32_t num_pulses, json &resp)
+  UaStatus DIoLaserSystem::fire_at_position(const std::vector<int32_t>&  target_pos, const std::string &approach, uint32_t num_pulses, json &resp)
   {
     const std::string lbl = "fire_at_position";
     UaStatus st;
@@ -1155,6 +1156,7 @@ UaStatus DIoLaserSystem::callClear_error (
         resp["statuscode"] = OpcUa_BadInvalidArgument;
         return OpcUa_BadInvalidArgument;
       }
+      // validation of approach has already been done
       //
       if (num_pulses < 1)
       {
@@ -1170,7 +1172,7 @@ UaStatus DIoLaserSystem::callClear_error (
       // ready to operate
       // below this point this becomes a separate thread, as the motors will be moving
       //update_state(sOperating);
-      init_fire_point_task(target_pos,num_pulses);
+      init_fire_point_task(target_pos,approach,num_pulses);
     }
     catch(json::exception &e)
     {
@@ -2725,7 +2727,7 @@ UaStatus DIoLaserSystem::callClear_error (
       return false;
     }
   }
-  bool DIoLaserSystem::process_fap_arguments(const UaString &arguments, std::vector<int32_t> &target_pos, uint32_t &num_pulses, bool &lbls,json &response)
+  bool DIoLaserSystem::process_fap_arguments(const UaString &arguments, std::vector<int32_t> &target_pos, std::string &approach, uint32_t &num_pulses, bool &lbls, json &response)
   {
     try
     {
@@ -2747,6 +2749,22 @@ UaStatus DIoLaserSystem::callClear_error (
       else
       {
         response["messages"].push_back("Invalid or missing 'target' key.");
+        return false;
+      }
+      // Extract approach
+      if (jargs.contains("approach") && jargs["approach"].is_string())
+      {
+        approach = jargs["approach"].get<std::string>();
+        if (approach.size() != 3 || !std::all_of(approach.begin(), approach.end(), [](char c)
+                                                 { return c == 'u' || c == 'd' || c == '-'; }))
+        {
+          response["messages"].push_back("Invalid approach format: " + approach);
+          return false;
+        }
+      }
+      else
+      {
+        response["messages"].push_back("Invalid or missing 'approach' key.");
         return false;
       }
 
@@ -2782,7 +2800,7 @@ UaStatus DIoLaserSystem::callClear_error (
     }
   }
   // reimplement below
-  void DIoLaserSystem::init_fire_point_task(const std::vector<int32_t> &target,
+  void DIoLaserSystem::init_fire_point_task(const std::vector<int32_t> &target, const std::string &approach,
                                             const uint32_t &num_pulses)
   {
     // this task runs on a separate thread
@@ -2790,13 +2808,13 @@ UaStatus DIoLaserSystem::callClear_error (
     // messages are queued in a separate variable that can then be queried
     // also keep in mind that at this stage all verifications have been performed, so
     // the task does not need base checks
-    std::thread([this, target, num_pulses]()
+    std::thread([this, target, approach, num_pulses]()
                 {
         if (!m_task_message_queue.contains("messages"))
         {
           m_task_message_queue["messages"] = json::array();
         }
-        fire_point_task(target,num_pulses);
+        fire_point_task(target,approach,num_pulses);
         // once the task is done check if there is an error
         if (m_state == sError)
         {
@@ -2821,8 +2839,8 @@ UaStatus DIoLaserSystem::callClear_error (
         })
         .detach();
   }
-  void DIoLaserSystem::fire_point_task(const std::vector<int32_t> &target,
-                                      const uint32_t &num_pulses)
+  void DIoLaserSystem::fire_point_task(const std::vector<int32_t> &target, const std::string &approach,
+                                       const uint32_t &num_pulses)
   {
     const std::string lbl("fire_point_task");
     UaStatus st;
@@ -2863,26 +2881,37 @@ UaStatus DIoLaserSystem::callClear_error (
     }
     // step 1
     // we can initiate the movement
-    st = move_motor(target, resp);
-    if (st != OpcUa_Good)
+    move_task(target, approach);
+    // if error was not set, we can continue
+    if (m_state == sError)
     {
-      reset(msg);
-      msg << log_e(lbl.c_str(), "Failed to move to target");
-      ;
-      resp["messages"].push_back(msg.str());
-      resp["status"] = "ERROR";
-      resp["statuscode"] = static_cast<uint32_t>(st);
-      LOG(Log::ERR) << msg.str();
-      update_task_message_queue(resp);
-      // nothing is being done, so just terminate this task
-      // update the state to error
-      update_state(sError);
+      LOG(Log::ERR) << log_e("fire_point_task", "Failed to move to position.");
+
+      // something went wrong
+      // we should have a message in the queue
       return;
     }
+    // st = move_motor(target, resp);
+    // if (st != OpcUa_Good)
+    // {
+    //   reset(msg);
+    //   msg << log_e(lbl.c_str(), "Failed to move to target");
+    //   ;
+    //   resp["messages"].push_back(msg.str());
+    //   resp["status"] = "ERROR";
+    //   resp["statuscode"] = static_cast<uint32_t>(st);
+    //   LOG(Log::ERR) << msg.str();
+    //   update_task_message_queue(resp);
+    //   // nothing is being done, so just terminate this task
+    //   // update the state to error
+    //   update_state(sError);
+    //   return;
+    // }
+    //
     // step 1.2: wait until motors are in place
     // since this is a separate task, we *must* wait for things to be ready
 
-    wait_for_motors(target);
+    //wait_for_motors(target);
     //  bool is_moving = true;
     // while (is_moving)
     // {

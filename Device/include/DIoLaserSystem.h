@@ -112,11 +112,11 @@ private:
     UaStatus config(json &conf, json &resp);
     UaStatus check_ready(bool &ready);
     UaStatus stop(json &resp);
-    bool process_fap_arguments(const UaString &arguments, std::vector<int32_t> &target_pos, uint32_t &num_pulses, bool &lbls,json &response);
-    void init_fire_point_task(const std::vector<int32_t> &target, const uint32_t &num_pulses);
-    void fire_point_task(const std::vector<int32_t> &target, const uint32_t &num_pulses);
+    bool process_fap_arguments(const UaString &arguments, std::vector<int32_t> &target_pos, std::string &approach, uint32_t &num_pulses, bool &lbls, json &response);
+    void init_fire_point_task(const std::vector<int32_t> &target, const std::string &approach, const uint32_t &num_pulses);
+    void fire_point_task(const std::vector<int32_t> &target, const std::string &approach, const uint32_t &num_pulses);
 
-    UaStatus fire_at_position(const std::vector<int32_t> &target_pos, uint32_t num_pulses, json &resp);
+    UaStatus fire_at_position(const std::vector<int32_t> &target_pos, const std::string &approach, uint32_t num_pulses, json &resp);
 
     UaStatus fire_segment(
         const std::vector<OpcUa_Int32>&  spos,
