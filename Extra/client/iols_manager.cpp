@@ -871,18 +871,26 @@ int run_command(int argc, char**argv)
       add_feedback(Severity::ERROR, "Not connected to a server.");
       return 0;
     }
-    if (argc != 2)
+    if (argc != 4)
     {
-      add_feedback(Severity::WARN, "Usage: exec_method <method> <value>");
-      add_feedback(Severity::WARN, "      Method can only have one argument");
+      add_feedback(Severity::WARN, "Usage: exec_method <method> <value> <type>");
+      add_feedback(Severity::WARN, "      Call generic method with an argument. Types: \'i\',\'d\',\'f\',\'s\',\'i32\',\'u32\',\'u16\',\'i16\',\'b\'");
       return 0;
     }
     // the trouble here is to cast the value into the right type
     //FIXME: Implement this
     FeedbackManager feedback;
-    g_monitor.set_dac_threshold(value, feedback);
+    std::string method = argv[1];
+    std::string value = argv[2];
+    std::string type = argv[3];
+
+    bool success = g_monitor.call_method(method,value, type, feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);
+    if (success)
+    {
+      add_feedback(Severity::INFO,"Method executed with success");
+    }
   }
   else if (cmd == "set_dac")
   {

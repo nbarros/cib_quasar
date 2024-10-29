@@ -47,7 +47,7 @@ public:
     bool set_pm_threshold(const uint16_t &selection, FeedbackManager &feedback);
     bool set_dac_threshold(const uint16_t &selection, FeedbackManager &feedback);
     bool set_att_pos(const uint32_t &value, FeedbackManager &feedback);
-
+    bool call_method(const std::string &method,const std::string &argument, const std::string &type, FeedbackManager &feedback) {return true;}
 private:
     void monitor_loop();
     void monitor_server();
