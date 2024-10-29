@@ -1085,3 +1085,91 @@ bool IoLSMonitor::read_variable(const std::string &variable, UA_Variant &value, 
     return false;
   }
 }
+bool IoLSMonitor::call_method(const std::string &method_name, const std::string &arg, const std::string &type, FeedbackManager &feedback)
+{
+  try
+  {
+
+    // Initialize the input argument variant
+    UA_Variant input;
+    UA_Variant_init(&input);
+
+    // Set the input argument based on the type
+    if (type == "i")
+    {
+      int value = std::stoi(arg);
+      UA_Variant_setScalarCopy(&input, &value, &UA_TYPES[UA_TYPES_INT32]);
+    }
+    else if (type == "d")
+    {
+      double value = std::stod(arg);
+      UA_Variant_setScalarCopy(&input, &value, &UA_TYPES[UA_TYPES_DOUBLE]);
+    }
+    else if (type == "f")
+    {
+      float value = std::stof(arg);
+      UA_Variant_setScalarCopy(&input, &value, &UA_TYPES[UA_TYPES_FLOAT]);
+    }
+    else if (type == "s")
+    {
+      UA_String value = UA_STRING_ALLOC(arg.c_str());
+      UA_Variant_setScalarCopy(&input, &value, &UA_TYPES[UA_TYPES_STRING]);
+      UA_String_clear(&value);
+    }
+    else if (type == "i32")
+    {
+      int32_t value = std::stoi(arg);
+      UA_Variant_setScalarCopy(&input, &value, &UA_TYPES[UA_TYPES_INT32]);
+    }
+    else if (type == "u32")
+    {
+      uint32_t value = std::stoul(arg);
+      UA_Variant_setScalarCopy(&input, &value, &UA_TYPES[UA_TYPES_UINT32]);
+    }
+    else if (type == "u16")
+    {
+      uint16_t value = static_cast<uint16_t>(std::stoul(arg));
+      UA_Variant_setScalarCopy(&input, &value, &UA_TYPES[UA_TYPES_UINT16]);
+    }
+    else if (type == "i16")
+    {
+      int16_t value = static_cast<int16_t>(std::stoi(arg));
+      UA_Variant_setScalarCopy(&input, &value, &UA_TYPES[UA_TYPES_INT16]);
+    }
+    else if (type == "b")
+    {
+      bool value = (arg == "true" || arg == "1");
+      UA_Variant_setScalarCopy(&input, &value, &UA_TYPES[UA_TYPES_BOOLEAN]);
+    }
+    else
+    {
+      feedback.add_message(Severity::ERROR, "Unsupported argument type: " + type);
+      return false;
+    }
+
+    bool success = exec_method_arg(method_name, input, feedback);
+    // Clear the input variant
+    UA_Variant_clear(&input);
+
+    if (!success)
+    {
+      feedback.add_message(Severity::ERROR, "Failed to call method: " + method_name);
+      return false;
+    }
+    else
+    {
+      feedback.add_message(Severity::INFO, "Method called successfully.");
+      return true;
+    }
+  }
+  catch (const std::exception &e)
+  {
+    feedback.add_message(Severity::ERROR, "Exception in call_method: " + std::string(e.what()));
+    return false;
+  }
+  catch (...)
+  {
+    feedback.add_message(Severity::ERROR, "Unknown exception in call_method");
+    return false;
+  }
+}

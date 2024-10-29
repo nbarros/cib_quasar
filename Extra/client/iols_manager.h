@@ -17,5 +17,8 @@ void add_feedback(Severity severity, const std::string &msg);
 void update_feedback(std::vector<FeedbackMessage> &feedback);
 void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int height, IoLSMonitor &monitor);
 void refresh_left_panel(WINDOW *pane, int height);
+void print_help();
+int run_command(int argc, char **argv);
+
 
 #endif // IOLS_MANAGER_H

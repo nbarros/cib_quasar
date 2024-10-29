@@ -9,7 +9,7 @@ target_compile_features(iols_functions PUBLIC cxx_std_17)
 target_include_directories(iols_functions PUBLIC ${PROJECT_SOURCE_DIR}/Extra/client)
 target_compile_options(iols_functions PUBLIC -Wno-literal-suffix -Wno-write-strings)
 
-add_executable(iols_manager EXCLUDE_FROM_ALL iols_manager.cpp)
+add_executable(iols_manager EXCLUDE_FROM_ALL iols_manager.cpp iols_manager_commands.cpp )
 target_compile_features(iols_manager PUBLIC cxx_std_17)
 target_include_directories(iols_manager PUBLIC ${PROJECT_SOURCE_DIR}/Extra/client)
 target_compile_options(iols_manager PUBLIC -Wno-literal-suffix -Wno-write-strings)
