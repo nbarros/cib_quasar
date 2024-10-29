@@ -1302,11 +1302,11 @@ UaStatus DIoLMotor::callClear_alarm (
   }
   UaStatus DIoLMotor::terminate(json &resp)
   {
-    update_status(sOffline);
     // the main thing here is to stop the monitors
     m_cib_monitor.store(false);
     m_position_monitor.store(false);
     m_stats_monitor.store(false);
+    update_status(sOffline);
     //
     return OpcUa_Good;
   }

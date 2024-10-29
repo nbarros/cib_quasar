@@ -385,6 +385,7 @@ UaStatus DIoLaserSystem::callFire_segment (
     {
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
+      LOG(Log::ERR) << msg.str();
       resp["statuscode"] = OpcUa_Bad;
     }
     answer = UaString(resp.dump().c_str());
@@ -1418,6 +1419,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
     }
     else
@@ -1500,7 +1502,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       LOG(Log::ERR) << msg.str();
       resp["statuscode"] = static_cast<uint32_t>(st);
-      m_task_message_queue = resp;
+      update_task_message_queue(resp);
       // nothing is being done, so just terminate this task
       // update the state to error
       // -- if we cannot go into pause, force a shutdown
@@ -1520,7 +1522,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       resp["statuscode"] = static_cast<uint32_t>(st);
       LOG(Log::ERR) << msg.str();
-      m_task_message_queue = resp;
+      update_task_message_queue(resp);
       // nothing is being done, so just terminate this task
       // update the state to error
       update_state(sError);
@@ -1528,16 +1530,17 @@ UaStatus DIoLaserSystem::callClear_error (
     }
     // step 1.2: wait until motors are in place
     // since this is a separate task, we *must* wait for things to be ready
-    bool is_moving = true;
-    while (is_moving)
-    {
-      is_moving = false;
-      for (Device::DIoLMotor* lmotor : iolmotors ())
-      {
-        is_moving |= lmotor->is_moving();
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
+    wait_for_motors(spos);
+    // bool is_moving = true;
+    // while (is_moving)
+    // {
+    //   is_moving = false;
+    //   for (Device::DIoLMotor* lmotor : iolmotors ())
+    //   {
+    //     is_moving |= lmotor->is_moving();
+    //   }
+    //   std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // }
     //
     //
     // we have reached the destination
@@ -1551,7 +1554,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["messages"].push_back(msg.str());
       resp["status"] = "ERROR";
       resp["statuscode"] = static_cast<uint32_t>(st);
-      m_task_message_queue = resp;
+      update_task_message_queue(resp);
       LOG(Log::ERR) << msg.str();
       // nothing is being done, so just terminate this task
       // update the state to error
@@ -1585,21 +1588,22 @@ UaStatus DIoLaserSystem::callClear_error (
       // force a pause (again)
       pause(resp);
       // iollaserunit()->pause(resp);
-      m_task_message_queue = resp;
+      update_task_message_queue(resp);
       update_state(sError);
       return;
     }
     // step 5: wait for motors to report stopped
-    is_moving = true;
-    while (is_moving)
-    {
-      is_moving = false;
-      for (Device::DIoLMotor* lmotor : iolmotors ())
-      {
-        is_moving |= lmotor->is_moving();
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
+    // is_moving = true;
+    // while (is_moving)
+    // {
+    //   is_moving = false;
+    //   for (Device::DIoLMotor* lmotor : iolmotors ())
+    //   {
+    //     is_moving |= lmotor->is_moving();
+    //   }
+    //   std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // }
+    wait_for_motors(lpos);
     // step 6: switch back to pause
     // st = iollaserunit()->pause(resp);
     st = pause(resp);
@@ -1613,7 +1617,7 @@ UaStatus DIoLaserSystem::callClear_error (
       LOG(Log::ERR) << msg.str();
       // force a pause (again)
       iollaserunit()->pause(resp);
-      m_task_message_queue = resp;
+      update_task_message_queue(resp);
       update_state(sError);
       return;
     }
@@ -1648,7 +1652,6 @@ UaStatus DIoLaserSystem::callClear_error (
         // nothing is being done, so just terminate this task
         return st;
       }
-
     }
     return OpcUa_Good;
   }
@@ -1748,6 +1751,7 @@ UaStatus DIoLaserSystem::callClear_error (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
       return OpcUa_Bad;
     }
     else
@@ -1800,7 +1804,7 @@ UaStatus DIoLaserSystem::callClear_error (
       if (st != OpcUa_Good)
       {
         reset(msg);
-        msg << log_e(lbl.c_str(),"Failed to set laser into Pause state");;
+        msg << log_e(lbl.c_str(),"Failed to set laser into Pause state");
         if (!m_task_message_queue.contains("status"))
         {
           m_task_message_queue["status"] = "ERROR";
