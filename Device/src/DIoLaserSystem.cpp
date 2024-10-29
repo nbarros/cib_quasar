@@ -2367,6 +2367,7 @@ UaStatus DIoLaserSystem::callClear_error (
   }
   void DIoLaserSystem::update()
   {
+    update_state(m_state);
     // first update the local variables
     // NFB: this method does not do what the call suggests
     //update_state(m_state);
@@ -2443,6 +2444,13 @@ UaStatus DIoLaserSystem::callClear_error (
   }
   void DIoLaserSystem::update_state(State s)
   {
+    static bool first = true;
+    if (first)
+    {
+      UaString ss(m_state_map.at(m_state).c_str());
+      getAddressSpaceLink()->setState(ss, OpcUa_Good);
+      first = false;
+    }
     if (m_state == s)
     {
       // nothing to be done

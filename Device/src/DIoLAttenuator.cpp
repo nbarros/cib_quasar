@@ -1772,6 +1772,13 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
 
   void DIoLAttenuator::set_status(const Status st)
   {
+    static bool first = true;
+    if (first)
+    {
+      UaString ss(m_status_map.at(m_status).c_str());
+      getAddressSpaceLink()->setState(ss, OpcUa_Good);
+      first = false;
+    }
     if (m_status == st)
     {
       // nothing to be done

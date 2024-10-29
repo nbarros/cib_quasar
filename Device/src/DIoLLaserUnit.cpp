@@ -2896,6 +2896,13 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   }
   void DIoLLaserUnit::update_status(Status s)
   {
+    static bool first = true;
+    if (first)
+    {
+      UaString ss(m_status_map.at(m_status).c_str());
+      getAddressSpaceLink()->setState(ss, OpcUa_Good);
+      first = false;
+    }
     if (m_status == s)
     {
       // status is not changing. Do nothing
