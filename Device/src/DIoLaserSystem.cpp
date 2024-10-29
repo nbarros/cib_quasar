@@ -3242,9 +3242,9 @@ UaStatus DIoLaserSystem::callClear_error (
       z_end = center[2] + range[2];
     }
 
-    for (int32_t x = center[0] - range[0]; x <= (center[0] + range[0]); x += step[0])
+    for (int32_t x = center[0] - static_cast<int32_t>(range[0]); x <= (center[0] + static_cast<int32_t>(range[0])); x += step[0])
     {
-      for (int32_t y = center[1] - range[1]; y <= (center[1] + range[1]); y += step[1])
+      for (int32_t y = center[1] - static_cast<int32_t>(range[1]); y <= (center[1] + static_cast<int32_t>(range[1])); y += step[1])
       {
         if (approach == "u" || approach == "-")
         {

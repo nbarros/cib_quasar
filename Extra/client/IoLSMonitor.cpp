@@ -674,6 +674,109 @@ bool IoLSMonitor::execute_scan(const std::string &run_plan, FeedbackManager &fee
   }
 }
 
+bool IoLSMonitor::execute_grid_scan(const std::string &run_plan, FeedbackManager &feedback)
+{
+  try
+  {
+    // Check that the client is connected
+    if (!m_client.is_connected())
+    {
+      feedback.add_message(Severity::ERROR, "Client is not connected.");
+      return false;
+    }
+
+    // Parse the run_plan to JSON
+    json jrun_plan;
+    try
+    {
+      jrun_plan = json::parse(run_plan);
+    }
+    catch (const json::exception &e)
+    {
+      feedback.add_message(Severity::ERROR, "Invalid JSON format: " + std::string(e.what()) + " | Input: " + run_plan);
+      return false;
+    }
+
+    // Check that the run_plan variable is valid JSON with the required structure
+    if (!jrun_plan.contains("center") || !jrun_plan["center"].is_array() || jrun_plan["center"].size() != 3)
+    {
+      feedback.add_message(Severity::ERROR, "Invalid or missing 'center' key. Expected an array of 3 elements.");
+      return false;
+    }
+
+    if (!jrun_plan.contains("range") || !jrun_plan["range"].is_array() || jrun_plan["range"].size() != 3)
+    {
+      feedback.add_message(Severity::ERROR, "Invalid or missing 'range' key. Expected an array of 3 elements.");
+      return false;
+    }
+
+    if (!jrun_plan.contains("step") || !jrun_plan["step"].is_array() || jrun_plan["step"].size() != 3)
+    {
+      feedback.add_message(Severity::ERROR, "Invalid or missing 'step' key. Expected an array of 3 elements.");
+      return false;
+    }
+
+    if (!jrun_plan.contains("approach") || !jrun_plan["approach"].is_string() || jrun_plan["approach"].get<std::string>().size() != 3)
+    {
+      feedback.add_message(Severity::ERROR, "Invalid or missing 'approach' key. Expected a string of 3 characters.");
+      return false;
+    }
+
+    // Convert the JSON variable to a UA_Variant
+    UA_Variant requestVariant;
+    UA_Variant_init(&requestVariant);
+    std::string requestString = jrun_plan.dump();
+    UA_String uaRequestString = UA_STRING_ALLOC(requestString.c_str());
+    UA_Variant_setScalarCopy(&requestVariant, &uaRequestString, &UA_TYPES[UA_TYPES_STRING]);
+    UA_String_clear(&uaRequestString);
+
+    // Call the method under node "LS1.execute_grid_scan"
+    std::vector<UA_Variant> outputArguments;
+    try
+    {
+      m_client.call_method("LS1", "LS1.execute_grid_scan", {requestVariant}, outputArguments, feedback);
+    }
+    catch (const std::exception &e)
+    {
+      feedback.add_message(Severity::ERROR, "Exception in execute_grid_scan: " + std::string(e.what()));
+      return false;
+    }
+
+    // Convert the single output argument into a string and parse it into the response JSON variable
+    if (!outputArguments.empty() && UA_Variant_hasScalarType(&outputArguments[0], &UA_TYPES[UA_TYPES_STRING]))
+    {
+      UA_String *uaResponse = static_cast<UA_String *>(outputArguments[0].data);
+      std::string responseString(reinterpret_cast<char *>(uaResponse->data), uaResponse->length);
+
+      // Merge the messages from the server response into the existing response
+      json server_response = json::parse(responseString);
+      if (server_response.contains("messages"))
+      {
+        for (const auto &msg : server_response["messages"])
+        {
+          feedback.add_message(Severity::REPORT, msg);
+        }
+      }
+      if (server_response.contains("statuscode") && (server_response["statuscode"].get<int>() != UA_STATUSCODE_GOOD))
+      {
+        feedback.set_global_status(static_cast<UA_StatusCode>(server_response["statuscode"].get<int>()));
+      }
+    }
+
+    feedback.add_message(Severity::INFO, "Grid scan executed successfully.");
+    return true;
+  }
+  catch (const std::exception &e)
+  {
+    feedback.add_message(Severity::ERROR, "Exception in execute_grid_scan: " + std::string(e.what()));
+    return false;
+  }
+  catch (...)
+  {
+    feedback.add_message(Severity::ERROR, "Unknown exception in execute_grid_scan");
+    return false;
+  }
+}
 bool IoLSMonitor::exec_method_simple(const std::string &method_node, FeedbackManager &feedback)
 {
   try
