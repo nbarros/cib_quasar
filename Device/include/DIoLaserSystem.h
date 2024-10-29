@@ -152,6 +152,8 @@ private:
     void wait_for_motor(DIoLMotor*motor, int32_t target);
     void wait_for_motors(const std::vector<int32_t> &target);
     void update_task_message_queue(json &resp);
+    UaStatus validate_grid_parameters(const json &plan, json &resp);
+    UaStatus execute_grid_scan(json &plan, json &resp);
 
 public : 
     UaStatus clear_error(json &resp);

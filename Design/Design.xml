@@ -570,6 +570,10 @@
       <d:argument dataType="UaString" name="plan"/>
       <d:returnvalue dataType="UaString" name="answer"/>
     </d:method>
+    <d:method name="execute_grid_scan" executionSynchronicity="synchronous">
+      <d:argument dataType="UaString" name="plan"/>
+      <d:returnvalue dataType="UaString" name="answer"/>
+    </d:method>
     <d:method name="pause" executionSynchronicity="synchronous">
     	<d:returnvalue dataType="UaString" name="answer"></d:returnvalue></d:method>
     <d:method name="standby" executionSynchronicity="synchronous">

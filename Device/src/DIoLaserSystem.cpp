@@ -3082,5 +3082,33 @@ UaStatus DIoLaserSystem::callClear_error (
     }
     m_task_message_queue["messages"].insert(m_task_message_queue["messages"].end(), resp.at("messages").begin(), resp.at("messages").end());
   }
+  UaStatus DIoLaserSystem::validate_grid_parameters(const json &plan, json &resp)
+  {
+    const std::vector<std::string> keys = {"center", "range", "step", "approach"};
 
+  }
+  UaStatus DIoLaserSystem::execute_grid_scan(json &plan, json &resp)
+  {
+    // ultimatelu, this method just calculates the grid scan
+    // this implements the same functionality as in the python script
+    // the plan is validated in this call
+    // the plan is a JSON structure that contains several arrays (all with 3 entries):
+    // 1. "center" : the center position around which the scan will happen
+    // 2. "range" : the range of the scan (in both directions): total scanned range is [center-range,center+range]
+    // 3. "step" : the step size for the scan
+    // 4. "approach" : the approach for the motors
+    // after validation, a scan plan is generated and passed to execute_scan
+
+    // first validate the plan
+    if (validate_grid_parameters(plan, resp) != OpcUa_Good)
+    {
+      return OpcUa_BadInvalidArgument;
+    }
+    {
+      return OpcUa_BadInvalidArgument;
+    }
+
+
+
+  }
 } // namespace Device
