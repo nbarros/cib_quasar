@@ -43,6 +43,8 @@ public:
     void get_status(iols_monitor_t &status) { status = m_monitored_items; }
     void set_monitored_vars(const std::vector<std::string> &var_names);
     bool read_variable(const std::string &variable, UA_Variant &value, FeedbackManager &feedback);
+    bool write_variable(const std::string &variable, std::string &arg, std::string &type, FeedbackManager &feedback);
+
     bool set_pm_range(const int16_t &selection, FeedbackManager &feedback);
     bool set_pm_threshold(const uint16_t &selection, FeedbackManager &feedback);
     bool set_dac_threshold(const uint16_t &selection, FeedbackManager &feedback);
