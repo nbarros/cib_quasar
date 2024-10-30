@@ -17,6 +17,7 @@
 
  */
 
+
 #include <Configuration.hxx> // TODO; should go away, is already in Base class for ages
 
 #include <DIoLLaserUnit.h>
@@ -209,6 +210,25 @@ UaStatus DIoLLaserUnit::writeRep_rate_divider ( const OpcUa_UInt32& v)
     return write_divider(v,resp);
     // we don't really care for the responses in this case
     // just whether it went well or not
+
+}
+/* Note: never directly call this function. */
+
+UaStatus DIoLLaserUnit::writeWarmup_target_min ( const OpcUa_UInt32& v)
+{
+  LOG(Log::WRN) << "Setting warmup target to " << v << " minutes";
+  if (m_status == sOffline)
+  {
+    LOG(Log::ERR) << "Cannot set warmup target while offline. It will be overwritten during config.";
+    return OpcUa_BadInvalidState;
+  }
+  if (m_status != sReady)
+  {
+    LOG(Log::WRN) << "Changing the warmup timer at this point is inconsequential (state :"
+    << m_status_map.at(m_status) << ").";
+  }
+  m_warmup_timer = v;
+  return OpcUa_Good;
 }
 
 
@@ -1229,7 +1249,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       uint32_t n_ticks = 0;
       const uint32_t n_ticks_per_sec = 1;
       uint32_t nsecs = 0;
-      while (nsecs < (m_warmup_timer*60*n_ticks_per_sec))
+      while (nsecs < (m_warmup_timer*60))
       {
         // if we somehow left warmup status, stop the timer
         if (m_status != sWarmup)

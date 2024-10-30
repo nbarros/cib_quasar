@@ -326,7 +326,9 @@
     	initialValue="unknown">
     </d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="standby_timer_s" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialValue="0" initialStatus="OpcUa_BadWaitingForInitialData">
   	</d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="pause_timer_s" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_Good" initialValue="0">
-  	</d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="warmup_timer_s" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_Good" initialValue="0">
+  	</d:cachevariable>
+		<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="warmup_target_min" nullPolicy="nullForbidden" addressSpaceWrite="delegated" initialStatus="OpcUa_Good" initialValue="20"></d:cachevariable>
+		<d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="warmup_timer_s" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_Good" initialValue="0">
   	</d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="fire_active" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
   	</d:cachevariable><d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean" name="qswitch_active" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_False">
   	</d:cachevariable><!-- Operation methods -->

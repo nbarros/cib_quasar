@@ -111,6 +111,8 @@ public:
     UaStatus writeRep_rate_hz ( const OpcUa_Double& v);
     /* Note: never directly call this function. */
     UaStatus writeRep_rate_divider ( const OpcUa_UInt32& v);
+    /* Note: never directly call this function. */
+    UaStatus writeWarmup_target_min ( const OpcUa_UInt32& v);
 
 
     /* delegators for methods */
