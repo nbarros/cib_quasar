@@ -615,7 +615,8 @@ UaStatus DIoLMotor::callClear_alarm (
       // fancy new try
       // since we know the speed of the motor, we can check the CIB only 
       // after the step period of the motor
-      m_refresh_cib_ms = (1 /m_speed_setpoint) * 1000;
+      m_refresh_cib_ms = static_cast<uint32_t>(2.0 /static_cast<double>(m_speed_setpoint) * 1000.0);
+      LOG(Log::INF) << log_i("cib_monitor","Setting CIB monitor refresh period to ") << m_refresh_cib_ms << " ms";
 
       while (m_cib_monitor.load())
       {
@@ -646,8 +647,8 @@ UaStatus DIoLMotor::callClear_alarm (
           update_status(sOperating);
         }
         getAddressSpaceLink()->setIs_moving(m_is_moving,OpcUa_Good);
-
-        std::this_thread::sleep_until(x);
+        std::this_thread::sleep_for(std::chrono::milliseconds(m_refresh_cib_ms));
+        //std::this_thread::sleep_until(x);
       } })
         .detach();
   }
@@ -1540,7 +1541,7 @@ UaStatus DIoLMotor::callClear_alarm (
       // no change. do nothing
       return;
     }
-    LOG(Log::INF) << "Motor " << m_id << " status changed from " << m_status_map.at(m_status) << " to " << m_status_map.at(s);
+    //LOG(Log::INF) << "Motor " << m_id << " status changed from " << m_status_map.at(m_status) << " to " << m_status_map.at(s);
     m_status = s;
     UaString ss(m_status_map.at(m_status).c_str());
     getAddressSpaceLink()->setState(ss,OpcUa_Good);
