@@ -3104,9 +3104,9 @@ UaStatus DIoLaserSystem::callClear_error (
     }
 
     // Validate "approach"
-    if (!plan["approach"].is_string() || plan["approach"].size() != 3)
+    if (!plan["approach"].is_string() || plan["approach"].get<std:.string>().size() != 3)
     {
-      resp["messages"].push_back("Invalid 'approach' format. Expected a string of 3 characters.");
+      resp["messages"].push_back("Invalid 'approach' format. Expected a string of 3 characters. Got " + plan["approach"].dump());
       return OpcUa_BadInvalidArgument;
     }
     std::string approach = plan["approach"];
