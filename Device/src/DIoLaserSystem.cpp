@@ -3253,9 +3253,29 @@ UaStatus DIoLaserSystem::callClear_error (
       z_start = center[2] - range[2];
       z_end = center[2] + range[2];
     }
+    // -- build arrays of entries to combine
+    std::vector<int32_t> x_entries;
+    std::vector<int32_t> y_entries;
     for (int32_t x = center[0] - static_cast<int32_t>(range[0]); x <= (center[0] + static_cast<int32_t>(range[0])); x += step[0])
     {
-      for (int32_t y = center[1] - static_cast<int32_t>(range[1]); y <= (center[1] + static_cast<int32_t>(range[1])); y += step[1])
+      x_entries.push_back(x);
+      if (step[0] == 0)
+      {
+        break;
+      }
+    }
+    for (int32_t y = center[1] - static_cast<int32_t>(range[1]); y <= (center[1] + static_cast<int32_t>(range[1])); y += step[1])
+    {
+      y_entries.push_back(y);
+      if (step[1] == 0)
+      {
+        break;
+      }
+    }
+    // -- combine the entries
+    for (int32_t x : x_entries)
+    {
+      for (int32_t y : y_entries)
       {
         if (approach == "u" || approach == "-")
         {
@@ -3269,6 +3289,24 @@ UaStatus DIoLaserSystem::callClear_error (
         }
       }
     }
+
+    // for (int32_t x = center[0] - static_cast<int32_t>(range[0]); x <= (center[0] + static_cast<int32_t>(range[0])); x += step[0])
+    // {
+    //   // NFB: This causes an infinite loop if both range and step are 0
+    //   for (int32_t y = center[1] - static_cast<int32_t>(range[1]); y <= (center[1] + static_cast<int32_t>(range[1])); y += step[1])
+    //   {
+    //     if (approach == "u" || approach == "-")
+    //     {
+    //       scan_plan["scan_plan"].push_back({{"start", {x, y, z_start}},
+    //                                         {"end", {x, y, z_end}}});
+    //     }
+    //     else if (approach == "d")
+    //     {
+    //       scan_plan["scan_plan"].push_back({{"start", {x, y, z_end}},
+    //                                         {"end", {x, y, z_start}}});
+    //     }
+    //   }
+    // }
 
     // Log the generated scan plan
     resp["scan_plan"] = scan_plan;
