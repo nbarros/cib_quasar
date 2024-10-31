@@ -46,7 +46,7 @@ void  print_help()
   add_feedback(Severity::INFO, "       Example: execute_scan '{\"scan_plan\":[{\"start\":[1,2,3],\"end\":[4,5,6]}, {\"start\":[7,8,9],\"end\":[10,11,12]}]}'");
   add_feedback(Severity::INFO, "   grid_scan <run_plan>");
   add_feedback(Severity::INFO, "       Generate and execute a scan plan.");
-  add_feedback(Severity::INFO, "       Example: grid_scan '{\"center\":[1,2,3],\"range\":[0,1000,1000],\"step\":[0,100,1000],\"approach\":\"uuu\"}'");
+  add_feedback(Severity::INFO, "       Example: grid_scan '{\"center\":[1,2,3],\"range\":[0,1000,1000],\"step\":[0,100,1000],\"approach\":\"uuu\", \"scan_axis\":1}'");
   // add_feedback(Severity::INFO, "   add_monitor <variable>");
   // add_feedback(Severity::INFO, "       Add a variable to the monitor list. Variable must be a fully qualified OPC-UA node");
   add_feedback(Severity::INFO, "   read_variable <variable>");

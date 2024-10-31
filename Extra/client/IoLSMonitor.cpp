@@ -730,6 +730,12 @@ bool IoLSMonitor::execute_grid_scan(const std::string &run_plan, FeedbackManager
       return false;
     }
 
+    if (!jrun_plan.contains("scan_axis") || !jrun_plan["scan_axis"].is_number_unsigned() || jrun_plan["scan_axis"].get<std::string>().size() > 2)
+    {
+      feedback.add_message(Severity::ERROR, "Invalid or missing 'scan_axis' key. Expected an unsigned integer < 2.");
+      return false;
+    }
+
     // Convert the JSON variable to a UA_Variant
     UA_Variant requestVariant;
     UA_Variant_init(&requestVariant);

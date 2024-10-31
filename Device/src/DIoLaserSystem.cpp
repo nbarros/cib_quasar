@@ -3149,7 +3149,7 @@ UaStatus DIoLaserSystem::move_to_pos(
   }
   UaStatus DIoLaserSystem::validate_grid_parameters(const json &plan, json &resp)
   {
-    const std::vector<std::string> keys = {"center", "range", "step", "approach"};
+    const std::vector<std::string> keys = {"center", "range", "step", "approach","scan_axis"};
     if (!resp.contains("messages"))
     {
       resp["messages"] = json::array();
@@ -3223,6 +3223,18 @@ UaStatus DIoLaserSystem::move_to_pos(
       return OpcUa_BadInvalidArgument;
     }
 
+    // validate the scan axis
+    if (!plan["scan_axis"].is_number_unsigned())
+    {
+      resp["messages"].push_back("Invalid 'scan_axis' format. Expected an unsigned integer.");
+      return OpcUa_BadInvalidArgument;
+    }
+    else if (plan["scan_axis"].get<uint32_t>() >= iolmotors().size())
+    {
+      resp["messages"].push_back("Invalid 'scan_axis' value. Expected a value less than " + std::to_string(iolmotors().size()));
+      return OpcUa_BadInvalidArgument;
+    }
+
     resp["messages"].push_back("Grid parameters validated successfully.");
     LOG(Log::INF) << "Grid parameters validated successfully.";
     return OpcUa_Good;
@@ -3236,41 +3248,60 @@ UaStatus DIoLaserSystem::move_to_pos(
       return OpcUa_BadInvalidArgument;
     }
 
+    const uint32_t overstep = 200;
     // Extract the parameters
     std::vector<int32_t> center = plan["center"];
     std::vector<uint32_t> range = plan["range"];
     std::vector<uint32_t> step = plan["step"];
     std::string approach = plan["approach"];
+    uint32_t scan_axis = plan["scan_axis"].get<uint32_t>();
 
     // Generate the scan plan
     json scan_plan;
     int32_t z_start, z_end;
+    uint32_t scan_start, scan_end;
+
     scan_plan["scan_plan"] = json::array();
-    if (approach[2] == 'u')
+    if (approach[scan_axis] == 'u')
     {
-      z_start = center[2] - range[2];
-      z_end = center[2] + range[2];
+      scan_start = center[scan_axis] - range[scan_axis] - overstep;
+      scan_end = center[scan_axis] + range[scan_axis];
     }
-    else if (approach[2] == 'd')
+    else if (approach[scan_axis] == 'd')
     {
-      z_start = center[2] + range[2];
-      z_end = center[2] - range[2];
+      scan_start = center[scan_axis] + range[scan_axis] + overstep;
+      scan_end = center[scan_axis] - range[scan_axis];
     }
     else
     {
       // Default to 'u' if approach is '-'
-      z_start = center[2] - range[2];
-      z_end = center[2] + range[2];
+      scan_start = center[scan_axis] - range[scan_axis] - overstep;
+      scan_end = center[scan_axis] + range[scan_axis];
     }
 
     // -- build arrays of entries to combine
     std::deque<int32_t> x_entries;
     std::deque<int32_t> y_entries;
+    std::deque<int32_t> z_entries;
 
     // std::vector<int32_t> x_entries;
-    // std::vector<int32_t> y_entries; 
+    // std::vector<int32_t> y_entries;
+    // std::vector<int32_t> start_segment({0,0,0});
+    // std::vector<int32_t> end_segment({0,0,0}); 
+    // // assign the start and end values for the axis that is meant to be scanned
+    // start_segment[scan_axis] = scan_start;
+    // end_segment[scan_axis] = scan_end;
+
+    // generate the entries
+    // this is done by looping over all axes and skipping the scan_axis
     for (int32_t x = center[0] - static_cast<int32_t>(range[0]); x <= (center[0] + static_cast<int32_t>(range[0])); x += step[0])
     {
+      // if this is the scan axis, we do not need to create entries for it
+      if (scan_axis == 0)
+      {
+        x_entries.push_back(x);
+        break;
+      }
       if (approach[0] == 'u' || approach[0] == '-')
       {
         // we are going up, then newer values go to the back
@@ -3288,6 +3319,13 @@ UaStatus DIoLaserSystem::move_to_pos(
     }
     for (int32_t y = center[1] - static_cast<int32_t>(range[1]); y <= (center[1] + static_cast<int32_t>(range[1])); y += step[1])
     {
+      // if this is the scan axis, we do not need to create entries for it
+      if (scan_axis == 1)
+      {
+        y_entries.push_back(y);
+        break;
+      }
+
       if (approach[1] == 'u' || approach[1] == '-')
       {
         // we are going up, then newer values go to the back
@@ -3303,22 +3341,62 @@ UaStatus DIoLaserSystem::move_to_pos(
         break;
       }
     }
+    for (int32_t z = center[2] - static_cast<int32_t>(range[2]); z <= (center[2] + static_cast<int32_t>(range[2])); z += step[2])
+    {
+      // if this is the scan axis, we do not need to create entries for it
+      if (scan_axis == 2)
+      {
+        z_entries.push_back(z);
+        break;
+      }
+      if (approach[1] == 'u' || approach[1] == '-')
+      {
+        // we are going up, then newer values go to the back
+        z_entries.push_back(z);
+      }
+      else if (approach[1] == 'd')
+      {
+        // we're going down. Newer values go to the front
+        z_entries.push_front(z);
+      }
+      if (step[2] == 0)
+      {
+        break;
+      }
+    }
+
     // -- combine the entries
     for (int32_t x : x_entries)
     {
       for (int32_t y : y_entries)
       {
-          scan_plan["scan_plan"].push_back({{"start", {x, y, z_start}},
-                                            {"end", {x, y, z_end}}});
+        for (int32_t z : z_entries)
+        {
+          if (scan_axis == 0)
+          {
+            scan_plan["scan_plan"].push_back({{"start", {scan_start, y, z}},
+                                              {"end", {scan_end, y, z}}});
+          }
+          else if (scan_axis == 1)
+          {
+            scan_plan["scan_plan"].push_back({{"start", {x, scan_start, z}},
+                                              {"end", {x, scan_end, z}}});
+          }
+          else if (scan_axis == 2)
+          {
+            scan_plan["scan_plan"].push_back({{"start", {x, y, scan_start}},
+                                              {"end", {x, y, scan_end}}});
+          }
+        }
       }
     }
 
     // Log the generated scan plan
     resp["scan_plan"] = scan_plan;
     // #ifdef DEBUG
-    // LOG(Log::INF) << "Generated scan plan: " << scan_plan.dump(2);
+    LOG(Log::INF) << "Generated scan plan: " << scan_plan.dump(-1);
     // #endif
-    resp["messages"].push_back(scan_plan.dump(0));
+    resp["messages"].push_back(scan_plan.dump(-1));
 
     resp["messages"].push_back("Grid scan plan generated successfully.");
 
@@ -3328,13 +3406,13 @@ UaStatus DIoLaserSystem::move_to_pos(
     // return OpcUa_Good;
     // Execute the scan plan
     //FIXME: Uncomment this when we're done
-    UaStatus st = execute_scan(scan_plan, resp);
-    if (st != OpcUa_Good)
-    {
-      resp["messages"].push_back("Failed to execute grid scan plan.");
-      LOG(Log::ERR) << "Failed to initiate a scan.";
-      return st;
-    }
+    // UaStatus st = execute_scan(scan_plan, resp);
+    // if (st != OpcUa_Good)
+    // {
+    //   resp["messages"].push_back("Failed to execute grid scan plan.");
+    //   LOG(Log::ERR) << "Failed to initiate a scan.";
+    //   return st;
+    // }
     return OpcUa_Good;
   }
 } // namespace Device
