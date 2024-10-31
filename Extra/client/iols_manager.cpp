@@ -43,10 +43,12 @@ void set_label_color(WINDOW *pane, int y, int x, const std::string &label, const
     color_pair = 1;
   else if (status == "ready" || status == "Y" || status == "good")
     color_pair = 2;
-  else if (status == "warmup" || status == "pause" || status == "standby" || status == "operating" || status == "?" || status == "busy")
+  else if (status == "warmup" || status == "pause" || status == "standby" || status == "operating" || status == "?" || status == "busy" )
     color_pair = 3;
   else if (status == "error")
     color_pair = 5;
+  else if (status == "lasing")
+    color_pair = 6;
   else
     color_pair = 0; // Default color
 
@@ -273,6 +275,7 @@ int main(int argc, char** argv)
   init_pair(3, COLOR_BLACK, COLOR_YELLOW);
   init_pair(4, COLOR_BLACK, COLOR_BLUE);
   init_pair(5, COLOR_RED, COLOR_BLACK);
+  init_pair(6, COLOR_YELLOW, COLOR_BLACK);
 
   //int height = LINES - 2;
   g_height = LINES - 2;

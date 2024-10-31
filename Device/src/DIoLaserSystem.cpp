@@ -723,6 +723,7 @@ UaStatus DIoLaserSystem::callMove_to_pos (
         response = UaString(resp.dump().c_str());
         return OpcUa_BadInvalidArgument;
       }
+      LOG(Log::INF) << log_i("move_to_pos","Moving to position " << target_pos[0] << "," << target_pos[1] << "," << target_pos[2] << " with approach " << approach);
       st = move_to_pos(target_pos, approach, resp); // convert to an array that //std::string appr(approach.toUtf8()); st = move_to_pos(target_pos,approach,resp);  catch(json::exception &e)
     }
     catch (json::exception &e)
@@ -2325,7 +2326,7 @@ UaStatus DIoLaserSystem::callClear_error (
     LOG(Log::INF) << msg.str();
   }
 
-      UaStatus DIoLaserSystem::move_to_pos(
+UaStatus DIoLaserSystem::move_to_pos(
           const std::vector<OpcUa_Int32> &position, const std::string approach, json &resp)
   {
  
@@ -2333,7 +2334,7 @@ UaStatus DIoLaserSystem::callClear_error (
     // may have to wait for the motors for a long time
     std::thread([this, position, approach]()
                 {
-                  std::ostringstream msg;
+      std::ostringstream msg;
       if (m_state != sError)
       {
         update_state(sBusy);
@@ -2350,6 +2351,7 @@ UaStatus DIoLaserSystem::callClear_error (
         update_task_message_queue(resp);
         return;
       }
+      LOG(Log::INF) << log_i("move_to_pos","Starting movement task");
       move_task(position,approach);
       // once the task is done check if there is an error
       if (m_state == sError)
@@ -2770,6 +2772,7 @@ UaStatus DIoLaserSystem::callClear_error (
       }
       else
       {
+        LOG(Log::ERR) << log_e("process_move_arguments", "Invalid or missing 'target' key.");
         response["messages"].push_back("Invalid or missing 'target' key.");
         return false;
       }
@@ -2787,21 +2790,26 @@ UaStatus DIoLaserSystem::callClear_error (
       }
       else
       {
+        LOG(Log::ERR) << log_e("process_move_arguments", "Invalid or missing 'target' key.");
         response["messages"].push_back("Invalid or missing 'approach' key.");
         return false;
       }
-
+      LOG(Log::INF) << log_i("process_move_arguments", "Move arguments processed successfully.");
       response["messages"].push_back("Move arguments processed successfully.");
       return true;
     }
     catch (const json::exception &e)
     {
       response["messages"].push_back(std::string("JSON exception in process_move_arguments: ") + e.what());
+      LOG(Log::ERR) << log_e("process_move_arguments", "JSON exception in process_move_arguments: ") << e.what();
+
       return false;
     }
     catch (const std::exception &e)
     {
       response["messages"].push_back(std::string("Exception in process_move_arguments: ") + e.what());
+      LOG(Log::ERR) << log_e("process_move_arguments", "Exception in process_move_arguments: ") << e.what();
+
       return false;
     }
     catch (...)
