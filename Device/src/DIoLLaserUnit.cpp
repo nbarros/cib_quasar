@@ -1283,6 +1283,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         // switch to standby...which is pretty much the same thing, just with a different name
         update_status(sStandby);
       }
+      // reset the timer to 0
+      getAddressSpaceLink()->setWarmup_timer_s(0, OpcUa_Good);
                 }
     ).detach();
   }
