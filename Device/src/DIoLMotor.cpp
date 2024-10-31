@@ -620,7 +620,7 @@ UaStatus DIoLMotor::callClear_alarm (
 
       while (m_cib_monitor.load())
       {
-        auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_refresh_cib_ms);
+        //auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_refresh_cib_ms);
         //prev_pos =m_position_cib;
         prev_prev_pos = prev_pos;
         prev_pos = m_position_cib;
