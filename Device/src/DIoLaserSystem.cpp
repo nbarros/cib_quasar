@@ -80,7 +80,7 @@ DIoLaserSystem::DIoLaserSystem (
     m_state_map.insert({sOffline,"offline"});
     //m_state_map.insert({sGood,"good"});
     m_state_map.insert({sReady,"ready"});
-    m_state_map.insert({sReady, "busy"});
+    m_state_map.insert({sBusy, "busy"});
     // m_state_map.insert({sWarmup,"warmup"});
     // m_state_map.insert({sPause,"pause"});
     // m_state_map.insert({sStandby,"standby"});
