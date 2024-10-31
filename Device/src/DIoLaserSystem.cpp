@@ -3305,28 +3305,10 @@ UaStatus DIoLaserSystem::callClear_error (
       }
     }
 
-    // for (int32_t x = center[0] - static_cast<int32_t>(range[0]); x <= (center[0] + static_cast<int32_t>(range[0])); x += step[0])
-    // {
-    //   // NFB: This causes an infinite loop if both range and step are 0
-    //   for (int32_t y = center[1] - static_cast<int32_t>(range[1]); y <= (center[1] + static_cast<int32_t>(range[1])); y += step[1])
-    //   {
-    //     if (approach == "u" || approach == "-")
-    //     {
-    //       scan_plan["scan_plan"].push_back({{"start", {x, y, z_start}},
-    //                                         {"end", {x, y, z_end}}});
-    //     }
-    //     else if (approach == "d")
-    //     {
-    //       scan_plan["scan_plan"].push_back({{"start", {x, y, z_end}},
-    //                                         {"end", {x, y, z_start}}});
-    //     }
-    //   }
-    // }
-
     // Log the generated scan plan
     resp["scan_plan"] = scan_plan;
     // #ifdef DEBUG
-    LOG(Log::INF) << "Generated scan plan: " << scan_plan.dump(2);
+    // LOG(Log::INF) << "Generated scan plan: " << scan_plan.dump(2);
     // #endif
     resp["messages"].push_back(scan_plan.dump(0));
 
@@ -3335,14 +3317,16 @@ UaStatus DIoLaserSystem::callClear_error (
 
     // don't execute it right now
     //FIXME: Get rid of this
-    return OpcUa_Good;
+    // return OpcUa_Good;
     // Execute the scan plan
     //FIXME: Uncomment this when we're done
-    // UaStatus st = execute_scan(scan_plan, resp);
-    // if (st != OpcUa_Good)
-    // {
-    //   resp["messages"].push_back("Failed to execute grid scan plan.");
-    //   return st;
-    // }
+    UaStatus st = execute_scan(scan_plan, resp);
+    if (st != OpcUa_Good)
+    {
+      resp["messages"].push_back("Failed to execute grid scan plan.");
+      LOG(Log::ERR) << "Failed to initiate a scan.";
+      return st;
+    }
+    return OpcUa_Good;
   }
 } // namespace Device
