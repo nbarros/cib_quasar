@@ -1236,6 +1236,22 @@ UaStatus DIoLPowerMeter::callTerminate (
         LOG(Log::ERR) << msg.str();
         return OpcUa_Bad;
       }
+      // set the pulse width before refreshing the ranges
+      m_pulse_width = conf.at("pulse_width").get<uint16_t>();
+      st = set_pwidth(m_pulse_width, resp);
+      getAddressSpaceLink()->setPulse_width(m_pulse_width, st);
+      if (st != OpcUa_Good)
+      {
+        msg.clear();
+        msg.str("");
+        msg << log_e(label.c_str(), " ") << "Failed to set pulse length to  : " << m_pulse_width;
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["statuscode"] = OpcUa_Bad;
+        LOG(Log::ERR) << msg.str();
+        return OpcUa_Bad;
+      }
+
       // now refresh the ranges
       refresh_all_ranges();
       for (json::iterator it = conf.begin(); it != conf.end(); ++it)
@@ -1272,15 +1288,6 @@ UaStatus DIoLPowerMeter::callTerminate (
         {
           st = set_average(it.value(),resp);
           getAddressSpaceLink()->setAverage_window(m_ave_setting, st);
-          if (st != OpcUa_Good)
-          {
-            return st;
-          }
-        }
-        if (it.key() == "pulse_width")
-        {
-          st = set_pwidth(it.value(),resp);
-          getAddressSpaceLink()->setPulse_width(m_pulse_width, st);
           if (st != OpcUa_Good)
           {
             return st;
