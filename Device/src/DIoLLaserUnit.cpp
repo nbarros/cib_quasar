@@ -3433,10 +3433,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   }
   void DIoLLaserUnit::close_ext_shutter()
   {
+    LOG(Log::WRN) << log_w("open_ext_shutter", "Closing external shutter");
     set_ext_shutter(0x1);
   }
   void DIoLLaserUnit::open_ext_shutter()
   {
+    LOG(Log::WRN) << log_w("open_ext_shutter","Opening external shutter");
     set_ext_shutter(0x0);
   }
   //
@@ -3454,6 +3456,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         return st;
       }
+      LOG(Log::WRN) << log_w("close_shutter", "Closing laser shutter");
       m_laser->shutter_close();
     }
     catch(serial::PortNotOpenedException &e)
@@ -3508,6 +3511,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         return st;
       }
+      LOG(Log::WRN) << log_w("open_shutter", "Opening laser shutter");
       m_laser->shutter_open();
     }
     catch(serial::PortNotOpenedException &e)
