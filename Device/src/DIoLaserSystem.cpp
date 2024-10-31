@@ -3288,7 +3288,7 @@ UaStatus DIoLaserSystem::callClear_error (
       else if (approach[1] == 'd')
       {
         // we're going down. Newer values go to the front
-        y_entries.push_front(x);
+        y_entries.push_front(y);
       }
       if (step[1] == 0)
       {
