@@ -31,6 +31,7 @@
 #include <thread>
 #include <string>
 #include <chrono>
+#include <deque>
 
 #define log_msg(s,met,dev,msg) "[" << s << "]::" << dev << ":" << met << " : " << msg
 
@@ -3237,12 +3238,12 @@ UaStatus DIoLaserSystem::callClear_error (
     json scan_plan;
     int32_t z_start, z_end;
     scan_plan["scan_plan"] = json::array();
-    if (approach == "u")
+    if (approach[2] == 'u')
     {
       z_start = center[2] - range[2];
       z_end = center[2] + range[2];
     }
-    else if (approach == "d")
+    else if (approach[2] == 'd')
     {
       z_start = center[2] + range[2];
       z_end = center[2] - range[2];
@@ -3253,12 +3254,25 @@ UaStatus DIoLaserSystem::callClear_error (
       z_start = center[2] - range[2];
       z_end = center[2] + range[2];
     }
+
     // -- build arrays of entries to combine
-    std::vector<int32_t> x_entries;
-    std::vector<int32_t> y_entries;
+    std::deque<int32_t> x_entries;
+    std::deque<int32_t> y_entries;
+
+    // std::vector<int32_t> x_entries;
+    // std::vector<int32_t> y_entries; 
     for (int32_t x = center[0] - static_cast<int32_t>(range[0]); x <= (center[0] + static_cast<int32_t>(range[0])); x += step[0])
     {
-      x_entries.push_back(x);
+      if (approach[0] == 'u' || approach[0] == '-')
+      {
+        // we are going up, then newer values go to the back
+        x_entries.push_back(x);
+      }
+      else if (approach[0] == 'd')
+      {
+        // we're going down. Newer values go to the front
+        x_entries.push_front(x);
+      }
       if (step[0] == 0)
       {
         break;
@@ -3266,7 +3280,16 @@ UaStatus DIoLaserSystem::callClear_error (
     }
     for (int32_t y = center[1] - static_cast<int32_t>(range[1]); y <= (center[1] + static_cast<int32_t>(range[1])); y += step[1])
     {
-      y_entries.push_back(y);
+      if (approach[1] == 'u' || approach[1] == '-')
+      {
+        // we are going up, then newer values go to the back
+        y_entries.push_back(y);
+      }
+      else if (approach[1] == 'd')
+      {
+        // we're going down. Newer values go to the front
+        y_entries.push_front(x);
+      }
       if (step[1] == 0)
       {
         break;
@@ -3277,16 +3300,8 @@ UaStatus DIoLaserSystem::callClear_error (
     {
       for (int32_t y : y_entries)
       {
-        if (approach == "u" || approach == "-")
-        {
           scan_plan["scan_plan"].push_back({{"start", {x, y, z_start}},
                                             {"end", {x, y, z_end}}});
-        }
-        else if (approach == "d")
-        {
-          scan_plan["scan_plan"].push_back({{"start", {x, y, z_end}},
-                                            {"end", {x, y, z_start}}});
-        }
       }
     }
 
