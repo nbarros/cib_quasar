@@ -3396,7 +3396,7 @@ UaStatus DIoLaserSystem::move_to_pos(
     // #ifdef DEBUG
     LOG(Log::INF) << "Generated scan plan: " << scan_plan.dump(-1);
     // #endif
-    resp["messages"].push_back(scan_plan.dump(-1));
+    //resp["messages"].push_back(scan_plan.dump(-1));
 
     resp["messages"].push_back("Grid scan plan generated successfully.");
 
@@ -3406,13 +3406,13 @@ UaStatus DIoLaserSystem::move_to_pos(
     // return OpcUa_Good;
     // Execute the scan plan
     //FIXME: Uncomment this when we're done
-    // UaStatus st = execute_scan(scan_plan, resp);
-    // if (st != OpcUa_Good)
-    // {
-    //   resp["messages"].push_back("Failed to execute grid scan plan.");
-    //   LOG(Log::ERR) << "Failed to initiate a scan.";
-    //   return st;
-    // }
+    UaStatus st = execute_scan(scan_plan, resp);
+    if (st != OpcUa_Good)
+    {
+      resp["messages"].push_back("Failed to execute grid scan plan.");
+      LOG(Log::ERR) << "Failed to initiate a scan.";
+      return st;
+    }
     return OpcUa_Good;
   }
 } // namespace Device
