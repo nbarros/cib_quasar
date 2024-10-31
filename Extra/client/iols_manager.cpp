@@ -39,11 +39,11 @@ void write_to_pane(WINDOW *pane, int y, int x, const std::string &text)
 void set_label_color(WINDOW *pane, int y, int x, const std::string &label, const std::string &status)
 {
   int color_pair;
-  if (status == "offline" || status == "N" || status == "error")
+  if (status == "offline" || status == "N")
     color_pair = 1;
   else if (status == "ready" || status == "Y" || status == "good")
     color_pair = 2;
-  else if (status == "warmup" || status == "pause" || status == "standby" || status == "operating" || status == "?")
+  else if (status == "warmup" || status == "pause" || status == "standby" || status == "operating" || status == "?" || status == "busy")
     color_pair = 3;
   else if (status == "error")
     color_pair = 5;
