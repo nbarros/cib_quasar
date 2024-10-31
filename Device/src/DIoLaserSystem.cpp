@@ -968,7 +968,7 @@ UaStatus DIoLaserSystem::callClear_error (
           }
         } // loop json
         // if we reached this point, the configurations are all good
-        update_state(sReady);
+        //update_state(sReady);
       }
       catch(json::exception &e)
       {
@@ -1010,6 +1010,11 @@ UaStatus DIoLaserSystem::callClear_error (
         resp["status"] = "OK";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_Good;
+      }
+      // set state back to ready for commands
+      if (m_state != sError)
+      {
+        update_state(sReady);
       }
       return OpcUa_Good;
     }
@@ -1102,6 +1107,7 @@ UaStatus DIoLaserSystem::callClear_error (
       msg << log_e("stop","Caught an unknown exception");
       got_exception = true;
     }
+    // reset the state back tp ready (or error, if that was the case)
     if (got_exception)
     {
       resp["status"] = "ERROR";
@@ -1402,8 +1408,26 @@ UaStatus DIoLaserSystem::callClear_error (
     // messages are queued in a separate variable that can then be queried
     // also keep in mind that at this stage all verifications have been performed, so
     // the task does not need base checks
-    std::thread([this,spos,lpos]()
+    std::thread([this, spos, lpos]()
                 {
+      std::ostringstream msg;
+      if (m_state != sError)
+      {
+        update_state(sBusy);
+      }
+      else
+      {
+        // if we are in error state don't do anything
+        json resp;
+        reset(msg);
+        msg << log_e("segment_task", "System is in error state. Aborting.");
+        resp["status"] = "ERROR";
+        resp["messages"] = msg.str();
+        resp["statuscode"] = OpcUa_BadInvalidState;
+        update_task_message_queue(resp);
+        return;
+      }
+                  update_state(sBusy);
       segment_task(spos,lpos);
       // once the task is done check if there is an error
       if (m_state == sError)
@@ -1425,10 +1449,12 @@ UaStatus DIoLaserSystem::callClear_error (
         {
           m_task_message_queue["statuscode"] = OpcUa_Good;
         }
-        // update_state(sPause);
-      }
-                }
-    ).detach();
+        if (m_state != sError)
+        {
+          update_state(sReady);
+        }
+      } })
+        .detach();
   }
   void DIoLaserSystem::segment_task(const std::vector<OpcUa_Int32>&  spos,
                                     const std::vector<OpcUa_Int32>&  lpos
@@ -1727,6 +1753,22 @@ UaStatus DIoLaserSystem::callClear_error (
       UaStatus st;
       std::ostringstream msg("");
       json resp;
+      if (m_state != sError)
+      {
+        update_state(sBusy);
+      }
+      else
+      {
+        // if we are in error state don't do anything
+        json resp;
+        reset(msg);
+        msg << log_e("scan_task", "System is in error state. Aborting.");
+        resp["status"] = "ERROR";
+        resp["messages"] = msg.str();
+        resp["statuscode"] = OpcUa_BadInvalidState;
+        update_task_message_queue(resp);
+        return;
+      }
       //
       // ready to operate
       // -- be sure to set the shutter is closed in all interim moments
@@ -1755,19 +1797,6 @@ UaStatus DIoLaserSystem::callClear_error (
       if (st != OpcUa_Good)
       {
         update_task_message_queue(resp);
-        // reset(msg);
-        // msg << log_e(lbl.c_str(),"Failed to set laser into Pause state");
-        // if (!m_task_message_queue.contains("status"))
-        // {
-        //   m_task_message_queue["status"] = "ERROR";
-        // }
-        // m_task_message_queue["messages"].push_back(msg.str());
-        // if (!m_task_message_queue.contains("statuscode"))
-        // {
-        //   m_task_message_queue["statuscode"] = static_cast<uint32_t>(st);
-        // }
-        // nothing is being done, so just terminate this task
-        // update the state to error
         update_state(sError);
         return;
       }
@@ -1835,6 +1864,10 @@ UaStatus DIoLaserSystem::callClear_error (
       if (!m_task_message_queue.contains("statuscode"))
       {
         m_task_message_queue["statuscode"] = OpcUa_Good;
+      }
+      if (m_state != sError)
+      {
+        update_state(sReady);
       }
                 }
     ).detach();
@@ -2299,6 +2332,23 @@ UaStatus DIoLaserSystem::callClear_error (
     // may have to wait for the motors for a long time
     std::thread([this, position, approach]()
                 {
+                  std::ostringstream msg;
+      if (m_state != sError)
+      {
+        update_state(sBusy);
+      }
+      else
+      {
+        // if we are in error state don't do anything
+        json resp;
+        reset(msg);
+        msg << log_e("move_task", "System is in error state. Aborting.");
+        resp["status"] = "ERROR";
+        resp["messages"] = msg.str();
+        resp["statuscode"] = OpcUa_BadInvalidState;
+        update_task_message_queue(resp);
+        return;
+      }
       move_task(position,approach);
       // once the task is done check if there is an error
       if (m_state == sError)
@@ -2327,8 +2377,11 @@ UaStatus DIoLaserSystem::callClear_error (
           m_task_message_queue["statuscode"] = OpcUa_Good;
         }
       } 
-      })
-        .detach();
+      if (m_state != sError)
+      {
+        update_state(sReady);
+      }      
+      }).detach();
 
     // don't implement this yet
     return OpcUa_Good;
@@ -2839,6 +2892,25 @@ UaStatus DIoLaserSystem::callClear_error (
     // the task does not need base checks
     std::thread([this, target, approach, num_pulses]()
                 {
+        std::ostringstream msg;
+        if (m_state != sError)
+        {
+          update_state(sBusy);
+        }
+        else
+        {
+          // if we are in error state don't do anything
+          json resp;
+          reset(msg);
+          msg << log_e("fire_point_task", "System is in error state. Aborting.");
+          resp["status"] = "ERROR";
+          resp["messages"] = msg.str();
+          resp["statuscode"] = OpcUa_BadInvalidState;
+          update_task_message_queue(resp);
+
+          return;
+        }
+
         if (!m_task_message_queue.contains("messages"))
         {
           m_task_message_queue["messages"] = json::array();
@@ -2864,9 +2936,12 @@ UaStatus DIoLaserSystem::callClear_error (
           {
             m_task_message_queue["statuscode"] = OpcUa_Good;
           }
-        } 
-        })
-        .detach();
+        }
+        if (m_state != sError)
+        {
+          update_state(sReady);
+        }
+        }).detach();
   }
   void DIoLaserSystem::fire_point_task(const std::vector<int32_t> &target, const std::string &approach,
                                        const uint32_t &num_pulses)
@@ -3000,6 +3075,7 @@ UaStatus DIoLaserSystem::callClear_error (
     }
     // reached the end. Push any existing messages to the queue
     update_task_message_queue(resp);
+    // reset the state
   }
   UaStatus DIoLaserSystem::clear_error(json &resp)
   {
