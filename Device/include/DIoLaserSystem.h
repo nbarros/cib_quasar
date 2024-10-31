@@ -107,7 +107,7 @@ private:
     // -     Don't change this comment, otherwise merge tool may be troubled.  *
     // ----------------------------------------------------------------------- *
     //enum State {sOffline, sReady, sWarmup, sPause, sStandby, sOperating, sError};
-    enum State {sOffline, sReady,sError};
+    enum State {sOffline, sReady,sBusy,sError};
     //
     UaStatus config(json &conf, json &resp);
     UaStatus check_ready(bool &ready);

@@ -79,6 +79,7 @@ DIoLaserSystem::DIoLaserSystem (
     m_state_map.insert({sOffline,"offline"});
     //m_state_map.insert({sGood,"good"});
     m_state_map.insert({sReady,"ready"});
+    m_state_map.insert({sReady, "busy"});
     // m_state_map.insert({sWarmup,"warmup"});
     // m_state_map.insert({sPause,"pause"});
     // m_state_map.insert({sStandby,"standby"});
@@ -431,6 +432,7 @@ UaStatus DIoLaserSystem::callExecute_scan (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
     }
     answer = UaString(resp.dump().c_str());
     return OpcUa_Good;
@@ -443,12 +445,30 @@ UaStatus DIoLaserSystem::callExecute_grid_scan (
   std::ostringstream msg("");
   bool got_exception = false;
   json resp;
-
+  if (!resp.contains("messages"))
+  {
+    resp["messages"] = json::array();
+  }
   UaStatus st;
   try
   {
     json scan = json::parse(plan.toUtf8());
     st = execute_grid_scan(scan, resp);
+    if (st != OpcUa_Good)
+    {
+      reset(msg);
+      msg << log_e("grid_scan", "Failed to initiate grid scan. See previous messages");
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidArgument;
+    }
+    else
+    {
+      msg << log_i("grid_scan", "Grid scan initiated successfully.");
+      resp["status"] = "OK";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_Good;
+    }
   }
   catch (json::exception &e)
   {
@@ -476,6 +496,7 @@ UaStatus DIoLaserSystem::callExecute_grid_scan (
     resp["status"] = "ERROR";
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Bad;
+    LOG(Log::ERR) << msg.str();
   }
   answer = UaString(resp.dump().c_str());
   return OpcUa_Good;
@@ -3118,6 +3139,7 @@ UaStatus DIoLaserSystem::callClear_error (
     }
 
     resp["messages"].push_back("Grid parameters validated successfully.");
+    LOG(Log::INF) << "Grid parameters validated successfully.";
     return OpcUa_Good;
   }
 
@@ -3138,7 +3160,7 @@ UaStatus DIoLaserSystem::callClear_error (
     // Generate the scan plan
     json scan_plan;
     int32_t z_start, z_end;
-
+    scan_plan["scan_plan"] = json::array();
     if (approach == "u")
     {
       z_start = center[2] - range[2];
