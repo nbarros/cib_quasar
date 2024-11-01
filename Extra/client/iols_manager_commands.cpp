@@ -500,6 +500,35 @@ int run_command(int argc, char **argv)
     print_help();
     return 0;
   }
+  else if (cmd == "write_var")
+  {
+    if (!g_monitor.is_connected())
+    {
+      add_feedback(Severity::ERROR, "Not connected to a server.");
+      return 0;
+    }
+    if (argc != 4)
+    {
+      add_feedback(Severity::WARN, "Usage: write_var <node> <value> <type>");
+      return 0;
+    }
+    std::string node = argv[1];
+    std::string value = argv[2];
+    std::string type = argv[3];
+    FeedbackManager feedback;
+    bool success = g_monitor.write_variable(node, value, type, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (success)
+    {
+      add_feedback(Severity::INFO, "Warmup timer target set successfully.");
+    }
+    else
+    {
+      add_feedback(Severity::ERROR, "Failed to set warmup timer target.");
+    }
+    return 0;
+  }
   else if (cmd == "set_warmup_timer")
   {
     if (!g_monitor.is_connected())
