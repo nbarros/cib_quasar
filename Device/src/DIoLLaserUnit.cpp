@@ -1889,8 +1889,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         has_error = true;
       }
-      //FIXME: Implement the CIB number of shots
-      // external shutter
+      static uint32_t scnt;
+      st = get_shot_count_cib(scnt,resp);
+      if (st != OpcUa_Good)
+      {
+        has_error = true;
+      }
       bool eso = false;
       st = get_ext_shutter_state(eso,resp);
       if (st != OpcUa_Good)
@@ -2457,7 +2461,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // we seem to be ready to operate
     // depending on the exact state, we want to release all shutters
     // count the appropriate number of pulses and go back to pause state
-    uint32_t n_shots_prev = cib_get_shot_count();
+    uint32_t n_shots_prev = get_shot_count_cib_fast();
     st = resume(resp);
     if (st != OpcUa_Good)
     {
@@ -2467,7 +2471,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       return st;
     }
     // we are firing, count shots
-    while ((cib_get_shot_count()-n_shots_prev)<num_pulses)
+    while ((get_shot_count_cib_fast() - n_shots_prev) < num_pulses)
     {
       std::this_thread::sleep_for(std::chrono::milliseconds(80));
     }
@@ -2991,12 +2995,10 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
           tmp.bit_low = jt.value().at(3);
           tmp.addr = (m_reg_map.at(tmp.reg_id).vaddr+(tmp.offset*GPIO_CH_OFFSET));
           tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
-#ifdef DEBUG
           LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg_id
               << " offset " << tmp.offset << " bh " << tmp.bit_high << " bl " << tmp.bit_low
               << " addr " << std::hex << tmp.addr << std::dec << " mask " << std::hex << tmp.mask
               << std::dec << " ";
-#endif
           m_regs.insert(std::pair<std::string,laser_regs_t>(jt.key(),tmp));
         }
       }
@@ -3248,6 +3250,37 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     getAddressSpaceLink()->setExt_shutter_open(sopen, OpcUa_Good);
     return OpcUa_Good;
   }
+  // NOTE: This method only checks that the memory has been initialized
+  // it does not set the slow control cache variable
+  uint32_t DIoLLaserUnit::get_shot_count_cib_fast()
+  {
+    json resp;
+    UaStatus st = check_cib_mem(resp);
+    if (st != OpcUa_Good)
+    {
+      return 0;
+    }
+    // get the value from the register
+    return cib::util::reg_read(m_regs.at("shot_count").addr);
+  }
+  UaStatus DIoLLaserUnit::get_shot_count_cib(uint32_t &v, json &resp)
+  {
+    UaStatus st = check_cib_mem(resp);
+    const std::string lbl = "get_shot_count";
+    if (st != OpcUa_Good)
+    {
+      getAddressSpaceLink()->setShot_count_cib(0, OpcUa_BadCommunicationError);
+      return st;
+    }
+    // get the value from the register
+    uint32_t rval = cib::util::reg_read(m_regs.at("shot_count").addr);
+    // this is actually the whole register, so don't do anything else
+    // now extract the delay from the register value
+    //uint32_t delay = ((rval & m_regs.at("shot_count").mask) >> m_regs.at("shot_count").bit_low);
+    getAddressSpaceLink()->setShot_count_cib(rval, OpcUa_Good);
+    v = rval;
+    return OpcUa_Good;
+  }
   UaStatus DIoLLaserUnit::resume(json &resp)
   {
     // resume should only be called if we are in either sPause or sStandby states
@@ -3343,12 +3376,6 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     update_status(sLasing);
     return st;
-  }
-  uint32_t DIoLLaserUnit::cib_get_shot_count()
-  {
-    return 0;
-    // not implemented yet.
-    //    return cib::util::reg_read(m_regs.at("shot_count").addr);
   }
   void DIoLLaserUnit::set_fire(const uint32_t s)
   {
@@ -3872,7 +3899,24 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 #ifdef DEBUG
     LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : ALIGN_REG mapped to " << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
 #endif
+    tmpreg.id = TRIGGER_REG;
+    tmpreg.paddr = GPIO_TRIGGER_MEM_LOW;
+    tmpreg.size = 0xFFF;
+    tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd, GPIO_TRIGGER_MEM_LOW, GPIO_TRIGGER_MEM_HIGH);
+    if (tmpreg.vaddr == 0x0)
+    {
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map TRIGGER CIB memory region. This is going to fail spectacularly!!!\n\n";
+    }
+    m_reg_map[ALIGN_REG] = tmpreg;
+#ifdef DEBUG
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : TRIGGER_REG mapped to " << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
+#endif
     if (m_reg_map.size() != 3)
+    {
+      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
+      update_status(sError);
+    }
+    if (m_reg_map.size() != 4)
     {
       LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
       update_status(sError);
