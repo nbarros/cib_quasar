@@ -326,6 +326,7 @@ UaStatus DIoLaserSystem::callFire_segment (
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
+    resp["messages"] = json::array();
     UaStatus st;
     try
     {
@@ -1429,7 +1430,7 @@ UaStatus DIoLaserSystem::callClear_error (
         update_task_message_queue(resp);
         return;
       }
-                  update_state(sBusy);
+      update_state(sBusy);
       segment_task(spos,lpos);
       // once the task is done check if there is an error
       if (m_state == sError)
@@ -1504,8 +1505,8 @@ UaStatus DIoLaserSystem::callClear_error (
       return;
     }
     // step 1
-    // we can initiate the movement
-    st = move_motor(spos,resp);
+    // move the motor to the beginning, keeping in mind the approach
+    st = move_motor(spos, resp);
     if (st != OpcUa_Good)
     {
       reset(msg);
@@ -1536,6 +1537,19 @@ UaStatus DIoLaserSystem::callClear_error (
     // }
     //
     //
+    if (m_state == sError)
+    {
+      // if we are in error state don't do anything
+      json resp;
+      reset(msg);
+      msg << log_e(lbl.c_str(),"System is in error state. Aborting execution.");
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidState;
+      update_task_message_queue(resp);
+      LOG(Log::ERR) << msg.str();
+      return;
+    }
     // we have reached the destination
     // step 2: set target position
     st = move_motor(lpos,resp);
@@ -1565,7 +1579,6 @@ UaStatus DIoLaserSystem::callClear_error (
       // may or may not be already taking data
       st = lmeter->start_readings(resp);
     }
-
     // step 4: tell laser to get into business
     //
     st = resume(resp);
@@ -2329,7 +2342,6 @@ UaStatus DIoLaserSystem::callClear_error (
 UaStatus DIoLaserSystem::move_to_pos(
           const std::vector<OpcUa_Int32> &position, const std::string approach, json &resp)
   {
- 
     // actually, this should run asynchronously, since with the overstep we 
     // may have to wait for the motors for a long time
     std::thread([this, position, approach]()

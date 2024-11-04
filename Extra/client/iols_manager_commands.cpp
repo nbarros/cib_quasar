@@ -410,11 +410,11 @@ int run_command(int argc, char **argv)
     update_feedback(messages);
     if (res)
     {
-      add_feedback(Severity::INFO, "Fire segment successful.");
+      add_feedback(Severity::INFO, "Fire segment job submission successful.");
     }
     else
     {
-      add_feedback(Severity::ERROR, "Fire segment failed.");
+      add_feedback(Severity::ERROR, "Fire segment job submission failed.");
     }
   }
   else if (cmd == "execute_scan")

@@ -466,7 +466,6 @@ bool IoLSMonitor::fire_segment(const std::string &start_position, const std::str
       feedback.add_message(Severity::ERROR, "Invalid end position format: " + end_position);
       return false;
     }
-
     // Convert the input strings into a JSON variable
     json jrequest;
     jrequest["start_position"] = json::array({std::stoi(start_position_match[1].str()), std::stoi(start_position_match[2].str()), std::stoi(start_position_match[3].str())});
