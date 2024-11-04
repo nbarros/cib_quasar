@@ -3907,15 +3907,10 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map TRIGGER CIB memory region. This is going to fail spectacularly!!!\n\n";
     }
-    m_reg_map[ALIGN_REG] = tmpreg;
+    m_reg_map[TRIGGER_REG] = tmpreg;
 #ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : TRIGGER_REG mapped to " << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : TRIGGER_REG mapped to " << std::hex << m_reg_map.at(TRIGGER_REG).vaddr << std::dec;
 #endif
-    if (m_reg_map.size() != 3)
-    {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
-      update_status(sError);
-    }
     if (m_reg_map.size() != 4)
     {
       LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
