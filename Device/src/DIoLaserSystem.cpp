@@ -3258,7 +3258,6 @@ UaStatus DIoLaserSystem::move_to_pos(
 
     // Generate the scan plan
     json scan_plan;
-    int32_t z_start, z_end;
     uint32_t scan_start, scan_end;
 
     scan_plan["scan_plan"] = json::array();
@@ -3278,20 +3277,12 @@ UaStatus DIoLaserSystem::move_to_pos(
       scan_start = center[scan_axis] - range[scan_axis] - overstep;
       scan_end = center[scan_axis] + range[scan_axis];
     }
-
+  //
     // -- build arrays of entries to combine
     std::deque<int32_t> x_entries;
     std::deque<int32_t> y_entries;
     std::deque<int32_t> z_entries;
-
-    // std::vector<int32_t> x_entries;
-    // std::vector<int32_t> y_entries;
-    // std::vector<int32_t> start_segment({0,0,0});
-    // std::vector<int32_t> end_segment({0,0,0}); 
-    // // assign the start and end values for the axis that is meant to be scanned
-    // start_segment[scan_axis] = scan_start;
-    // end_segment[scan_axis] = scan_end;
-
+    //
     // generate the entries
     // this is done by looping over all axes and skipping the scan_axis
     for (int32_t x = center[0] - static_cast<int32_t>(range[0]); x <= (center[0] + static_cast<int32_t>(range[0])); x += step[0])
@@ -3364,7 +3355,7 @@ UaStatus DIoLaserSystem::move_to_pos(
         break;
       }
     }
-
+    //
     // -- combine the entries
     for (int32_t x : x_entries)
     {
