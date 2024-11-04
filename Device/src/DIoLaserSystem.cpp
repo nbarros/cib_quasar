@@ -2236,7 +2236,7 @@ UaStatus DIoLaserSystem::callClear_error (
         return;
       }
       int32_t interim_target = c_pos;
-
+      //
       // we have the current position, decide whether the approach is good or requires some overstepping
       if (c_pos < position.at(idx))
       {
@@ -2916,10 +2916,9 @@ UaStatus DIoLaserSystem::move_to_pos(
           resp["messages"] = msg.str();
           resp["statuscode"] = OpcUa_BadInvalidState;
           update_task_message_queue(resp);
-
           return;
         }
-
+        //
         if (!m_task_message_queue.contains("messages"))
         {
           m_task_message_queue["messages"] = json::array();
@@ -2999,44 +2998,13 @@ UaStatus DIoLaserSystem::move_to_pos(
     if (m_state == sError)
     {
       LOG(Log::ERR) << log_e("fire_point_task", "Failed to move to position.");
-
       // something went wrong
       // we should have a message in the queue
       return;
     }
-    // st = move_motor(target, resp);
-    // if (st != OpcUa_Good)
-    // {
-    //   reset(msg);
-    //   msg << log_e(lbl.c_str(), "Failed to move to target");
-    //   ;
-    //   resp["messages"].push_back(msg.str());
-    //   resp["status"] = "ERROR";
-    //   resp["statuscode"] = static_cast<uint32_t>(st);
-    //   LOG(Log::ERR) << msg.str();
-    //   update_task_message_queue(resp);
-    //   // nothing is being done, so just terminate this task
-    //   // update the state to error
-    //   update_state(sError);
-    //   return;
-    // }
-    //
     // step 1.2: wait until motors are in place
     // since this is a separate task, we *must* wait for things to be ready
-
-    //wait_for_motors(target);
-    //  bool is_moving = true;
-    // while (is_moving)
-    // {
-    //   is_moving = false;
-    //   for (Device::DIoLMotor *lmotor : iolmotors())
-    //   {
-    //     is_moving |= lmotor->is_moving();
-    //   }
-    //   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    // }
-    //
-    //
+    wait_for_motors(target);
     // we have reached the destination
     // step 2.0 : start power meter readings
     st = iolpowermeter()->start_readings(resp);
