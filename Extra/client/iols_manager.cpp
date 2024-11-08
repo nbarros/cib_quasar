@@ -252,6 +252,268 @@ void update_feedback(std::vector<FeedbackMessage> &feedback)
   }
 }
 
+void handle_up_arrow_key(WINDOW *left_pane, int g_height, std::vector<std::string> &input_history, size_t &history_position, char *buffer)
+{
+  if (history_position > 0)
+  {
+    history_position--;
+    std::string previous_input = input_history[static_cast<size_t>(history_position)];
+    strncpy(buffer, previous_input.c_str(), 256);
+    buffer[255] = '\0'; // Ensure null-termination
+    refresh_left_panel(left_pane, g_height);
+    mvwprintw(left_pane, g_height - 2, 1, ">> %s", buffer);
+    wrefresh(left_pane);
+  }
+}
+
+void handle_down_arrow_key(WINDOW *left_pane, int g_height, std::vector<std::string> &input_history, size_t &history_position, char *buffer)
+{
+  if (history_position < input_history.size() - 1)
+  {
+    history_position++;
+    std::string next_input = input_history[static_cast<size_t>(history_position)];
+    strncpy(buffer, next_input.c_str(), 256);
+    buffer[255] = '\0'; // Ensure null-termination
+    mvwprintw(left_pane, g_height - 2, 1, ">> %s", buffer);
+    wrefresh(left_pane);
+  }
+  else
+  {
+    // Clear the input if at the end of history
+    history_position = input_history.size();
+    buffer[0] = '\0';
+    mvwprintw(left_pane, g_height - 2, 1, ">> ");
+    wclrtoeol(left_pane);
+    wrefresh(left_pane);
+  }
+}
+
+std::string handle_input_no_edit(WINDOW *left_pane, int g_height, std::vector<std::string> &input_history, int &history_position, char *buffer)
+{
+  while (true)
+  {
+    // Display the prompt
+    mvwprintw(left_pane, g_height - 2, 1, ">> %s", buffer);
+    wclrtoeol(left_pane); // Clear to the end of the line to remove any leftover characters
+    wrefresh(left_pane);
+
+    // Get user input
+    // int ch = wgetch(left_pane);
+    int ch = getch();
+    // if (ch != -1)
+    // {
+    //   printw("Sensed key %i\n", ch);
+    // }
+    if (ch == ERR)
+    {
+      continue;
+    }
+    else if (ch == KEY_UP)
+    {
+      // printw(">> Sensed key up ");
+      // add_feedback(Severity::INFO, ">> Sensed key up ");
+      // Handle up arrow key
+      if (history_position > 0)
+      {
+        history_position--;
+        std::string previous_input = input_history[static_cast<size_t>(history_position)];
+        strncpy(buffer, previous_input.c_str(), 256);
+        buffer[255] = '\0'; // Ensure null-termination
+        // add_feedback(Severity::INFO, ">> Returning input from key up " + std::string(buffer));
+      }
+    }
+    else if (ch == KEY_DOWN)
+    {
+      // add_feedback(Severity::INFO, ">> Sensed key down ");
+      // Handle down arrow key
+      if (history_position < static_cast<int>(input_history.size() - 1))
+      {
+        history_position++;
+        std::string next_input = input_history[static_cast<size_t>(history_position)];
+        strncpy(buffer, next_input.c_str(), 256);
+        buffer[255] = '\0'; // Ensure null-termination
+        // add_feedback(Severity::INFO, ">> Returning input " + std::string(buffer));
+      }
+      else
+      {
+        // Clear the input if at the end of history
+        history_position = input_history.size();
+        buffer[0] = '\0';
+      }
+    }
+    else if (ch == '\n')
+    {
+      // Handle enter key
+      if (strlen(buffer) > 0)
+      {
+        // Add input to history
+        input_history.push_back(buffer);
+        history_position = input_history.size();
+
+        // Process the command
+        std::string input(buffer);
+        // Clear the buffer for the next input
+        buffer[0] = '\0';
+        // Return the input for further processing
+        // add_feedback(Severity::INFO, ">> Returnign input " + std::string(input));
+
+        return input;
+      }
+    }
+    else if (ch == KEY_F(1))
+    {
+      // Handle F1 key
+      // add_feedback(Severity::INFO, ">> Redrawing");
+
+      redrawwin(left_pane);
+    }
+    else if (ch == 127 || ch == 8 || ch == KEY_BACKSPACE)
+    {
+      // printw(">> Sensed backspace ");
+
+      // Handle backspace key
+      if (strlen(buffer) > 0)
+      {
+        buffer[strlen(buffer) - 1] = '\0';
+      }
+    }
+    else
+    {
+      // Add the character to the buffer
+      if (strlen(buffer) < 255)
+      {
+        strncat(buffer, (char *)&ch, 1);
+      }
+    }
+  }
+}
+
+std::string handle_input(WINDOW *left_pane, WINDOW *right_pane, int g_height, std::vector<std::string> &input_history, int &history_position, char *buffer)
+{
+  int cursor_position = strlen(buffer); // Initialize cursor position
+  while (true)
+  {
+    // Display the prompt
+    mvwprintw(left_pane, g_height - 2, 1, ">> %s", buffer);
+    wclrtoeol(left_pane); // Clear to the end of the line to remove any leftover characters
+    wmove(left_pane, g_height - 2, 1 + 3 + cursor_position); // Move cursor to the correct position
+    wrefresh(left_pane);
+
+    // Get user input
+    //int ch = wgetch(left_pane);
+    int ch = getch();
+    // if (ch != -1)
+    // {
+    //   printw("Sensed key %i\n", ch);
+    // }
+    if (ch == ERR)
+    {
+      continue;
+    }
+    else if (ch == KEY_UP)
+    {
+      // printw(">> Sensed key up ");
+      // add_feedback(Severity::INFO, ">> Sensed key up ");
+      // Handle up arrow key
+      if (history_position > 0)
+      {
+        history_position--;
+        std::string previous_input = input_history[static_cast<size_t>(history_position)];
+        strncpy(buffer, previous_input.c_str(), 256);
+        buffer[255] = '\0'; // Ensure null-termination
+        cursor_position = strlen(buffer); // Update cursor position
+      }
+    }
+    else if (ch == KEY_DOWN)
+    {
+      // add_feedback(Severity::INFO, ">> Sensed key down ");
+      // Handle down arrow key
+      if (history_position < static_cast<int>(input_history.size() - 1))
+      {
+        history_position++;
+        std::string next_input = input_history[static_cast<size_t>(history_position)];
+        strncpy(buffer, next_input.c_str(), 256);
+        buffer[255] = '\0'; // Ensure null-termination
+        cursor_position = strlen(buffer); // Update cursor position
+      }
+      else
+      {
+        // Clear the input if at the end of history
+        history_position = input_history.size();
+        buffer[0] = '\0';
+        cursor_position = 0; // Update cursor position
+      }
+    }
+    else if (ch == '\n')
+    {
+      // Handle enter key
+      if (strlen(buffer) > 0)
+      {
+        // Add input to history
+        input_history.push_back(buffer);
+        history_position = input_history.size();
+
+        // Process the command
+        std::string input(buffer);
+        // Clear the buffer for the next input
+        buffer[0] = '\0';
+        // Return the input for further processing
+        cursor_position = 0; // Reset cursor position
+        // Return the input for further processing
+        return input;
+      }
+    }
+    else if (ch == KEY_F(1))
+    {
+      // Handle F1 key
+      // redrawwin(left_pane);
+      clearok(curscr, TRUE);     // Mark the standard screen for a full redraw
+      clearok(left_pane, TRUE);  // Mark the left pane for a full redraw
+      clearok(right_pane, TRUE); // Mark the right pane for a full redraw
+      refresh();                 // Redraw the standard screen
+      wrefresh(left_pane);       // Redraw the left pane
+      wrefresh(right_pane);      // Redraw the right pane
+    }
+    else if (ch == 127 || ch == 8 || ch == KEY_BACKSPACE)
+    {
+      // printw(">> Sensed backspace ");
+
+      // Handle backspace key
+      if (strlen(buffer) > 0)
+      {
+        memmove(&buffer[cursor_position - 1], &buffer[cursor_position], strlen(buffer) - cursor_position + 1);
+        cursor_position--;
+      }
+    }
+    else if (ch == KEY_LEFT)
+    {
+      // Handle left arrow key
+      if (cursor_position > 0)
+      {
+        cursor_position--;
+      }
+    }
+    else if (ch == KEY_RIGHT)
+    {
+      // Handle right arrow key
+      if (cursor_position < static_cast<int>(strlen(buffer)))
+      {
+        cursor_position++;
+      }
+    }
+    else
+    {
+      // Add the character to the buffer
+      if (strlen(buffer) < 255)
+      {
+        memmove(&buffer[cursor_position + 1], &buffer[cursor_position], strlen(buffer) - cursor_position + 1);
+        buffer[cursor_position] = ch;
+        cursor_position++;
+      }
+    }
+  }
+}
+
 int main(int argc, char** argv)
 {
   //
@@ -266,7 +528,11 @@ int main(int argc, char** argv)
   }
   start_color();        // Start color functionality
   cbreak();             // Line buffering disabled
+  /* make getch wait sometime before returning ERR when no key is pressed */
+  // timeout(100);
+
   keypad(stdscr, TRUE); // We get F1, F2 etc..
+  noecho();             // Don't echo() while we do getch
   refresh();
 
   // Initialize color pairs with black text
@@ -290,12 +556,10 @@ int main(int argc, char** argv)
 
   std::atomic<bool> run_monitor(true);
 
-  std::string input;
-  std::string statuses[5] = {"offline", "ready", "warmup", "pause", "standby"};
-  std::atomic<int> status_index(0);
-
-  // Start the thread to update the right pane
-  // iols_monitor_t status; // Assuming you have a way to initialize this structure
+  // std::string input;
+  std::vector<std::string> input_history;
+  int history_position = -1;
+  char buffer[256] = {0};
 
   // start the monitoring thread
   std::thread right_pane_thread(update_right_pane, right_pane, std::ref(run_monitor), g_height, std::ref(g_monitor));
@@ -307,51 +571,32 @@ int main(int argc, char** argv)
   stop = false;
   while(true)
   {
-    // Get user input from the last line of the left pane
-    refresh_left_panel(left_pane, g_height);
-    char buffer[256];
-    // mvwprintw(left_pane, height - 2, 1, ">> ");
-    mvwgetstr(left_pane, g_height - 2, 4, buffer);
 
-    input = buffer;
-
-    std::vector<std::string> tokens;
-    tokens = toolbox::split_string(input,' ');
-    std::ostringstream msg;
-    // msg << "Got " << tokens.size() << " tokens";
-    // update_feedback(msg.str());
-    if (tokens.size() > 0)
+    std::string input = handle_input(left_pane, left_pane, g_height, input_history, history_position, buffer);
+    if (!input.empty())
     {
-      add_feedback(Severity::INFO,">> " + input);
-      char **cmd = new char *[tokens.size()];
-      for (size_t i = 0; i < tokens.size(); i++)
-      {
-        cmd[i] = const_cast<char*>(tokens[i].c_str());
-      }
-      int ret = run_command(tokens.size(), cmd);
+      // Process the input command
+      add_feedback(Severity::INFO, ">> " + input);
       refresh_left_panel(left_pane, g_height);
-      delete[] cmd;
-      if (ret == 255)
+      std::vector<std::string> tokens = toolbox::split_string(input, ' ');
+      if (!tokens.empty())
       {
-        goto leave;
-        return 0;
+        char **cmd = new char *[tokens.size()];
+        for (size_t i = 0; i < tokens.size(); i++)
+        {
+          cmd[i] = const_cast<char *>(tokens[i].c_str());
+        }
+        int ret = run_command(tokens.size(), cmd);
+        refresh_left_panel(left_pane, g_height);
+        delete[] cmd;
+        if (ret == 255)
+        {
+          break;
+        }
       }
-      //   // if (ret != 0)
-      //   // {
-      //   //   goto leave;
-      //   //   return ret;
-      //   // }
-    }
-    else
-    {
-      // if there are no commands, just continue
-      continue;
-      // goto leave;
-      // return 0;
     }
   }
 
-leave:
   // Stop the right pane thread
   run_monitor.store(false);
   right_pane_thread.join();

@@ -4,6 +4,12 @@ Open62541Client::Open62541Client()
   : m_client(UA_Client_new()), m_connected(false)
 {
   UA_ClientConfig_setDefault(UA_Client_getConfig(m_client));
+  //m_client->config = UA_ClientConfig_new();
+  // (m_client->config).timeout = 20000; // ms? default is 5000
+  // (m_client->config).secureChannelLifeTime = 6000000; // default is 10 min : 10*60*1000, so units are ms
+  UA_ClientConfig *cl = UA_Client_getConfig(m_client);
+  cl->timeout = 20000;                 // ms? default is 5000
+  cl->secureChannelLifeTime = 6000000; // default is 10 min : 10*60*1000, so units are ms
 }
 
 Open62541Client::~Open62541Client()
@@ -18,14 +24,13 @@ Open62541Client::~Open62541Client()
 
 bool Open62541Client::connect(const std::string &endpointUrl, FeedbackManager &feedback)
 {
-  std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
 
   if (m_connected)
   {
     log_error("Already connected to server", UA_STATUSCODE_BADCONNECTIONCLOSED, feedback);
     return false;
   }
-
+  std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
   UA_StatusCode status = UA_Client_connect(m_client, endpointUrl.c_str());
   if (status != UA_STATUSCODE_GOOD)
   {
@@ -51,20 +56,21 @@ void Open62541Client::disconnect(FeedbackManager &feedback)
 
 bool Open62541Client::is_connected() const
 {
-  std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
   return m_connected;
 }
 
 bool Open62541Client::read_variable(const std::string &nodeId, UA_Variant &value, FeedbackManager &feedback)
 {
-  std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
-
   if (!m_connected)
   {
     log_error("Client is not connected", UA_STATUSCODE_BADCONNECTIONCLOSED, feedback);
     return false;
   }
-  UA_StatusCode status = UA_Client_readValueAttribute(m_client, UA_NODEID_STRING_ALLOC(2, nodeId.c_str()), &value);
+  UA_StatusCode status;
+  {
+    std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
+    status = UA_Client_readValueAttribute(m_client, UA_NODEID_STRING_ALLOC(2, nodeId.c_str()), &value);
+  }
   if (status != UA_STATUSCODE_GOOD)
   {
     log_error("Failed to read variable.", status, feedback);
@@ -76,14 +82,16 @@ bool Open62541Client::read_variable(const std::string &nodeId, UA_Variant &value
 
 bool Open62541Client::write_variable(const std::string &nodeId, const UA_Variant &value, FeedbackManager &feedback)
 {
-  std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
-
   if (!m_connected)
   {
     log_error("Client is not connected", UA_STATUSCODE_BADCONNECTIONCLOSED, feedback);
     return false;
   }
-  UA_StatusCode status = UA_Client_writeValueAttribute(m_client, UA_NODEID_STRING_ALLOC(2, nodeId.c_str()), &value);
+  UA_StatusCode status;
+  {
+    std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
+    status = UA_Client_writeValueAttribute(m_client, UA_NODEID_STRING_ALLOC(2, nodeId.c_str()), &value);
+  }
   if (status != UA_STATUSCODE_GOOD)
   {
     log_error("Failed to write variable", status, feedback);
@@ -95,7 +103,6 @@ bool Open62541Client::write_variable(const std::string &nodeId, const UA_Variant
 
 bool Open62541Client::browse(const std::string &nodeId, std::vector<UA_BrowseResult> &results, FeedbackManager &feedback)
 {
-  std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
 
   UA_BrowseRequest bReq;
   UA_BrowseRequest_init(&bReq);
@@ -104,7 +111,12 @@ bool Open62541Client::browse(const std::string &nodeId, std::vector<UA_BrowseRes
   bReq.nodesToBrowse[0].nodeId = UA_NODEID_STRING_ALLOC(2, nodeId.c_str());
   bReq.nodesToBrowse[0].resultMask = UA_BROWSERESULTMASK_ALL;
 
-  UA_BrowseResponse bResp = UA_Client_Service_browse(m_client, bReq);
+
+  UA_BrowseResponse bResp;
+  {
+    std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
+    bResp = UA_Client_Service_browse(m_client, bReq);
+  }
   if (bResp.responseHeader.serviceResult != UA_STATUSCODE_GOOD)
   {
     UA_BrowseRequest_clear(&bReq);
@@ -123,7 +135,6 @@ bool Open62541Client::browse(const std::string &nodeId, std::vector<UA_BrowseRes
 
 void Open62541Client::call_method(const std::string &objectId, const std::string &methodId, const std::vector<UA_Variant> &inputArguments, std::vector<UA_Variant> &outputArguments, FeedbackManager &feedback)
 {
-  std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
   size_t outputSize;
   UA_Variant *output;
 
@@ -140,12 +151,16 @@ void Open62541Client::call_method(const std::string &objectId, const std::string
     in_ptr = const_cast<UA_Variant *>(inputArguments.data());
   }
 
-  UA_StatusCode retval = UA_Client_call(m_client, 
+  UA_StatusCode retval;
+  {
+    std::lock_guard<std::mutex> lock(m_mutex); // Lock the mutex
+    retval = UA_Client_call(m_client, 
                                         UA_NODEID_STRING_ALLOC(2, objectId.c_str()), 
                                         UA_NODEID_STRING_ALLOC(2, methodId.c_str()), 
                                         inputArguments.size(), 
                                         in_ptr, 
                                         &outputSize, &output);
+  }
 
   if (retval == UA_STATUSCODE_GOOD)
   {

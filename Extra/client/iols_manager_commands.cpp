@@ -49,8 +49,10 @@ void  print_help()
   add_feedback(Severity::INFO, "       Example: grid_scan '{\"center\":[1,2,3],\"range\":[0,1000,1000],\"step\":[0,100,1000],\"approach\":\"uuu\", \"scan_axis\":1}'");
   // add_feedback(Severity::INFO, "   add_monitor <variable>");
   // add_feedback(Severity::INFO, "       Add a variable to the monitor list. Variable must be a fully qualified OPC-UA node");
-  add_feedback(Severity::INFO, "   read_variable <variable>");
+  add_feedback(Severity::INFO, "   read_var <variable>");
   add_feedback(Severity::INFO, "       Read the value of a variable. Variable must be a fully qualified OPC-UA node");
+  // add_feedback(Severity::INFO, "   write_var <variable> <value> <type>");
+  // add_feedback(Severity::INFO, "       Read the value of a variable. Variable must be a fully qualified OPC-UA node");
   add_feedback(Severity::INFO, "   set_pm_range <setting>");
   add_feedback(Severity::INFO, "       Check the variable LS1.PM1.range_options for reference");
   add_feedback(Severity::INFO, "   set_pm_threshold <setting>");
@@ -408,11 +410,11 @@ int run_command(int argc, char **argv)
     update_feedback(messages);
     if (res)
     {
-      add_feedback(Severity::INFO, "Fire segment successful.");
+      add_feedback(Severity::INFO, "Fire segment job submission successful.");
     }
     else
     {
-      add_feedback(Severity::ERROR, "Fire segment failed.");
+      add_feedback(Severity::ERROR, "Fire segment job submission failed.");
     }
   }
   else if (cmd == "execute_scan")
@@ -500,6 +502,35 @@ int run_command(int argc, char **argv)
     print_help();
     return 0;
   }
+  else if (cmd == "write_var")
+  {
+    if (!g_monitor.is_connected())
+    {
+      add_feedback(Severity::ERROR, "Not connected to a server.");
+      return 0;
+    }
+    if (argc != 4)
+    {
+      add_feedback(Severity::WARN, "Usage: write_var <node> <value> <type>");
+      return 0;
+    }
+    std::string node = argv[1];
+    std::string value = argv[2];
+    std::string type = argv[3];
+    FeedbackManager feedback;
+    bool success = g_monitor.write_variable(node, value, type, feedback);
+    std::vector<FeedbackMessage> messages = feedback.get_messages();
+    update_feedback(messages);
+    if (success)
+    {
+      add_feedback(Severity::INFO, "Warmup timer target set successfully.");
+    }
+    else
+    {
+      add_feedback(Severity::ERROR, "Failed to set warmup timer target.");
+    }
+    return 0;
+  }
   else if (cmd == "set_warmup_timer")
   {
     if (!g_monitor.is_connected())
@@ -528,7 +559,7 @@ int run_command(int argc, char **argv)
     }
     return 0;    
   }
-  else if (cmd == "read_variable")
+  else if (cmd == "read_var")
   {
     if (!g_monitor.is_connected())
     {
@@ -537,7 +568,7 @@ int run_command(int argc, char **argv)
     }
     if (argc != 2)
     {
-      add_feedback(Severity::WARN, "Usage: read_variable <variable>");
+      add_feedback(Severity::WARN, "Usage: read_var <variable>");
       return 0;
     }
     std::string variable(argv[1]);

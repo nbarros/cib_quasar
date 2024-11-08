@@ -127,7 +127,7 @@
 			"fire_state": [4,0,31,31],
 			"force_shutter": [5,0,28,28],
 			"qs_state": [4,1,31,31],
-			"shot_count": [-1,-1,-1,-1]
+			"shot_count": [9,0,31,0]
 		}
 	}
 }
