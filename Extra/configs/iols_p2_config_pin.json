@@ -1,7 +1,7 @@
 {
 "id":"LS1",
 "cib":{
-	"dac_threshold":3000,
+	"dac_threshold":400,
 	"lbls_width_clks":2,
 	"alignment_laser" : {
 		"enabled":false,
@@ -85,7 +85,7 @@
 ],
 "power_meter" : {
 	"name" : "PM1",
-	"serial_number":"A9LMFBRZ",
+	"serial_number":"A9XAP6AY",
 	"port":"auto",
 	"baud_rate":9600,
 	"measurement_mode":3,
@@ -106,7 +106,7 @@
 	"current_idle":36,
 	"current_move":114,
 	"max_speed":59000,
-	"attenuator_position" : 4751,
+	"attenuator_position" : 3050,
 	"resolution":2,
 	"calibration" : {
 		"offset" : 3900,
@@ -124,7 +124,7 @@
 		"discharge_voltage": 1.19,
 		"pause_timeout_min": 10,
 		"standby_timeout_min": 60,
-		"warmup_timer_min": 1,
+		"warmup_timer_min": 20,
 		"qswitch_delay_us": 195	,
 		"qswitch_width_us": 10,
 		"fire_width_us": 10,
