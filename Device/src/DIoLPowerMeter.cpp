@@ -1236,6 +1236,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         LOG(Log::ERR) << msg.str();
         return OpcUa_Bad;
       }
+      refresh_pulse_width_ranges();
       // set the pulse width before refreshing the ranges
       m_pulse_width = conf.at("pulse_width").get<uint16_t>();
       st = set_pwidth(m_pulse_width, resp);
