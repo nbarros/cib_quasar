@@ -326,6 +326,7 @@ UaStatus DIoLaserSystem::callFire_segment (
     std::ostringstream msg("");
     bool got_exception = false;
     json resp;
+    resp["messages"] = json::array();
     UaStatus st;
     try
     {
@@ -1429,7 +1430,7 @@ UaStatus DIoLaserSystem::callClear_error (
         update_task_message_queue(resp);
         return;
       }
-                  update_state(sBusy);
+      update_state(sBusy);
       segment_task(spos,lpos);
       // once the task is done check if there is an error
       if (m_state == sError)
@@ -1504,8 +1505,8 @@ UaStatus DIoLaserSystem::callClear_error (
       return;
     }
     // step 1
-    // we can initiate the movement
-    st = move_motor(spos,resp);
+    // move the motor to the beginning, keeping in mind the approach
+    st = move_motor(spos, resp);
     if (st != OpcUa_Good)
     {
       reset(msg);
@@ -1536,6 +1537,19 @@ UaStatus DIoLaserSystem::callClear_error (
     // }
     //
     //
+    if (m_state == sError)
+    {
+      // if we are in error state don't do anything
+      json resp;
+      reset(msg);
+      msg << log_e(lbl.c_str(),"System is in error state. Aborting execution.");
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidState;
+      update_task_message_queue(resp);
+      LOG(Log::ERR) << msg.str();
+      return;
+    }
     // we have reached the destination
     // step 2: set target position
     st = move_motor(lpos,resp);
@@ -1565,7 +1579,6 @@ UaStatus DIoLaserSystem::callClear_error (
       // may or may not be already taking data
       st = lmeter->start_readings(resp);
     }
-
     // step 4: tell laser to get into business
     //
     st = resume(resp);
@@ -2236,7 +2249,7 @@ UaStatus DIoLaserSystem::callClear_error (
         return;
       }
       int32_t interim_target = c_pos;
-
+      //
       // we have the current position, decide whether the approach is good or requires some overstepping
       if (c_pos < position.at(idx))
       {
@@ -2329,7 +2342,6 @@ UaStatus DIoLaserSystem::callClear_error (
 UaStatus DIoLaserSystem::move_to_pos(
           const std::vector<OpcUa_Int32> &position, const std::string approach, json &resp)
   {
- 
     // actually, this should run asynchronously, since with the overstep we 
     // may have to wait for the motors for a long time
     std::thread([this, position, approach]()
@@ -2916,10 +2928,9 @@ UaStatus DIoLaserSystem::move_to_pos(
           resp["messages"] = msg.str();
           resp["statuscode"] = OpcUa_BadInvalidState;
           update_task_message_queue(resp);
-
           return;
         }
-
+        //
         if (!m_task_message_queue.contains("messages"))
         {
           m_task_message_queue["messages"] = json::array();
@@ -2999,44 +3010,13 @@ UaStatus DIoLaserSystem::move_to_pos(
     if (m_state == sError)
     {
       LOG(Log::ERR) << log_e("fire_point_task", "Failed to move to position.");
-
       // something went wrong
       // we should have a message in the queue
       return;
     }
-    // st = move_motor(target, resp);
-    // if (st != OpcUa_Good)
-    // {
-    //   reset(msg);
-    //   msg << log_e(lbl.c_str(), "Failed to move to target");
-    //   ;
-    //   resp["messages"].push_back(msg.str());
-    //   resp["status"] = "ERROR";
-    //   resp["statuscode"] = static_cast<uint32_t>(st);
-    //   LOG(Log::ERR) << msg.str();
-    //   update_task_message_queue(resp);
-    //   // nothing is being done, so just terminate this task
-    //   // update the state to error
-    //   update_state(sError);
-    //   return;
-    // }
-    //
     // step 1.2: wait until motors are in place
     // since this is a separate task, we *must* wait for things to be ready
-
-    //wait_for_motors(target);
-    //  bool is_moving = true;
-    // while (is_moving)
-    // {
-    //   is_moving = false;
-    //   for (Device::DIoLMotor *lmotor : iolmotors())
-    //   {
-    //     is_moving |= lmotor->is_moving();
-    //   }
-    //   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    // }
-    //
-    //
+    wait_for_motors(target);
     // we have reached the destination
     // step 2.0 : start power meter readings
     st = iolpowermeter()->start_readings(resp);
@@ -3258,7 +3238,6 @@ UaStatus DIoLaserSystem::move_to_pos(
 
     // Generate the scan plan
     json scan_plan;
-    int32_t z_start, z_end;
     uint32_t scan_start, scan_end;
 
     scan_plan["scan_plan"] = json::array();
@@ -3278,20 +3257,12 @@ UaStatus DIoLaserSystem::move_to_pos(
       scan_start = center[scan_axis] - range[scan_axis] - overstep;
       scan_end = center[scan_axis] + range[scan_axis];
     }
-
+  //
     // -- build arrays of entries to combine
     std::deque<int32_t> x_entries;
     std::deque<int32_t> y_entries;
     std::deque<int32_t> z_entries;
-
-    // std::vector<int32_t> x_entries;
-    // std::vector<int32_t> y_entries;
-    // std::vector<int32_t> start_segment({0,0,0});
-    // std::vector<int32_t> end_segment({0,0,0}); 
-    // // assign the start and end values for the axis that is meant to be scanned
-    // start_segment[scan_axis] = scan_start;
-    // end_segment[scan_axis] = scan_end;
-
+    //
     // generate the entries
     // this is done by looping over all axes and skipping the scan_axis
     for (int32_t x = center[0] - static_cast<int32_t>(range[0]); x <= (center[0] + static_cast<int32_t>(range[0])); x += step[0])
@@ -3364,7 +3335,7 @@ UaStatus DIoLaserSystem::move_to_pos(
         break;
       }
     }
-
+    //
     // -- combine the entries
     for (int32_t x : x_entries)
     {

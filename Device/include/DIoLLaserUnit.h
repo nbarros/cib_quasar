@@ -265,6 +265,8 @@ private:
     UaStatus set_fire_width(const uint32_t v,json &resp);
     UaStatus get_fire_width(uint32_t &v, json &resp);
     UaStatus get_ext_shutter_state(bool &open,json &resp);
+    UaStatus get_shot_count_cib(uint32_t &v, json &resp);
+    uint32_t get_shot_count_cib_fast();
     //
     // methods that are called  often
     void enable_fire();
@@ -317,7 +319,7 @@ private:
 
     UaStatus map_registers(json &reginfo, json &resp);
     //    UaStatus unmap_registers();
-    uint32_t cib_get_shot_count();
+    // uint32_t cib_get_shot_count();
     void cib_init_mem();
     void cib_free_mem();
 

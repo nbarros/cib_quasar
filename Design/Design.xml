@@ -308,6 +308,8 @@
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="flash_count" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
 		</d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="shot_count_cib" nullPolicy="nullForbidden" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData" initialValue="0">
+		</d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_Boolean" name="ext_shutter_open"
     	nullPolicy="nullForbidden" addressSpaceWrite="forbidden"
