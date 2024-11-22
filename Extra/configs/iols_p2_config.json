@@ -1,7 +1,7 @@
 {
 "id":"LS1",
 "cib":{
-	"dac_threshold":3000,
+	"dac_threshold":400,
 	"lbls_width_clks":2,
 	"alignment_laser" : {
 		"enabled":false,
@@ -89,7 +89,7 @@
 	"port":"auto",
 	"baud_rate":9600,
 	"measurement_mode":3,
-	"select_range":2,
+	"select_range":4,
 	"wavelength":266,
 	"energy_threshold":200,
 	"average_setting":1,
@@ -106,7 +106,7 @@
 	"current_idle":36,
 	"current_move":114,
 	"max_speed":59000,
-	"attenuator_position" : 2100,
+	"attenuator_position" : 3050,
 	"resolution":2,
 	"calibration" : {
 		"offset" : 3900,
