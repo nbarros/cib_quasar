@@ -2113,6 +2113,16 @@ UaStatus DIoLaserSystem::callClear_error (
       LOG(Log::ERR) << msg.str();
       return OpcUa_BadInvalidState;
     }
+    if (!iolcib()->is_ready())
+    {
+      reset(msg);
+      resp["status"] = "ERROR";
+      msg << log_e(lbl.c_str(),"CIB is not ready. Check its status, specially the timing endpoint status.");
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_BadInvalidState;
+      LOG(Log::ERR) << msg.str();
+      return OpcUa_BadInvalidState;
+    }
     st = iollaserunit()->start_cib(resp);
     if (st != OpcUa_Good)
     {
@@ -2342,6 +2352,19 @@ UaStatus DIoLaserSystem::callClear_error (
 UaStatus DIoLaserSystem::move_to_pos(
           const std::vector<OpcUa_Int32> &position, const std::string approach, json &resp)
   {
+    // actually check that the CIB agrees with that
+    if (!iolcib()->is_ready())
+    {
+      std::ostringstream msg("");
+      reset(msg);
+      msg << log_e("move_to_pos","CIB is not ready. Check its status, specially the timing endpoint status.");
+      resp["status"] = "ERROR";
+      resp["messages"] = msg.str();
+      resp["statuscode"] = OpcUa_BadInvalidState;
+      return OpcUa_BadInvalidState;
+    }
+
+
     // actually, this should run asynchronously, since with the overstep we 
     // may have to wait for the motors for a long time
     std::thread([this, position, approach]()
@@ -2911,6 +2934,23 @@ UaStatus DIoLaserSystem::move_to_pos(
     // messages are queued in a separate variable that can then be queried
     // also keep in mind that at this stage all verifications have been performed, so
     // the task does not need base checks
+
+    // check that the CIB is ready
+    if (!iolcib()->is_ready())
+    {
+      std::ostringstream msg("");
+      reset(msg);
+      msg << log_e("fire_point_task","CIB is not ready. Check its status, specially the timing endpoint status.");
+      json resp;
+      resp["status"] = "ERROR";
+      resp["messages"] = msg.str();
+      resp["statuscode"] = OpcUa_BadInvalidState;
+      update_task_message_queue(resp);
+      update_state(sError);
+      return;
+
+    }
+
     std::thread([this, target, approach, num_pulses]()
                 {
         std::ostringstream msg;
@@ -3371,12 +3411,7 @@ UaStatus DIoLaserSystem::move_to_pos(
 
     resp["messages"].push_back("Grid scan plan generated successfully.");
 
-
-    // don't execute it right now
-    //FIXME: Get rid of this
-    // return OpcUa_Good;
     // Execute the scan plan
-    //FIXME: Uncomment this when we're done
     UaStatus st = execute_scan(scan_plan, resp);
     if (st != OpcUa_Good)
     {
