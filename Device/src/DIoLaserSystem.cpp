@@ -3121,7 +3121,7 @@ UaStatus DIoLaserSystem::move_to_pos(
   {
     bool is_moving = true;
     json resp;
-    int32_t c_pos;
+    // int32_t c_pos;
     while (is_moving)
     {
       //motor->get_position_motor(c_pos, resp);
