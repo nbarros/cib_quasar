@@ -117,12 +117,12 @@ public:
     //
     enum Status{sOffline=0x0,sReady=1,sError=6};
     //
-    bool is_ready() {return (m_status == sReady);}
+    bool is_ready();
     void update();
     Status get_state() {return m_status;}
     const std::string get_state_description() {return m_status_map[m_status];}
-    UaStatus terminate(json &resp);
-    UaStatus set_id(const std::string &id);
+    UaStatus terminate(json &resp) {return OpcUa_Good;}
+    UaStatus set_id(const std::string &id) {m_id = id; return OpcUa_Good;}; 
     const std::string get_id() {return m_id;}
     void refresh_dac();
     int init_dac();

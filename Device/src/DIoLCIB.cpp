@@ -286,6 +286,37 @@ namespace Device
     m_prev_tot_idle = tot_idle;
   }
 
+  bool DIoLCIB::is_ready()
+  {
+    // fetch the pdts status
+    uint8_t status;
+    uint8_t addr;
+    UaStatus st;
+    if (m_regs.find("pdts_status") != m_regs.end())
+    {
+      uint8_t pdts_stat, pdts_addr;
+      st = cib_pdts_status(m_regs.at("pdts_status").maddr, pdts_stat, pdts_addr);
+      if (st != OpcUa_Good)
+      {
+        LOG(Log::ERR) << log_e("is_ready","Failed to get pdts_status");
+        return false;
+      }
+      // if the status is not 0x8 
+      if (status != 0x8)
+      {
+        LOG(Log::ERR) << log_e("is_ready","PDTS status is not GOOD : 0x") << std::hex << status << std::dec;
+        return false;
+      }
+    }
+    else
+    {
+      LOG(Log::ERR) << log_e("is_ready","Failed to find pdts_status register");
+      return false;      
+    }
+    
+    // are there any other checks to be made? 
+    return true;
+  }
   void DIoLCIB::update()
   {
     // refresh the other two
