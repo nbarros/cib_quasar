@@ -1184,11 +1184,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       uint32_t n_ticks = 0;
       const uint32_t n_ticks_per_sec = 2;
       uint32_t nsecs = 0;
-      while (nsecs < (m_standby_timeout*60*n_ticks_per_sec))
+      while (n_ticks < (m_standby_timeout * 60 * n_ticks_per_sec))
       {
         if (m_status != sStandby)
         {
           // stop the timer
+          LOG(Log::WRN) << log_w("standby_timer","Left standy state. Resetting timer");
           getAddressSpaceLink()->setStandby_timer_s(0,OpcUa_Good);
           return;
         }
@@ -1202,7 +1203,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       }
       // reached the end of the loop and shutter is still closed
       // stop the system
-      LOG(Log::WRN) << "Reached the end of the timer. Stopping the laser.";
+      LOG(Log::WRN) << "Reached the end of the standby timer. Stopping the laser.";
       json r;
       stop(r);
                 }
@@ -1240,7 +1241,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       }
       // reached the end of the loop and shutter is still closed
       // switch to standby and open this
-      LOG(Log::WRN) << "Reached the end of the timer. Switching to standby.";
+      LOG(Log::WRN) << "Reached the end of the pause timer. Switching to standby.";
       json r;
       standby(r);
                 }
