@@ -146,6 +146,7 @@ public:
     UaStatus motor_stop(json &resp);
     UaStatus motor_clear_alarm(json &resp);
     UaStatus motor_get_position(json &resp);
+    UaStatus motor_get_speed(json &resp);
     UaStatus motor_get_alarm(json &resp);
     // other commands that are not specific of the motor hardware
     UaStatus config(json &conf, json &resp);
@@ -174,7 +175,8 @@ public:
     UaStatus get_position_setpoint(int32_t &target);
 
     UaStatus get_position_motor(int32_t &pos, json &resp);
-
+    UaStatus get_position_cib(int32_t &pos, json &resp);
+    UaStatus get_speed_motor(int32_t &speed, json &resp);
 
     // Ua
     UaStatus set_id(const std::string &id);

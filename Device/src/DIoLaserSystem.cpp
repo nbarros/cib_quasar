@@ -3125,9 +3125,9 @@ UaStatus DIoLaserSystem::move_to_pos(
     while (is_moving)
     {
       //motor->get_position_motor(c_pos, resp);
-      is_moving = (std::abs(c_pos - target) > 10);
-      is_moving |= motor->is_moving();
-      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      //is_moving = (std::abs(c_pos - target) > 10);
+      is_moving = motor->is_moving();
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
   }
   void DIoLaserSystem::wait_for_motors(const std::vector<int32_t> &target)

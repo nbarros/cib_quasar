@@ -591,7 +591,7 @@ UaStatus DIoLLaserUnit::callSwitch_laser_shutter (
     {
       msg.clear(); msg.str("");
       msg << log_i(lbl.c_str(),"Shutter switched to ") << close;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::INF) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;

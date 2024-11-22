@@ -616,7 +616,7 @@ UaStatus DIoLMotor::callClear_alarm (
       // fancy new try
       // since we know the speed of the motor, we can check the CIB only 
       // after the step period of the motor
-      m_refresh_cib_ms = static_cast<uint32_t>(2.0 /static_cast<double>(m_speed_setpoint) * 1000.0);
+      m_refresh_cib_ms = static_cast<uint32_t>((2.0 /static_cast<double>(m_speed_setpoint)) * 1000.0);
       LOG(Log::INF) << log_i("cib_monitor","Setting CIB monitor refresh period to ") << m_refresh_cib_ms << " ms";
 
       while (m_cib_monitor.load())
@@ -899,6 +899,43 @@ UaStatus DIoLMotor::callClear_alarm (
     {
       std::ostringstream msg("");
       msg << log_e(lbl.c_str(),"Failed to execute remote command successful");
+      resp["status"] = "ERROR";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_Bad;
+      LOG(Log::ERR) << msg.str();
+      st = OpcUa_Bad;
+    }
+    return st;
+  }
+  UaStatus DIoLMotor::motor_get_speed(json &resp)
+  {
+    const std::string lbl = "motor_get_spped";
+    UaStatus st = OpcUa_Good;
+    std::string query = "speed";
+    json answer;
+    st = query_motor(query, answer, resp);
+    // #ifdef DEBUG
+    //     LOG(Log::INF) << "Received response [" << answer << "]";
+    // #endif
+    //  now we should parse the answer
+    //  it is meant to be a json object
+    if (answer["status"] == string("OK"))
+    {
+      m_speed_readout = answer.at("speed").get<int32_t>();
+      std::ostringstream msg("");
+      // msg << log_i(lbl.c_str(), "Remote command successful");
+      resp["status"] = "OK";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_Good;
+      // #ifdef DEBUG
+      //       LOG(Log::INF) << msg.str();
+      // #endif
+      st = OpcUa_Good;
+    }
+    else
+    {
+      std::ostringstream msg("");
+      msg << log_e(lbl.c_str(), "Failed to execute remote command successful");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1230,7 +1267,18 @@ UaStatus DIoLMotor::callClear_alarm (
   UaStatus DIoLMotor::get_position_motor(int32_t &pos, json &resp)
   {
     UaStatus st = motor_get_position(resp);
-    pos = m_position_motor;
+    pos = m_position_cib;
+    return st;
+  }
+  UaStatus DIoLMotor::get_position_cib(int32_t &pos, json &resp)
+  {
+    UaStatus st = cib_get_position(pos);
+    return st;
+  }
+  UaStatus DIoLMotor::get_speed_motor(int32_t &speed, json &resp)
+  {
+    UaStatus st = motor_get_speed(resp);
+    speed = m_speed_readout;
     return st;
   }
 
