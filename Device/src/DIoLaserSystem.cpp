@@ -2393,7 +2393,7 @@ UaStatus DIoLaserSystem::move_to_pos(
       {
         LOG(Log::ERR) << log_e("move_task","Bugger. Movement failed with movement [")
         << position.at(0) << "," << position.at(1) << "," << position.at(2)
-        << " approach " << approach;
+        << "] approach " << approach;
       }
       else
       {
@@ -3124,8 +3124,8 @@ UaStatus DIoLaserSystem::move_to_pos(
     int32_t c_pos;
     while (is_moving)
     {
-      motor->get_position_motor(c_pos, resp);
-      is_moving = (std::abs(c_pos - target) > 20);
+      //motor->get_position_motor(c_pos, resp);
+      is_moving = (std::abs(c_pos - target) > 10);
       is_moving |= motor->is_moving();
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }

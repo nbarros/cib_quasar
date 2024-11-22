@@ -508,6 +508,7 @@ UaStatus DIoLMotor::callClear_alarm (
     // if the motor is moving, do not take new requests
     if (m_is_moving)
     {
+      LOG(Log::WRN) << log_w("is_ready","Motor is moving. Not ready for new commands.");
       return false;
     }
     return true;
@@ -901,9 +902,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
-#endif
       st = OpcUa_Bad;
     }
     return st;
@@ -940,9 +939,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
-#endif
       st = OpcUa_Bad;
     }
     return st;
