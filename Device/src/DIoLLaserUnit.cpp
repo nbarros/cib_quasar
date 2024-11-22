@@ -310,7 +310,7 @@ UaStatus DIoLLaserUnit::callConfig (
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
+      msg << log_e(lbl.c_str(),"Caught STD exception : ") << e.what();
       got_exception = true;
     }
     catch(...)
@@ -383,7 +383,7 @@ UaStatus DIoLLaserUnit::callInit (
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
+      msg << log_e(lbl.c_str(),"Caught STL exception : ") << e.what();
       got_exception = true;
     }
     catch(...)
@@ -1020,7 +1020,14 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
       got_exception = true;
     }
-    catch(serial::SerialException &e)
+    catch (serial::IOException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Failed with a serial IO exception [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch (serial::SerialException &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
@@ -1441,7 +1448,28 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // requery the laser system for its present status, in case there are issues to report
       refresh_status();
     }
-    catch(std::exception &e)
+    catch (serial::PortNotOpenedException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Port not open [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch (serial::IOException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Failed with a serial IO exception [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch (serial::SerialException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch (std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
@@ -1535,7 +1563,28 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // requery the laser system for its present status, in case there are issues to report
       start_lasing_timer();
     }
-    catch(std::exception &e)
+    catch (serial::PortNotOpenedException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Port not open [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch (serial::IOException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Failed with a serial IO exception [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch (serial::SerialException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch (std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
@@ -1644,7 +1693,28 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // start the pause timer (on the shutter)
       start_pause_timer();
     }
-    catch(std::exception &e)
+    catch (serial::PortNotOpenedException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Port not open [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch (serial::IOException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Failed with a serial IO exception [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch (serial::SerialException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch (std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
@@ -1734,7 +1804,28 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // requery the laser system for its present status, in case there are issues to report
       refresh_status();
     }
-    catch(std::exception &e)
+    catch (serial::PortNotOpenedException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Port not open [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch (serial::IOException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Failed with a serial IO exception [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch (serial::SerialException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch (std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
@@ -1828,19 +1919,28 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       UaString ss(m_status_map.at(m_status).c_str());
       getAddressSpaceLink()->setState(ss,OpcUa_Good);
     }
-    catch(serial::PortNotOpenedException &e)
+    catch (serial::PortNotOpenedException &e)
     {
-      msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Port not open [" << e.what() << "]";
       got_exception = true;
     }
-    catch(serial::SerialException &e)
+    catch (serial::IOException &e)
     {
-      msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Failed with a serial IO exception [" << e.what() << "]";
       got_exception = true;
     }
-    catch(std::exception &e)
+    catch (serial::SerialException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch (std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
@@ -1993,7 +2093,13 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       caught_exception = true;
     }
-    catch(std::exception &e)
+    catch (serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial IO exception :") << e.what();
+      caught_exception = true;
+    }
+    catch (std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
@@ -2122,7 +2228,14 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
-    catch(std::exception &e)
+    catch (serial::IOException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial IO exception :") << e.what();
+      got_exception = true;
+    }
+    catch (std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
@@ -2199,7 +2312,14 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
-    catch(std::exception &e)
+    catch (serial::IOException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial IO exception :") << e.what();
+      got_exception = true;
+    }
+    catch (std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
@@ -2281,7 +2401,14 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
-    catch(std::exception &e)
+    catch (serial::IOException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial IO exception :") << e.what();
+      got_exception = true;
+    }
+    catch (std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
@@ -2360,7 +2487,14 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
-    catch(std::exception &e)
+    catch (serial::IOException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial IO exception :") << e.what();
+      got_exception = true;
+    }
+    catch (std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
@@ -2553,7 +2687,14 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg << log_e("single_shot","Failed with a Serial exception :") << e.what();
       caught_exception = true;
     }
-    catch(std::exception &e)
+    catch (serial::IOException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e("single_shot", "Failed with a Serial IO exception :") << e.what();
+      caught_exception = true;
+    }
+    catch (std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e("single_shot","Failed with an STL exception :") << e.what();
@@ -2883,7 +3024,28 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // now it is time to map the registers
       //      map_registers();
     }
-    catch(json::exception &e)
+    catch (serial::PortNotOpenedException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e("single_shot", " ") << "Port not open [" << e.what() << "]";
+      got_exception = true;
+    }
+    catch (serial::SerialException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e("single_shot", "Failed with a Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch (serial::IOException &e)
+    {
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial IO exception :") << e.what();
+      got_exception = true;
+    }
+    catch (json::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Caught JSON exception : ") << e.what();
