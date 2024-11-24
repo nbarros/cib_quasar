@@ -284,8 +284,8 @@ private:
     UaStatus write_divider(const uint16_t v,json &resp);
     UaStatus write_rate(const double v,json &resp);
     UaStatus write_hv(const double v,json &resp);
-    UaStatus close_shutter(json &resp);
-    UaStatus open_shutter(json &resp);
+    UaStatus close_laser_shutter(json &resp);
+    UaStatus open_laser_shutter(json &resp);
     UaStatus start_fire(json &resp);
     UaStatus stop_fire(json &resp);
     UaStatus laser_security(uint16_t &code, std::string &desc,json &resp);

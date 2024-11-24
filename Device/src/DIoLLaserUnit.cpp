@@ -911,7 +911,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       if (m_laser)
       {
-        st = close_shutter(resp);
+        st = close_laser_shutter(resp);
         m_part_state.state.laser_shutter_closed = true;
       }
       return st;
@@ -937,20 +937,18 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         // -- if we close the shutter, we should disable qswitch
         // disable qs_en
         disable_qswitch();
-        close_shutter(resp);
-        m_part_state.state.laser_shutter_closed = true;
-
+        close_laser_shutter(resp);
         if (m_status != sStandby)
         {
           // if we are on standby, don't update, as we don't want to mess the timer
           update_status(sStandby);
-          // this is now done on update_status
         }
         // if the external shutter is closed, open it
         // there is redundancy and there is no point
         if (m_part_state.state.ext_shutter_closed)
         {
-          force_ext_shutter(ShutterState::sOpen,resp);
+          open_ext_shutter();
+          //force_ext_shutter(ShutterState::sOpen,resp);
         }
         msg.clear(); msg.str("");
         msg << log_i(lbl.c_str(),"Laser shutter closed.");
@@ -996,10 +994,10 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
           newstate = sReady;
         }
         // in both cases we first open the shutter and then activate qswitch
-        open_shutter(resp);
+        open_laser_shutter(resp);
         enable_qswitch();
-        getAddressSpaceLink()->setLaser_shutter_open(true,OpcUa_Good);
-        m_part_state.state.laser_shutter_closed = false;
+        //getAddressSpaceLink()->setLaser_shutter_open(true,OpcUa_Good);
+        //m_part_state.state.laser_shutter_closed = false;
         update_status(newstate);
         msg.clear(); msg.str("");
         msg << log_i(lbl.c_str(),"Laser shutter open.");
@@ -1012,7 +1010,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // check if the start bit is set.
       // if yes, status changes to sLasing
       // otherwise status changes to sReady
-      refresh_status();
+      // do we really want to refersh the status? For some reason this takes forever
+      //refresh_status();
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -1370,12 +1369,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 #ifdef DEBUG
       LOG(Log::INF) << log_i(lbl.c_str(),"Closing laser shutter");
 #endif
-      // potential source of trouble here...close/open shutter
-      // also lock the mutex, which will put them hanging, since the mutex is already on hold here
+    // potential source of trouble here...close/open shutter
+    // also lock the mutex, which will put them hanging, since the mutex is already on hold here
     
     // also need to tell the laser to stop
-
-    switch_laser_shutter(ShutterState::sClose,resp);
+    close_laser_shutter(resp);
     // stop the fire sequence in the laser itself
     stop_fire(resp);
 
@@ -1437,7 +1435,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       if (m_laser)
       {
         st = stop_fire(resp);
-        st = close_shutter(resp);
+        st = close_laser_shutter(resp);
       }
       //  now open the external one
       force_ext_shutter(ShutterState::sOpen,resp);
@@ -1526,20 +1524,21 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return st;
     }
-    // const std::lock_guard<std::mutex> lock(m_serial_mutex);
     try
     {
       // deassert qswitch enable
       disable_qswitch();
 
       // close the internal shutter
-      st = close_shutter(resp);
+      st = close_laser_shutter(resp);
       if (st != OpcUa_Good)
       {
         // something went wrong
         //
         return st;
       }
+      // close also the external shutter
+      //close_ext_shutter();
       st = start_fire(resp);
       if (st != OpcUa_Good)
       {
@@ -1548,10 +1547,17 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         stop(resp);
         return st;
       }
-      m_part_state.state.laser_shutter_closed = true;
+      // m_part_state.state.laser_shutter_closed = true;
+      if (!m_part_state.state.ext_shutter_closed)
+      {
+        // if the external shutter is not closed, close it
+        //force_ext_shutter(ShutterState::sOpen,resp);
+        // this was the agreement with David
+        close_ext_shutter();
+      }
 
       // if the external shutter is closed, open it
-      force_ext_shutter(ShutterState::sOpen,resp);
+      //force_ext_shutter(ShutterState::sOpen,resp);
 
       // start the laser firing on the CIB
       enable_fire();
@@ -1625,6 +1631,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     const std::string lbl = "pause";
     bool got_exception = false;
     UaStatus st = OpcUa_Good;
+    // if it is already in pause, do nothing
+    if (m_status == sPause)
+    {
+      return OpcUa_Good;
+    }
     st = check_cib_mem(resp);
     if (st != OpcUa_Good)
     {
@@ -1636,16 +1647,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return st;
     }
-    // if it is already in pause, do nothing
-    if (m_status == sPause)
-    {
-      return OpcUa_Good;
-    }
     // actually, we should not allow this to be called from anything but sLasing and sStandby
     if ((m_status != sStandby) && (m_status != sLasing))
     {
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Laser not in a state that can be paused. Nothing to be done.");
+      msg << log_e(lbl.c_str(),"Laser not in a state that can be paused. Current state : ") << m_status_map[m_status];
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -1659,12 +1665,13 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // if it was already, it won't change anything and it only costs a
       // handful of microseconds
       // -- close the external shutter
-      (void)force_ext_shutter(ShutterState::sClose,resp);
+      close_ext_shutter();
+      //(void)force_ext_shutter(ShutterState::sClose,resp);
       // this in itself will also trigger a timer
       // sleep for a little so the shutter, closes
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       // -- open the internal shutter
-      st = switch_laser_shutter(ShutterState::sOpen, resp);
+      st = open_laser_shutter(resp);
       if (st != OpcUa_Good)
       {
         // what should we do? in this case this would mean we are in the 
@@ -1690,9 +1697,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         update_status(sPause);
       }
       // requery the laser system for its present status, in case there are issues to report
-      refresh_status();
+      //refresh_status();
       // start the pause timer (on the shutter)
-      start_pause_timer();
+      //start_pause_timer();
     }
     catch (serial::PortNotOpenedException &e)
     {
@@ -1754,6 +1761,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     bool got_exception = false;
     const std::string lbl = "standby";
     UaStatus st = OpcUa_Good;
+    // if it is either in warmup or standby do nothing
+    if ((m_status == sWarmup) or (m_status == sStandby))
+    {
+      return OpcUa_Good;
+    }
     st = check_cib_mem(resp);
     if (st != OpcUa_Good)
     {
@@ -1766,16 +1778,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return st;
     }
-    // if it is either in warmup or standby do nothing
-    if ((m_status == sWarmup) or (m_status == sStandby))
-    {
-      return OpcUa_Good;
-    }
     // if the laser is not on sLasing or sPause, we can't do anything
     if ((m_status != sLasing) && (m_status != sPause))
     {
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Laser not in a state that can be switched to standby. Nothing to be done.");
+      msg << log_e(lbl.c_str(),"Laser not in a state that can be switched to standby. Current state : ") << m_status_map[m_status];
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
@@ -1787,7 +1794,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // disable qswitch
       disable_qswitch();
       // close the shutter
-      switch_laser_shutter(ShutterState::sClose,resp);
+      close_laser_shutter(resp);
+      // this was the agreement with David
+      close_ext_shutter();
       // if the external shutter is closed, open it
       //force_ext_shutter(ShutterState::sClose,resp);
       // if we are in sReady, sPause and sLasing, we can move to standby
@@ -1803,7 +1812,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         update_status(sReady);
       }
       // requery the laser system for its present status, in case there are issues to report
-      refresh_status();
+      //refresh_status();
     }
     catch (serial::PortNotOpenedException &e)
     {
@@ -1917,8 +1926,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 //       LOG(Log::INF) << log_i(lbl.c_str(),"Checking passed check");
 // #endif
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
-      UaString ss(m_status_map.at(m_status).c_str());
-      getAddressSpaceLink()->setState(ss,OpcUa_Good);
+      // UaString ss(m_status_map.at(m_status).c_str());
+      // getAddressSpaceLink()->setState(ss,OpcUa_Good);
     }
     catch (serial::PortNotOpenedException &e)
     {
@@ -2040,7 +2049,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       while (get_counting_flashes())
       {
         // We know that the laser will be firing at 10 Hz, that means 100 ms period
-        auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
+        auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(200);
         if (refresh_shot_count() != OpcUa_Good)
         {
           LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
@@ -2057,6 +2066,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   }
   UaStatus DIoLLaserUnit::refresh_shot_count(json &resp)
   {
+    static uint32_t count = 0;
     std::ostringstream msg("");
     bool caught_exception = false;
     const std::string lbl = "get_shot_count";
@@ -2066,50 +2076,62 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return st;
     }
-    const std::lock_guard<std::mutex> lock(m_serial_mutex);
-    st = check_laser_instance(resp);
-    if (st != OpcUa_Good)
-    {
-      getAddressSpaceLink()->setFlash_count(0, OpcUa_BadDataUnavailable);
-      return st;
-    }
-    static uint32_t count = 0;
-    // everything seems ready. Get counter
     try
     {
-      m_laser->get_shot_count(count);
-      // set the local cache
-      m_shot_count = count;
-      getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_Good);
+
+      {
+        const std::lock_guard<std::mutex> lock(m_serial_mutex);
+        st = check_laser_instance(resp);
+        if (st == OpcUa_Good)
+        {
+          m_laser->get_shot_count(count);
+          // set the local cache
+          m_shot_count = count;
+        }
+      }
+      if (st != OpcUa_Good)
+      {
+        getAddressSpaceLink()->setFlash_count(0, OpcUa_BadDataUnavailable);
+        return st;
+      }
+      else
+      {
+        getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_Good);
+      }
     }
-    catch(serial::PortNotOpenedException &e)
+    catch (serial::PortNotOpenedException &e)
     {
-      msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str()," ") << "Port not open [" << e.what() << "]";
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), " ") << "Port not open [" << e.what() << "]";
       caught_exception = true;
     }
-    catch(serial::SerialException &e)
+    catch (serial::SerialException &e)
     {
-      msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with a Serial exception :") << e.what();
       caught_exception = true;
     }
     catch (serial::IOException &e)
     {
-      msg.clear(); msg.str("");
+      msg.clear();
+      msg.str("");
       msg << log_e(lbl.c_str(), "Failed with a Serial IO exception :") << e.what();
       caught_exception = true;
     }
     catch (std::exception &e)
     {
-      msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with an STL exception :") << e.what();
       caught_exception = true;
     }
-    catch(...)
+    catch (...)
     {
-      msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
+      msg.clear();
+      msg.str("");
+      msg << log_e(lbl.c_str(), "Failed with an unknown exception.");
       caught_exception = true;
     }
     if (caught_exception)
@@ -3495,11 +3517,13 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // or sStandby states
     // do both changes regardless of the state
     // open the laser shutter first
-    st = switch_laser_shutter(ShutterState::sOpen, resp);
+    //st = switch_laser_shutter(ShutterState::sOpen, resp);
+    st = open_laser_shutter(resp);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (st == OpcUa_Good)
     {
-      st = force_ext_shutter(ShutterState::sOpen, resp);
+      //st = force_ext_shutter(ShutterState::sOpen, resp);
+      open_ext_shutter();
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     else
@@ -3631,10 +3655,10 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   void DIoLLaserUnit::open_ext_shutter()
   {
     LOG(Log::WRN) << log_w("open_ext_shutter","Opening external shutter");
-    set_ext_shutter(0x0);
+    set_ext_shutter(0x0);  
   }
   //
-  UaStatus DIoLLaserUnit::close_shutter(json &resp)
+  UaStatus DIoLLaserUnit::close_laser_shutter(json &resp)
   {
     const std::string lbl = "close_shutter";
     std::ostringstream msg("");
@@ -3649,7 +3673,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         return st;
       }
       LOG(Log::WRN) << log_w("close_shutter", "Closing laser shutter");
-      m_laser->shutter_close();
+      m_laser->shutter_close();      
     }
     catch(serial::PortNotOpenedException &e)
     {
@@ -3689,7 +3713,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     getAddressSpaceLink()->setLaser_shutter_open(false,OpcUa_Good);
     return OpcUa_Good;
   }
-  UaStatus DIoLLaserUnit::open_shutter(json &resp)
+  UaStatus DIoLLaserUnit::open_laser_shutter(json &resp)
   {
     const std::string lbl = "open_shutter";
     std::ostringstream msg("");

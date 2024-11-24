@@ -1690,7 +1690,7 @@ UaStatus DIoLaserSystem::callClear_error (
       {
         reset(msg);
         resp["status"] = "ERROR";
-        msg << log_e(lbl.c_str(),"Laser is not in the right state.");
+        msg << log_e(lbl.c_str(),"Laser is not in the right state. Got ") << iollaserunit()->get_state_description();
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadInvalidState;
         LOG(Log::ERR) << msg.str();
@@ -1890,6 +1890,7 @@ UaStatus DIoLaserSystem::callClear_error (
       }
       if (m_state != sError)
       {
+        // note that this is the local state, so ready is what we want
         update_state(sReady);
       }
                 }
