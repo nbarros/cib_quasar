@@ -137,8 +137,8 @@ public:
     const std::string get_state_description() { return m_status_map[m_status]; }
     // -- wrapper for interface commands commands
     UaStatus move_wrapper(int32_t dest, json &resp);
-    UaStatus reset_wrapper(json &resp);
-    UaStatus clear_alarm_wrapper(json &resp);
+    UaStatus reset_wrapper(json &resp) {return OpcUa_BadNotImplemented;}
+    UaStatus clear_alarm_wrapper(json &resp) { return OpcUa_BadNotImplemented; }
 
     // motor commands
     UaStatus motor_get_info();
@@ -151,9 +151,8 @@ public:
     // other commands that are not specific of the motor hardware
     UaStatus config(json &conf, json &resp);
     UaStatus terminate(json &resp);
-    UaStatus reset(json &resp);
-    UaStatus get_alarm_state(json &resp);
-
+    UaStatus reset(json &resp) { return OpcUa_BadNotImplemented; }
+    UaStatus get_alarm_state(json &resp) { return OpcUa_BadNotImplemented; }
 
     //
     const bool get_stats_monitor() {return m_stats_monitor.load();}
@@ -182,9 +181,9 @@ public:
     UaStatus set_id(const std::string &id);
     inline const std::string get_id() {return m_id;}
     //
-    void set_server_addr(const std::string &s);
+    void set_server_addr(const std::string &s) {m_server_host = s;}
     const std::string get_server_addr() {return m_server_host;}
-    bool is_moving() const {return m_is_moving;}
+    bool is_moving(); 
     bool is_in_range(const int32_t &v);
 
 private:
@@ -196,7 +195,7 @@ private:
 
     // basic fundamental tests
     UaStatus check_motor_ready(json &resp);
-    UaStatus check_motor_moving(json &resp);
+    //UaStatus check_motor_moving(json &resp);
     UaStatus check_monitor_status(json &resp);
     UaStatus check_position_in_range(const int32_t value, json &resp);
 
