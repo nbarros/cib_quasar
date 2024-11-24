@@ -505,7 +505,7 @@ UaStatus DIoLMotor::callClear_alarm (
       // do not update the status
       return m_is_moving;
     }
-    if (m_speed_readout < 15 )
+    if (std::abs(m_speed_readout) < 15 )
     {
       is_moving = false;
       update_status(sReady);
@@ -953,7 +953,7 @@ UaStatus DIoLMotor::callClear_alarm (
     //  it is meant to be a json object
     if (answer["status"] == string("OK"))
     {
-      int32_t new_value = answer.at("speed").get<int32_t>();
+      int32_t new_value = answer.at("speed").get<int>();
       if (new_value > 1000)
       {
         LOG(Log::WRN) << log_w(lbl.c_str(),"Speed readout is too high (") << new_value << "). Ignoring.";
