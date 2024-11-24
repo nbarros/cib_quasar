@@ -3115,7 +3115,8 @@ UaStatus DIoLaserSystem::move_to_pos(
     while (is_moving)
     {
       // check that the position is somewhat closer
-      motor->get_position_cib(c_pos);
+      json dummy;
+      motor->get_position_cib(c_pos,dummy);
       if (std::abs(c_pos-target) > 10) // the motor is at more than 7 steps away from target
       {
         is_moving = true;
