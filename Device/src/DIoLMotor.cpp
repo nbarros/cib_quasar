@@ -954,13 +954,13 @@ UaStatus DIoLMotor::callClear_alarm (
     if (answer["status"] == string("OK"))
     {
       int32_t new_value = answer.at("speed").get<int>();
-      if (new_value > 1000)
+      if (std::abs(new_value) > 1000)
       {
         LOG(Log::WRN) << log_w(lbl.c_str(),"Speed readout is too high (") << new_value << "). Ignoring.";
         return OpcUa_Good;
       }
       m_speed_readout = new_value; 
-      LOG(Log::INF) << "Speed readout : " << m_speed_readout;
+      LOG(Log::INF) << "Speed readout [" << get_id() << "] : " << m_speed_readout;
       std::ostringstream msg("");
       // msg << log_i(lbl.c_str(), "Remote command successful");
       resp["status"] = "OK";
