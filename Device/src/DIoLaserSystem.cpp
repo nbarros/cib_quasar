@@ -515,6 +515,14 @@ UaStatus DIoLaserSystem::callPause (
     try
     {
       st = pause(resp);
+      if(st != OpcUa_Good)
+      {
+        reset(msg);
+        msg << log_e(lbl.c_str(),"Failed to pause. See previous messages");
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["statuscode"] = OpcUa_Bad;
+      }
     }
     catch (json::exception &e)
     {
@@ -1896,25 +1904,6 @@ UaStatus DIoLaserSystem::callClear_error (
     bool got_exception = false;
     try
     {
-      // first check that the whole system is in a state that could be considered as valid
-      // the tricky part here is that this definition depends on many things
-      /**
-       * For example, the laser can be considered ready if it is in sLasing, sReady or sStandby states
-       * The motor is ready if it is not moving and has a speed defined
-       * The power meter is always ready, as far as it is configured
-       * The attenuator is always ready
-       */
-      // if (m_state == sOffline)
-      // {
-      //   // system is not even configured. Nothing to be done
-      //   reset(msg);
-      //   resp["status"] = "ERROR";
-      //   msg << log_e(lbl.c_str(),"System is not ready to operate. Check the status of the various subsystems.");
-      //   resp["messages"].push_back(msg.str());
-      //   resp["statuscode"] = OpcUa_BadInvalidState;
-      //   LOG(Log::ERR) << msg.str();
-      //   return OpcUa_BadInvalidState;
-      // }
       st= iollaserunit()->pause(resp);
       if (st != OpcUa_Good)
       {
@@ -1928,7 +1917,6 @@ UaStatus DIoLaserSystem::callClear_error (
         }
         return OpcUa_BadInvalidState;
       }
-      // update_state(sPause);
     }
     catch(json::exception &e)
     {
@@ -3121,14 +3109,14 @@ UaStatus DIoLaserSystem::move_to_pos(
   {
     bool is_moving = true;
     json resp;
-    // int32_t c_pos;
+    size_t i = 0;
     while (is_moving)
     {
-      //motor->get_position_motor(c_pos, resp);
-      //is_moving = (std::abs(c_pos - target) > 10);
       is_moving = motor->is_moving();
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      i++;
     }
+    LOG(Log::INF) << "Motor " << motor->get_id() << " reached target position " << target << " in " << i * 100 << "ms.";
   }
   void DIoLaserSystem::wait_for_motors(const std::vector<int32_t> &target)
   {
