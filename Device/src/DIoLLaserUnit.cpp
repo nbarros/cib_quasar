@@ -2559,6 +2559,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       return;
     }
     update_status(m_status);
+    get_laser_shutter();
 
     if (m_laser)
     {
@@ -2567,7 +2568,6 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // this could potentially cause a race condition
       refresh_shot_count(resp);
       // this does not cause a crash. Just updates the slow control variable
-      get_laser_shutter();
     }
     UaStatus st;
     // this should not cause crashes either.
