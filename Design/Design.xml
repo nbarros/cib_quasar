@@ -47,7 +47,7 @@
     	nullPolicy="nullForbidden" addressSpaceWrite="delegated"
     	initialValue="100" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
-    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_UInt32" name="speed_readout" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Int32" name="speed_readout" nullPolicy="nullAllowed" addressSpaceWrite="forbidden" initialStatus="OpcUa_BadWaitingForInitialData">
     </d:cachevariable>
     <d:cachevariable initializeWith="valueAndStatus"
     	dataType="OpcUa_UInt32" name="speed" nullPolicy="nullForbidden"
