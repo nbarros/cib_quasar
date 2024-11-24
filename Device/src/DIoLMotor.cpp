@@ -353,9 +353,9 @@ UaStatus DIoLMotor::callClear_alarm (
       msg << log_w("start_move","Motor is already at destination") << " (" << m_position_motor << " vs " << m_position_setpoint << ")";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-#ifdef DEBUG
       LOG(Log::WRN) << msg.str();
-#endif
+      // refresh the position regardless
+      cib_set_init_position(m_position_motor);
       return OpcUa_Good;
     }
     //
@@ -486,6 +486,43 @@ UaStatus DIoLMotor::callClear_alarm (
     status |= getAddressSpaceLink()->getDeceleration(m_deceleration);
 
   }
+  bool DIoLMotor::is_moving()
+  {
+    bool is_moving = m_is_moving;
+    if (m_server_host.size() == 0)
+    {
+      return m_is_moving;
+    }
+    if (m_server_port == 0)
+    {
+      return m_is_moving;
+    }
+    // get the speed
+    json resp;
+    UaStatus st = motor_get_speed(resp);
+    if (st != OpcUa_Good)
+    {
+      // do not update the status
+      return m_is_moving;
+    }
+    if (m_speed_readout < 10 )
+    {
+      is_moving = false;
+      update_status(sReady);
+    }
+    else
+    {
+      is_moving = true;
+      update_status(sOperating);
+    }
+    if (is_moving != m_is_moving)
+    {
+      m_is_moving = is_moving;
+    }
+    getAddressSpaceLink()->setIs_moving(m_is_moving,OpcUa_Good);
+
+    return m_is_moving;
+  }
   bool DIoLMotor::is_ready()
   {
     // actually, this should check a few more things:
@@ -506,7 +543,7 @@ UaStatus DIoLMotor::callClear_alarm (
       return false;
     }
     // if the motor is moving, do not take new requests
-    if (m_is_moving)
+    if (is_moving())
     {
       LOG(Log::WRN) << log_w("is_ready","Motor is moving. Not ready for new commands.");
       return false;
@@ -610,8 +647,8 @@ UaStatus DIoLMotor::callClear_alarm (
     std::thread([this]()
                 {
       int32_t cpos;
-      int32_t prev_pos = m_position_cib;
-      int32_t prev_prev_pos = m_position_cib;
+      // int32_t prev_pos = m_position_cib;
+      // int32_t prev_prev_pos = m_position_cib;
 
       // fancy new try
       // since we know the speed of the motor, we can check the CIB only 
@@ -621,10 +658,8 @@ UaStatus DIoLMotor::callClear_alarm (
 
       while (m_cib_monitor.load())
       {
-        //auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_refresh_cib_ms);
-        //prev_pos =m_position_cib;
-        prev_prev_pos = prev_pos;
-        prev_pos = m_position_cib;
+        // prev_prev_pos = prev_pos;
+        // prev_pos = m_position_cib;
         UaStatus st = cib_get_position(cpos);
 #ifdef DEBUG
         if (st != OpcUa_Good)
@@ -637,17 +672,17 @@ UaStatus DIoLMotor::callClear_alarm (
         // if the motor speed is very slow, this is certainly going to fail
         // as the CIB is being queried much faster than the motor
 
-        if (m_position_cib == prev_prev_pos)
-        {
-          m_is_moving = false;
-          update_status(sReady);
-        }
-        else
-        {
-          m_is_moving = true;
-          update_status(sOperating);
-        }
-        getAddressSpaceLink()->setIs_moving(m_is_moving,OpcUa_Good);
+        // if (m_position_cib == prev_prev_pos)
+        // {
+        //   m_is_moving = false;
+        //   update_status(sReady);
+        // }
+        // else
+        // {
+        //   m_is_moving = true;
+        //   update_status(sOperating);
+        // }
+        // getAddressSpaceLink()->setIs_moving(m_is_moving,OpcUa_Good);
         std::this_thread::sleep_for(std::chrono::milliseconds(m_refresh_cib_ms));
         //std::this_thread::sleep_until(x);
       } })
@@ -914,9 +949,6 @@ UaStatus DIoLMotor::callClear_alarm (
     std::string query = "speed";
     json answer;
     st = query_motor(query, answer, resp);
-    // #ifdef DEBUG
-    //     LOG(Log::INF) << "Received response [" << answer << "]";
-    // #endif
     //  now we should parse the answer
     //  it is meant to be a json object
     if (answer["status"] == string("OK"))
