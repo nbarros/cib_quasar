@@ -1454,7 +1454,7 @@ UaStatus DIoLaserSystem::callClear_error (
         {
           m_task_message_queue["status"] = "OK";
         }
-        msg << log_e("fire_segment","Operation was successful.");
+        msg << log_i("fire_segment","Operation was successful.");
         m_task_message_queue["messages"].push_back(msg.str());
         if (!m_task_message_queue.contains("statuscode"))
         {
