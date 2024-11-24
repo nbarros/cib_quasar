@@ -18,9 +18,8 @@ int g_height;
 IoLSMonitor g_monitor;  
 std::deque<FeedbackMessage> g_feedback;
 std::vector<std::string> g_vars_to_monitor = {"LS1.state", "LS1.RNN800.state", "LS1.RNN600.state", "LS1.LSTAGE.state", "LS1.A1.state", "LS1.L1.state", "LS1.PM1.state", "LS1.PM1.energy_reading", "LS1.PM1.average_reading", "LS1.RNN800.current_position_motor", "LS1.RNN800.current_position_cib", "LS1.RNN600.current_position_motor", "LS1.RNN600.current_position_cib", "LS1.LSTAGE.current_position_motor", "LS1.LSTAGE.current_position_cib", "LS1.A1.position",
-                                              "LS1.L1.ext_shutter_open", "LS1.L1.laser_shutter_open", "LS1.L1.laser_status_code", "LS1.L1.standby_timer_s", "LS1.L1.pause_timer_s",  "LS1.L1.warmup_timer_s", "LS1.L1.fire_active","LS1.L1.qswitch_active",
-                                              "LS1.CIB1.dac_threshold"
-                                              };
+                                              "LS1.L1.ext_shutter_open", "LS1.L1.laser_shutter_open", "LS1.L1.laser_status_code", "LS1.L1.standby_timer_s", "LS1.L1.pause_timer_s", "LS1.L1.warmup_timer_s", "LS1.L1.fire_active", "LS1.L1.qswitch_active",
+                                              "LS1.CIB1.dac_threshold", "LS1.L1.shot_count_cib"};
 
 void initialize_pane(WINDOW *&pane, int height, int width, int starty, int startx, const std::string &title)
 {
@@ -126,8 +125,9 @@ void update_right_pane(WINDOW *right_pane, std::atomic<bool> &running, int heigh
               status.count("LS1.CIB1.dac_threshold") ? std::get<uint16_t>(status["LS1.CIB1.dac_threshold"]) : -1);
     vpos += 2;
     // A few laser updates
-    mvwprintw(right_pane, vpos, 2, "Laser status code : %02d",
-              status.count("LS1.L1.laser_status_code") ? std::get<uint16_t>(status["LS1.L1.laser_status_code"]) : -1);
+    mvwprintw(right_pane, vpos, 2, "Laser status code : %02d \t\t\t Laser trigger count : %d",
+              status.count("LS1.L1.laser_status_code") ? std::get<uint16_t>(status["LS1.L1.laser_status_code"]) : -1,
+              status.count("LS1.L1.shot_count_cib") ? std::get<uint16_t>(status["LS1.L1.shot_count_cib"]) : -1);
 
     vpos += 2;
     wmove(right_pane, vpos, 1);
