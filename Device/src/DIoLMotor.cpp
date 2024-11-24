@@ -505,7 +505,7 @@ UaStatus DIoLMotor::callClear_alarm (
       // do not update the status
       return m_is_moving;
     }
-    if (m_speed_readout < 20 )
+    if (m_speed_readout < 5 )
     {
       is_moving = false;
       update_status(sReady);
@@ -954,6 +954,7 @@ UaStatus DIoLMotor::callClear_alarm (
     if (answer["status"] == string("OK"))
     {
       m_speed_readout = answer.at("speed").get<int32_t>();
+      LOG(Log::INF) << "Speed readout : " << m_speed_readout;
       std::ostringstream msg("");
       // msg << log_i(lbl.c_str(), "Remote command successful");
       resp["status"] = "OK";
@@ -1523,10 +1524,10 @@ UaStatus DIoLMotor::callClear_alarm (
       std::ostringstream msg("");
       msg.clear(); msg.str("");
       resp["status"] = "ERROR";
-      msg << log_e(lbl.c_str(),"Motor is not ready to operate");
+      msg << log_w(lbl.c_str(),"Motor is not ready to operate");
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::WRN) << msg.str();
       return OpcUa_BadInvalidState;
     }
     return OpcUa_Good;

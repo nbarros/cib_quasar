@@ -3112,11 +3112,12 @@ UaStatus DIoLaserSystem::move_to_pos(
     int32_t c_pos;
     json resp;
     size_t i = 0;
+    LOG(Log::INF) << "Waiting for motor " << motor->get_id() << " to reach target position " << target;
     while (is_moving)
     {
       // check that the position is somewhat closer
       json dummy;
-      motor->get_position_cib(c_pos,dummy);
+      motor->get_position_motor(c_pos,dummy);
       if (std::abs(c_pos-target) > 10) // the motor is at more than 7 steps away from target
       {
         is_moving = true;
