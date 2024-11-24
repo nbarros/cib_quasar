@@ -3121,7 +3121,7 @@ UaStatus DIoLaserSystem::move_to_pos(
       if (std::abs(c_pos-target) > 10) // the motor is at more than 7 steps away from target
       {
         is_moving = true;
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
         continue;
       }
       is_moving = motor->is_moving();

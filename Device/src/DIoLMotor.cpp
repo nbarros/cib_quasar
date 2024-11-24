@@ -953,7 +953,13 @@ UaStatus DIoLMotor::callClear_alarm (
     //  it is meant to be a json object
     if (answer["status"] == string("OK"))
     {
-      m_speed_readout = answer.at("speed").get<int32_t>();
+      int32_t new_value = answer.at("speed").get<int32_t>();
+      if (new_value > 1000)
+      {
+        LOG(Log::WRN) << log_w(lbl.c_str(),"Speed readout is too high (") << new_value << "). Ignoring.";
+        return OpcUa_Good;
+      }
+      m_speed_readout = new_value; 
       LOG(Log::INF) << "Speed readout : " << m_speed_readout;
       std::ostringstream msg("");
       // msg << log_i(lbl.c_str(), "Remote command successful");
