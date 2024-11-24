@@ -1300,7 +1300,7 @@ UaStatus DIoLMotor::callClear_alarm (
   UaStatus DIoLMotor::get_position_motor(int32_t &pos, json &resp)
   {
     UaStatus st = motor_get_position(resp);
-    pos = m_position_cib;
+    pos = m_position_motor;
     return st;
   }
   UaStatus DIoLMotor::get_position_cib(int32_t &pos, json &resp)
