@@ -1495,6 +1495,9 @@ UaStatus DIoLaserSystem::callClear_error (
     // step 0: before we even start doing anything
     // force the laser into a pause state
     st = pause(resp);
+    LOG(Log::INF) << log_i(lbl.c_str(),"Executing segment [") 
+    << spos.at(0) << "," << spos.at(1) << "," << spos.at(2) << "] -> ["
+    << lpos.at(0) << "," << lpos.at(1) << "," << lpos.at(2) << "]";
     //st = iollaserunit()->pause(resp);
     if (st != OpcUa_Good)
     {
@@ -1513,7 +1516,8 @@ UaStatus DIoLaserSystem::callClear_error (
       return;
     }
     // step 1
-    // move the motor to the beginning, keeping in mind the approach
+    // move the motor to the beginning
+    // in this case there is no approach to deal with
     st = move_motor(spos, resp);
     if (st != OpcUa_Good)
     {
@@ -1533,18 +1537,6 @@ UaStatus DIoLaserSystem::callClear_error (
     // step 1.2: wait until motors are in place
     // since this is a separate task, we *must* wait for things to be ready
     wait_for_motors(spos);
-    // bool is_moving = true;
-    // while (is_moving)
-    // {
-    //   is_moving = false;
-    //   for (Device::DIoLMotor* lmotor : iolmotors ())
-    //   {
-    //     is_moving |= lmotor->is_moving();
-    //   }
-    //   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    // }
-    //
-    //
     if (m_state == sError)
     {
       // if we are in error state don't do anything
@@ -1558,8 +1550,36 @@ UaStatus DIoLaserSystem::callClear_error (
       LOG(Log::ERR) << msg.str();
       return;
     }
-    // we have reached the destination
-    // step 2: set target position
+    // we have reached the destination, meaning the start of the firing position
+    // set the laser to start firing
+    // only then start moving
+    // step 2 : start power meter readings
+    for (Device::DIoLPowerMeter *lmeter : iolpowermeters())
+    {
+      // this may or not fail, since the power meter
+      // may or may not be already taking data
+      st = lmeter->start_readings(resp);
+    }
+    // step 3: tell laser to get into business
+    //
+    st = resume(resp);
+    if (st != OpcUa_Good)
+    {
+      reset(msg);
+      resp["status"] = "ERROR";
+      msg << log_e(lbl.c_str(), "Failed to activate laser. Check previous messages.");
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = static_cast<uint32_t>(st);
+      LOG(Log::ERR) << msg.str();
+      // force a pause (again)
+      pause(resp);
+      // iollaserunit()->pause(resp);
+      update_task_message_queue(resp);
+      update_state(sError);
+      return;
+    }
+
+    // step 4: set target position
     st = move_motor(lpos,resp);
     if (st != OpcUa_Good)
     {
@@ -1580,32 +1600,7 @@ UaStatus DIoLaserSystem::callClear_error (
     // step 3: initiate movement (already done)
     //
     //
-    // step 2.0 : start power meter readings
-    for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
-    {
-      // this may or not fail, since the power meter 
-      // may or may not be already taking data
-      st = lmeter->start_readings(resp);
-    }
-    // step 4: tell laser to get into business
-    //
-    st = resume(resp);
-    // st = iollaserunit()->resume(resp);
-    if (st != OpcUa_Good)
-    {
-      reset(msg);
-      resp["status"] = "ERROR";
-      msg << log_e(lbl.c_str(), "Failed to activate laser. Check previous messages.");
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = static_cast<uint32_t>(st);
-      LOG(Log::ERR) << msg.str();
-      // force a pause (again)
-      pause(resp);
-      // iollaserunit()->pause(resp);
-      update_task_message_queue(resp);
-      update_state(sError);
-      return;
-    }
+  
     // step 5: wait for motors to report stopped
     wait_for_motors(lpos);
     // step 6: switch back to pause
@@ -1636,7 +1631,7 @@ UaStatus DIoLaserSystem::callClear_error (
   {
     std::ostringstream msg("");
     UaStatus st;
-
+    LOG(Log::INF) << log_i("move_motor","Moving motors to target position [") << position.at(0) << "," << position.at(1) << "," << position.at(2) << "]";
     for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < position.size(); idx++)
     {
       Device::DIoLMotor* lmotor = iolmotors().at(m_map_motor_coordinates.at(idx));
