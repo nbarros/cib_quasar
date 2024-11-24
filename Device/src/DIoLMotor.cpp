@@ -505,7 +505,7 @@ UaStatus DIoLMotor::callClear_alarm (
       // do not update the status
       return m_is_moving;
     }
-    if (m_speed_readout < 10 )
+    if (m_speed_readout < 20 )
     {
       is_moving = false;
       update_status(sReady);

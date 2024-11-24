@@ -1077,19 +1077,19 @@ UaStatus DIoLaserSystem::callClear_error (
       // none of the other systems are actually critical
       // however, if we stop the laser, there is little point in
       // keeping the power meter reading
-      st = iolpowermeter()->stop_readings(resp);
-      if (st != OpcUa_Good)
-      {
-        reset(msg);
-        msg << log_e("stop","Failed to stop power meter ") << iolpowermeter()->getFullName() << ". See previous messages.";
-        resp["status"] = "ERROR";
-        resp["messages"].push_back(msg.str());
-        if (!resp.contains("statuscode"))
-        {
-          resp["statuscode"] = OpcUa_Bad;
-        }
-        return st;
-      }
+      // st = iolpowermeter()->stop_readings(resp);
+      // if (st != OpcUa_Good)
+      // {
+      //   reset(msg);
+      //   msg << log_e("stop","Failed to stop power meter ") << iolpowermeter()->getFullName() << ". See previous messages.";
+      //   resp["status"] = "ERROR";
+      //   resp["messages"].push_back(msg.str());
+      //   if (!resp.contains("statuscode"))
+      //   {
+      //     resp["statuscode"] = OpcUa_Bad;
+      //   }
+      //   return st;
+      // }
       // in this case we should not go back to ready, or we 
       // will have to warmup again
     }
@@ -1554,12 +1554,12 @@ UaStatus DIoLaserSystem::callClear_error (
     // set the laser to start firing
     // only then start moving
     // step 2 : start power meter readings
-    for (Device::DIoLPowerMeter *lmeter : iolpowermeters())
-    {
-      // this may or not fail, since the power meter
-      // may or may not be already taking data
-      st = lmeter->start_readings(resp);
-    }
+    // for (Device::DIoLPowerMeter *lmeter : iolpowermeters())
+    // {
+    //   // this may or not fail, since the power meter
+    //   // may or may not be already taking data
+    //   st = lmeter->start_readings(resp);
+    // }
     // step 3: tell laser to get into business
     //
     st = resume(resp);
@@ -2243,6 +2243,7 @@ UaStatus DIoLaserSystem::callClear_error (
         return;
       }
       int32_t interim_target = c_pos;
+      LOG(Log::INF) << log_i(lbl.c_str(), "Moving motor (id : ") << lmotor->get_id() << ") from position " << c_pos << " to position " << position.at(idx);
       //
       // we have the current position, decide whether the approach is good or requires some overstepping
       if (c_pos < position.at(idx))
@@ -2281,6 +2282,10 @@ UaStatus DIoLaserSystem::callClear_error (
         if (approach.at(idx) == 'u')
         {
           interim_target = position.at(idx) - overstep;
+          reset(msg);
+          msg << log_i(lbl.c_str(), "Setting overstep position for motor (id : ")
+              << lmotor->get_id() << ") : " << interim_target;
+          LOG(Log::INF) << msg.str();
           st = lmotor->move_wrapper(interim_target, resp);
           if (st != OpcUa_Good)
           {
@@ -2517,13 +2522,13 @@ UaStatus DIoLaserSystem::move_to_pos(
         return false;
       }
     }
-    for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
-    {
-      if (!lmeter->is_ready())
-      {
-        return false;
-      }
-    }
+    // for (Device::DIoLPowerMeter* lmeter : iolpowermeters())
+    // {
+    //   if (!lmeter->is_ready())
+    //   {
+    //     return false;
+    //   }
+    // }
     for (Device::DIoLCIB* lcib : iolcibs())
     {
       if (!lcib->is_ready())
@@ -3043,19 +3048,19 @@ UaStatus DIoLaserSystem::move_to_pos(
     wait_for_motors(target);
     // we have reached the destination
     // step 2.0 : start power meter readings
-    st = iolpowermeter()->start_readings(resp);
-    if (st != OpcUa_Good)
-    {
-      reset(msg);
-      msg << log_e(lbl.c_str(), "Failed to start power meter");
-      resp["status"] = "ERROR";
-      resp["messages"].push_back(msg.str());
-      resp["statuscode"] = static_cast<uint32_t>(st);
-      LOG(Log::ERR) << msg.str();
-      update_task_message_queue(resp);
-      update_state(sError);
-      return;
-    }
+    // st = iolpowermeter()->start_readings(resp);
+    // if (st != OpcUa_Good)
+    // {
+    //   reset(msg);
+    //   msg << log_e(lbl.c_str(), "Failed to start power meter");
+    //   resp["status"] = "ERROR";
+    //   resp["messages"].push_back(msg.str());
+    //   resp["statuscode"] = static_cast<uint32_t>(st);
+    //   LOG(Log::ERR) << msg.str();
+    //   update_task_message_queue(resp);
+    //   update_state(sError);
+    //   return;
+    // }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     // step 2: resume operation of the laser unit
     st = iollaserunit()->fire_discrete_shots(num_pulses, resp);
@@ -3104,10 +3109,19 @@ UaStatus DIoLaserSystem::move_to_pos(
   void DIoLaserSystem::wait_for_motor(DIoLMotor *motor, int32_t target)
   {
     bool is_moving = true;
+    int32_t c_pos;
     json resp;
     size_t i = 0;
     while (is_moving)
     {
+      // check that the position is somewhat closer
+      motor->get_position_cib(c_pos);
+      if (std::abs(c_pos-target) > 10) // the motor is at more than 7 steps away from target
+      {
+        is_moving = true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        continue;
+      }
       is_moving = motor->is_moving();
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       i++;

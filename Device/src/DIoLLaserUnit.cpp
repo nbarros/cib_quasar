@@ -3524,7 +3524,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       //st = force_ext_shutter(ShutterState::sOpen, resp);
       open_ext_shutter();
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     else
     {
