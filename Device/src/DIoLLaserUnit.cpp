@@ -1309,10 +1309,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     set_counting_flashes(false);
     // terminate should take on a mutex right away so other methods do nothing during this period
 
-#ifdef DEBUG
             LOG(Log::WRN)
         << log_w(lbl.c_str(), "Terminating the current object instance.");
-#endif
     // this is meant to do a smooth temrination of the device
     if (m_status == sOffline)
     {
@@ -1324,9 +1322,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         // this should *NEVER* happen, but if it does, we're in trouble.
         msg.clear(); msg.str("");
         msg << log_w(lbl.c_str(),"There is a live pointer but state is offline. This should NEVER happen. Attempting to clear object.");
-#ifdef DEBUG
         LOG(Log::WRN) << msg.str();
-#endif
         resp["messages"].push_back(msg.str());
         //FIXME: What happens we if we lose the serial connection while the laser is connected?
         // Answer... it really goes belly up. The problem is that 
@@ -1360,15 +1356,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"CIB memory not mapped. Can't control the laser driver.");
-#ifdef DEBUG
       LOG(Log::ERR) << msg.str();
-#endif
       resp["messages"].push_back(msg.str());
     }
     // close the internal shutter
-#ifdef DEBUG
       LOG(Log::INF) << log_i(lbl.c_str(),"Closing laser shutter");
-#endif
     // potential source of trouble here...close/open shutter
     // also lock the mutex, which will put them hanging, since the mutex is already on hold here
     
@@ -1675,7 +1667,16 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       if (st != OpcUa_Good)
       {
         // what should we do? in this case this would mean we are in the 
-        // standby state, but the shutter is closed
+        // standby state, but the shutter is closed.
+        // if the shutter fails to open return the failure
+        msg.clear();
+        msg.str("");
+        msg << log_e(lbl.c_str(), "Laser failed to open the laser shutter");
+        LOG(Log::ERR) << msg.str();
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["statuscode"] = OpcUa_Bad;
+        return st;
       }
       // downgrade anything above ready to ready to operate
       // can wereally be considered to be in pause?
@@ -1683,9 +1684,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         msg.clear(); msg.str("");
         msg << log_w(lbl.c_str(),"Pause called before laser was started. The shutter will close, but the laser will remain off.");
-#ifdef DEBUG
         LOG(Log::WRN) << msg.str();
-#endif
         resp["status"] = "SUCCESS";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_Uncertain;
@@ -3474,6 +3473,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     std::ostringstream msg("");
     const std::string lbl = "resume";
     UaStatus st = OpcUa_Good;
+    // we're already in lasing state
+    if (m_status == sLasing)
+    {
+      return OpcUa_Good;
+    }
     st = check_cib_mem(resp);
     if (st != OpcUa_Good)
     {
@@ -3484,23 +3488,19 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return st;
     }
-    // we're already in lasing state
-    if (m_status == sLasing)
-    {
-      return OpcUa_Good;
-    }
+
     // check that we are in a valid state for this call
     if ((m_status != sPause) && (m_status != sStandby))
     {
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Laser Unit not in a valid state. Resume should only be called in sPause or sStandby state.");
+      msg << log_e(lbl.c_str(),"Laser Unit not in a valid state. Resume should only be called in sPause or sStandby state. Currently in : ") << m_status_map.at(m_status);
       LOG(Log::ERR) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
       return OpcUa_BadInvalidState;
     }
-    // -- do a couple moreconsistent checks
+    // -- do a couple more consistent checks
     if (!m_part_state.state.fire_enable)
     {
       msg.clear(); msg.str("");
@@ -3529,8 +3529,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     else
     {
       // failed to open the shutter. This is trouble.
-      // pause and return failure 
-      pause(resp);
+      // go standby and return failure
+      standby(resp);
     }
 
     // if (m_status == sPause)
