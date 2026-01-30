@@ -59,6 +59,11 @@
     	addressSpaceWrite="forbidden"
     	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="unknown">
     </d:cachevariable>
+    <d:cachevariable initializeWith="valueAndStatus" dataType="OpcUa_Boolean"
+    	name="enabled" nullPolicy="nullForbidden"
+    	addressSpaceWrite="forbidden"
+    	initialStatus="OpcUa_BadWaitingForInitialData" initialValue="OpcUa_True">
+    </d:cachevariable>
     <!-- methods that allow for standalone motor operation -->
     <d:method name="config" executionSynchronicity="synchronous">
       <d:argument dataType="UaString" name="config_json" />

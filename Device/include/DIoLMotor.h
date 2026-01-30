@@ -128,11 +128,12 @@ public:
       size_t n_bits;
     } cib_param_t;
     //
-    enum Status{sOffline=0x0,sReady=1,sOperating=3,sError=6};
+    enum Status{sOffline=0x0,sDisabled=-1,sReady=1,sOperating=3,sError=6};
 
     //
     void update();
     bool is_ready();
+    bool is_enabled();
     Status get_state() {return m_status;}
     const std::string get_state_description() { return m_status_map[m_status]; }
     // -- wrapper for interface commands commands
@@ -185,6 +186,7 @@ public:
     const std::string get_server_addr() {return m_server_host;}
     bool is_moving(); 
     bool is_in_range(const int32_t &v);
+    bool check_motor_enabled();
 
 private:
 
@@ -259,6 +261,7 @@ private:
     std::mutex m_motor_mtx;
     std::map<Status,std::string> m_status_map;
     Status m_status;
+    bool m_enabled;
 
 };
 

@@ -98,7 +98,8 @@ DIoLMotor::DIoLMotor(
                                 m_range_max(-999999),
                                 m_id("NONE"),
                                 m_mmap_fd(0),
-                                m_status(sOffline)
+                                m_status(sOffline),
+                                m_enabled(false)
 {
     /* fill up constructor body here */
     // initialize cURL
@@ -107,6 +108,7 @@ DIoLMotor::DIoLMotor(
     // allocate the memory mapped registers
     (void)init_cib_mem();
     m_status_map.insert({sOffline,"offline"});
+    m_status_map.insert({sDisabled,"disabled"});
     m_status_map.insert({sReady,"ready"});
     m_status_map.insert({sOperating,"operating"});
     m_status_map.insert({sError,"error"});
@@ -229,6 +231,12 @@ UaStatus DIoLMotor::callMove_absolute (
 )
 {
     json resp;
+    if (!check_motor_enabled()) {
+        resp["status"] = "OK";
+        resp["message"] = "Motor " + m_id + " is disabled, command ignored";
+        response = UaString(resp.dump().c_str());
+        return OpcUa_Good;
+    }
     // the returned status is always OpcUa_Good
     // but the real execution status is passed through the json response
     UaStatus st = OpcUa_Good;
@@ -242,6 +250,12 @@ UaStatus DIoLMotor::callMove_relative (
 )
 {
     json resp;
+    if (!check_motor_enabled()) {
+        resp["status"] = "OK";
+        resp["message"] = "Motor " + m_id + " is disabled, command ignored";
+        response = UaString(resp.dump().c_str());
+        return OpcUa_Good;
+    }
     // refresh the current position
     update();
     // the returned status is always OpcUa_Good
@@ -257,8 +271,13 @@ UaStatus DIoLMotor::callStop (
 {
     // stopping is a serious business. Should be called immediately
     json resp;
-    UaStatus st = OpcUa_Good;
-    st = motor_stop(resp);
+    if (!check_motor_enabled()) {
+        resp["status"] = "OK";
+        resp["message"] = "Motor " + m_id + " is disabled, command ignored";
+        response = UaString(resp.dump().c_str());
+        return OpcUa_Good;
+    }
+    UaStatus st = motor_stop(resp);
 #ifdef DEBUG
     if (st != OpcUa_Good)
     {
@@ -273,8 +292,13 @@ UaStatus DIoLMotor::callReset (
 )
 {
   json resp;
-  UaStatus st = OpcUa_Good;
-  st = motor_clear_alarm(resp);
+  if (!check_motor_enabled()) {
+      resp["status"] = "OK";
+      resp["message"] = "Motor " + m_id + " is disabled, command ignored";
+      response = UaString(resp.dump().c_str());
+      return OpcUa_Good;
+  }
+  UaStatus st = motor_clear_alarm(resp);
 #ifdef DEBUG
   if (st != OpcUa_Good)
   {
@@ -290,8 +314,13 @@ UaStatus DIoLMotor::callClear_alarm (
 )
 {
     json resp;
-    UaStatus st = OpcUa_Good;
-    st = motor_clear_alarm(resp);
+    if (!check_motor_enabled()) {
+        resp["status"] = "OK";
+        resp["message"] = "Motor " + m_id + " is disabled, command ignored";
+        response = UaString(resp.dump().c_str());
+        return OpcUa_Good;
+    }
+    UaStatus st = motor_clear_alarm(resp);
 #ifdef DEBUG
     if (st != OpcUa_Good)
     {
@@ -452,6 +481,14 @@ UaStatus DIoLMotor::callClear_alarm (
   // each method is responsible for updating its own status
   void DIoLMotor::update()
   {
+    // If motor is disabled, set state and skip monitoring
+    if (!m_enabled) {
+        OpcUa_StatusCode status = OpcUa_Good;
+        UaString disabled_state("disabled");
+        getAddressSpaceLink()->setState(disabled_state, OpcUa_Good);
+        getAddressSpaceLink()->setEnabled(m_enabled, OpcUa_Good);
+        return;
+    }
     // method should be periodically poking the motors for their status
     OpcUa_StatusCode status= OpcUa_Good;
     // this should no longer be called
@@ -478,6 +515,7 @@ UaStatus DIoLMotor::callClear_alarm (
     //getAddressSpaceLink()->setAcceleration(m_acceleration, OpcUa_Good);
     UaString ss(m_status_map.at(m_status).c_str());
     getAddressSpaceLink()->setState(ss,OpcUa_Good);
+    getAddressSpaceLink()->setEnabled(m_enabled, OpcUa_Good);
 
     // now the getters -- for now allow all to be updated, but eventually set limitations
     // these getters are for variables with "regular" writing policy. We can change that
@@ -523,8 +561,19 @@ UaStatus DIoLMotor::callClear_alarm (
 
     return m_is_moving;
   }
+  bool DIoLMotor::is_enabled()
+  {
+    return m_enabled;
+  }
+
   bool DIoLMotor::is_ready()
   {
+    // Check if motor is enabled first
+    if (!m_enabled) 
+    {
+      // a disabled motor is always ready
+      return true;
+    }
     // actually, this should check a few more things:
     // 1. is moving (not ready)
     // 2. all parameters have reasonable values
@@ -1127,6 +1176,22 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["statuscode"] = OpcUa_BadInvalidArgument;
       return OpcUa_BadInvalidArgument;
     }
+    // the first check is whether the motor is enabled
+    m_enabled = conf.at("enabled").get<bool>();
+    if (!m_enabled)
+    {
+      msg.clear();msg.str("");
+      msg << log_w(lbl.c_str(),"Motor is disabled. Skipping configuration.");
+#ifdef DEBUG
+      LOG(Log::WRN) << msg.str();
+#endif
+      resp["status"] = "OK";
+      resp["messages"].push_back(msg.str());
+      resp["statuscode"] = OpcUa_Good;
+      update_status(sDisabled);
+      return OpcUa_Good;;
+    }
+
     // if the ids match, lets set the parameters
     // special iterator member functions for objects
     // -- not that it matters in this specific case, but lets first map the registers
@@ -1223,10 +1288,14 @@ UaStatus DIoLMotor::callClear_alarm (
       m_position_setpoint = m_position_motor;
     }
     //
-    // start the monitors
-    motor_position_monitor();
-    motor_stats_monitor();
-    cib_movement_monitor();
+    // start the monitors only if motor is enabled
+    if (m_enabled) {
+        motor_position_monitor();
+        motor_stats_monitor();
+        cib_movement_monitor();
+    } else {
+        LOG(Log::INF) << "Motor " << m_id << " is disabled. Monitors will not start.";
+    }
     //
     return st;
   }
@@ -1518,6 +1587,11 @@ UaStatus DIoLMotor::callClear_alarm (
     // if we reached this point, all is good, so lets start the CIB position monitoring service
     return OpcUa_Good;
   }
+  bool DIoLMotor::check_motor_enabled()
+  {
+    return m_enabled;
+  }
+
   UaStatus DIoLMotor::check_motor_ready(json &resp)
   {
     const std::string lbl = "check_motor_ready";

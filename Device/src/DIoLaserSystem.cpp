@@ -187,6 +187,9 @@ UaStatus DIoLaserSystem::callCheck_ready (
     }
     for (Device::DIoLMotor* lmotor : iolmotors ())
     {
+      // Skip disabled motors when checking readiness
+      if (!lmotor->check_motor_enabled())
+        continue;
       rdy = lmotor->is_ready();
       if (!rdy)
       {
@@ -1057,9 +1060,12 @@ UaStatus DIoLaserSystem::callClear_error (
         }
         return st;
       }
-      // next stop the motors
+      // next stop the motors (skip disabled motors)
       for (Device::DIoLMotor* lmotor : iolmotors ())
       {
+        // Skip disabled motors
+        if (!lmotor->check_motor_enabled())
+          continue;
         st = lmotor->motor_stop(resp);
         if (st != OpcUa_Good)
         {
