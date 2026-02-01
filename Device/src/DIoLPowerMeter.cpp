@@ -31,6 +31,7 @@
 #include <utilities.hh>
 #include <sstream>
 
+#include <cib_time.h>
 
 #include <chrono>
 #include <thread>
@@ -48,6 +49,7 @@ using json = nlohmann::json;
 #define log_i(m,s) log_msg("INFO",m,s)
 
 using std::ostringstream;
+using cib_time = cib::util::cib_time;
 
 namespace Device
 {
@@ -94,7 +96,7 @@ DIoLPowerMeter::DIoLPowerMeter (
         ,m_do_measurements(false)
         ,m_serial_number("")
         ,m_serial_busy(false)
-        ,m_measurement_interval(200)
+        ,m_measurement_interval(100)
 {
     m_name = config.id();
     m_serial_number = "";
@@ -565,7 +567,8 @@ UaStatus DIoLPowerMeter::callTerminate (
   {
     if (m_status != sOperating)
     {
-      getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable);
+      m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
+      getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable, m_now);
     }
     else
     {
@@ -577,7 +580,8 @@ UaStatus DIoLPowerMeter::callTerminate (
         success = m_pm->read_energy(m_energy_reading);
         if (success)
         {
-          getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good);
+          m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
+          getAddressSpaceLink() -> setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
         }
       }
       catch(std::exception &e)
@@ -593,9 +597,11 @@ UaStatus DIoLPowerMeter::callTerminate (
 
   void DIoLPowerMeter::refresh_average_reading()
   {
+    m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
+
     if (m_status != sOperating)
     {
-      getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_BadDataUnavailable);
+      getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_BadDataUnavailable, m_now);
     }
     else
     {
@@ -607,7 +613,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         success = m_pm->read_average(m_average_reading);
         if (success)
         {
-          getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_Good);
+          getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_Good, m_now);
         }
       }
       catch(std::exception &e)

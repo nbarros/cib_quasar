@@ -33,6 +33,9 @@
 #include <chrono>
 #include <deque>
 
+#include <cib_time.h>
+#include <cib_mem.h>
+
 #define log_msg(s,met,dev,msg) "[" << s << "]::" << dev << ":" << met << " : " << msg
 
 #define log_e(m,s) log_msg("ERROR","iols",m,s)
@@ -87,8 +90,8 @@ DIoLaserSystem::DIoLaserSystem (
     // m_state_map.insert({sOperating,"operating"});
     m_state_map.insert({sError,"sError"});
 
-
-      
+    // initialize the timestamp reader
+    cib::util::cib_time::initialize(GPIO_TSTAMP_MEM_LOW);
 }
 
 /* sample dtr */
@@ -2692,96 +2695,6 @@ UaStatus DIoLaserSystem::move_to_pos(
   {
     // this is no longer needed
     return;
-    /**
-    * A few edges cases. 
-    *  - If all devices are offline, the system is offline
-    *  - If any device is in error, the system is in error
-    *  - If one device is offline and the others are in other states, the system is in error
-    *  
-    */
-    // // this is the one that actually dictates the state of the whole system
-    // Device::DIoLLaserUnit::Status sl = iollaserunit()->get_state();
-    // Device::DIoLAttenuator::Status sa =iolattenuator()->get_state();
-    // Device::DIoLPowerMeter::Status sp = iolpowermeter()->get_state();
-    // Device::DIoLCIB::Status sc = iolcib()->get_state();
-    // Device::DIoLMotor::Status sm = DIoLMotor::sReady;
-
-    // for (auto m: iolmotors())
-    // {
-    //   sm = Device::DIoLMotor::Status::sReady;
-    //   if (m->get_state() == DIoLMotor::sError)
-    //   {
-    //     update_state(sError);
-    //     return;
-    //   }
-    //   if (m->get_state() == DIoLMotor::sOffline)
-    //   {
-    //     sm = DIoLMotor::sOffline;
-    //   }
-    // }
-    // // now the logic
-    // // if any is in error, the system itself is in error
-    // if (sl == DIoLLaserUnit::sError)
-    // {
-    //   update_state(sError);
-    //   return;
-    // }
-    // if (sc == DIoLCIB::sError)
-    // {
-    //   update_state(sError);
-    //   return;
-    // }
-    // if (sa == DIoLAttenuator::sError)
-    // {
-    //   update_state(sError);
-    //   return;
-    // }
-
-    // // if all are offline the system is offline
-    // if ((sl == DIoLLaserUnit::sOffline) && (sc == DIoLCIB::sOffline) && (sa == DIoLAttenuator::sOffline) && (sp == DIoLPowerMeter::sOffline) && (sm == DIoLMotor::sOffline))
-    // {
-    //   update_state(sOffline);
-    //   return;
-    // }
-    // // the power meter is ignored specifically because it can be in operating state even if the laser is not
-    // else if ((sl == DIoLLaserUnit::sReady) && (sc == DIoLCIB::sReady) && (sa == DIoLAttenuator::sReady) && (sm == DIoLMotor::sReady))
-    // {
-    //   update_state(sReady);
-    //   return;
-    // }
-    // else // neither all are ready neither all are offline
-    // {
-    //   if ((sc == DIoLCIB::sReady) && (sa == DIoLAttenuator::sReady))
-    //   {
-    //     // in this case the state will depend on the laser
-    //     if (sl == DIoLLaserUnit::sWarmup)
-    //     {
-    //       update_state(sWarmup);
-    //       return;
-    //     }
-    //     else if (sl == DIoLLaserUnit::sLasing)
-    //     {
-    //       update_state(sOperating);
-    //       return;
-    //     }
-    //     else if (sl == DIoLLaserUnit::sPause)
-    //     {
-    //       update_state(sPause);
-    //       return;
-    //     }
-    //     else if (sl == DIoLLaserUnit::sStandby)
-    //     {
-    //       update_state(sStandby);
-    //       return;
-    //     }
-    //     else
-    //     {
-    //       // someone is not ready. Error state
-    //       update_state(sError);
-    //       return;
-    //     }
-    //   }
-    // }
   }
   bool DIoLaserSystem::process_move_arguments(const UaString &arguments, std::vector<int32_t> &target_pos, std::string &approach, json &response)
   {

@@ -1140,7 +1140,13 @@ UaStatus DIoLMotor::callClear_alarm (
     LOG(Log::INF) << "Updating spped of motor " << m_id << " to " << v ;
 #endif
     m_speed_setpoint = v;
-    UaStatus st = getAddressSpaceLink()->setSpeed(m_speed_setpoint,OpcUa_Good);
+    /* Accepts format
+    *"%Y-%m-%dT%H:%M:%S%ZP" * e.g.unix epoch : "1970-01-01T00:00:00Z" * e.g.open62541 epoch "1601-01-01T00:00:00Z"(i.e.windows epoch)UaDateTime now = UaDateTime::fromString()
+    */
+    // std::string ts = cib::util::format_timestamp(get_current_timestamp(),62500000);
+    // UaDateTime now = UaDateTime::fromString(ts.c_str()); 
+
+    UaStatus st = getAddressSpaceLink()->setSpeed(m_speed_setpoint, OpcUa_Good);
     return st;
   }
   //

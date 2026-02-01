@@ -182,6 +182,7 @@ private:
     std::atomic<bool> m_serial_busy;
     uint16_t m_measurement_interval;
     std::mutex m_serial_mutex;
+    UaDateTime m_now;
 };
 
 }

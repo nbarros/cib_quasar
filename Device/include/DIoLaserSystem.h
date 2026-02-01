@@ -175,7 +175,6 @@ private:
     json m_task_message_queue;
     std::map<size_t,size_t> m_map_motor_coordinates;
 
-
 };
 
 }
