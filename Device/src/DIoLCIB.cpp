@@ -83,16 +83,27 @@ namespace Device
             , m_prev_tot_sys(0)
             , m_prev_tot_idle(0)
             , m_total(0)
-            ,m_mmap_fd(0)
-            ,m_status(sOffline)
+            , m_mmap_fd(0)
+            , m_status(sOffline)
             {
     /* fill up constructor body here */
     m_id = id();
     // start by initializing the initial counters
     FILE* file = fopen("/proc/stat", "r");
-    int ret = fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
-    ret = fclose(file);
-    (void)ret; // this is just to suppress the compilation warning
+    if (file != nullptr)
+    {
+      int ret = fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
+      if (ret != 4)
+      {
+        LOG(Log::WRN) << log_w("constructor","Failed to parse /proc/stat, got only " << ret << " values");
+      }
+      ret = fclose(file);
+      (void)ret; // this is just to suppress the compilation warning
+    }
+    else
+    {
+      LOG(Log::WRN) << log_w("constructor","Failed to open /proc/stat for reading CPU load");
+    }
     // initialize the CIB memory maps
     UaStatus st = init_cib_mem();
     if (st != OpcUa_Good)
@@ -138,7 +149,10 @@ namespace Device
       UaString& response
   )
   {
-    return OpcUa_BadNotImplemented;
+    json resp;
+    UaStatus st = reset_pdts(resp);
+    response = UaString(resp.dump().c_str());
+    return st;
   }
   UaStatus DIoLCIB::callSet_trigger_pulser (
       OpcUa_Boolean enabled,
@@ -200,11 +214,11 @@ namespace Device
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_PDTS_MEM_LOW,GPIO_PDTS_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map PDTS CIB memory region. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR) << "\n\nDIoLCIB::init_cib_mem : Failed to map PDTS CIB memory region. This is going to fail spectacularly!!!\n\n";
     }
     m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
 #ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : PDTS_REG mapped to "
+    LOG(Log::INF) << "\n\nDIoLCIB::init_cib_mem : PDTS_REG mapped to "
         << std::hex << m_reg_map.at(PDTS_REG).vaddr << std::dec;
 #endif
     tmpreg.id= MISC_REG;
@@ -213,11 +227,11 @@ namespace Device
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MISC_MEM_LOW,GPIO_MISC_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map MISC CIB memory region. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR) << "\n\nDIoLCIB::init_cib_mem : Failed to map MISC CIB memory region. This is going to fail spectacularly!!!\n\n";
     }
     m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
 #ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : MISC_REG mapped to " << std::hex << m_reg_map.at(MISC_REG).vaddr << std::dec;
+    LOG(Log::INF) << "\n\nDIoLCIB::init_cib_mem : MISC_REG mapped to " << std::hex << m_reg_map.at(MISC_REG).vaddr << std::dec;
 #endif
     tmpreg.id= ALIGN_REG;
     tmpreg.paddr = GPIO_ALIGN_MEM_LOW;
@@ -225,11 +239,11 @@ namespace Device
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR) << "\n\nDIoLCIB::init_cib_mem : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
     }
     m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
 #ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : ALIGN_REG mapped to " << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
+    LOG(Log::INF) << "\n\nDIoLCIB::init_cib_mem : ALIGN_REG mapped to " << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
 #endif
 
     //#endif
@@ -237,7 +251,7 @@ namespace Device
     if (m_reg_map.size() != 3)
     {
       // sError is a special case of status, 
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regions. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR) << "\n\nDIoLCIB::init_cib_mem : Failed to map one or more CIB memory regions. This is going to fail spectacularly!!!\n\n";
       update_status(sError);
     }
     return OpcUa_Good;
@@ -258,9 +272,23 @@ namespace Device
   {
     unsigned long long tot_usr, tot_usr_low, tot_sys, tot_idle;
     FILE* file = fopen("/proc/stat", "r");
+    if (file == nullptr)
+    {
+      LOG(Log::WRN) << log_w("poll_cpu","Failed to open /proc/stat for reading CPU load");
+      m_cpu_load = -1.0;
+      getAddressSpaceLink()->setCpu_load(m_cpu_load, OpcUa_BadDataUnavailable);
+      return;
+    }
     int ret = fscanf(file, "cpu %llu %llu %llu %llu", &tot_usr, &tot_usr_low,&tot_sys, &tot_idle);
     ret = fclose(file);
     (void)ret; // this is just to suppress the compilation warning
+    if (ret != 4)
+    {
+      LOG(Log::WRN) << log_w("poll_cpu","Failed to parse /proc/stat, got only " << ret << " values");
+      m_cpu_load = -1.0;
+      getAddressSpaceLink()->setCpu_load(m_cpu_load, OpcUa_BadDataUnavailable);
+      return;
+    }
 
     if ((tot_usr < m_prev_tot_usr) ||
         (tot_usr_low < m_prev_tot_usr_low) ||
@@ -423,9 +451,10 @@ namespace Device
       jresp["messages"].push_back(msg.str());
       jresp["statuscode"] = OpcUa_Bad;
     }
-    // why was this commented?
+
     if (!jresp.contains("status"))
     {
+      // Initialize status only on successful completion (no exception, no explicit error setting)
       jresp["status"] = "SUCCESS";
       jresp["statuscode"] = OpcUa_Good;
     }
@@ -597,16 +626,57 @@ namespace Device
       {
         for (auto jt = reginfo.begin(); jt != reginfo.end(); ++jt)
         {
-          if (jt.value().at(0) == -1)
+          // Validate that each register entry is an array with required elements
+          if (!jt.value().is_array())
+          {
+            msg.clear(); msg.str("");
+            msg << log_e(lbl.c_str(),"Register ") << jt.key() << " is not an array";
+            resp["messages"].push_back(msg.str());
+            return OpcUa_BadInvalidArgument;
+          }
+          if (jt.value().size() < 4)
+          {
+            msg.clear(); msg.str("");
+            msg << log_e(lbl.c_str(),"Register ") << jt.key() << " has insufficient elements (need 4)";
+            resp["messages"].push_back(msg.str());
+            return OpcUa_BadInvalidArgument;
+          }
+          
+          // Get and validate the register ID
+          int reg_id = jt.value().at(0);
+          if (reg_id == -1)
           {
             // disabled register
             // skip
             continue;
           }
+          
+          // Validate register ID is within valid range
+          if (reg_id < 0 || reg_id >= static_cast<int>(m_reg_map.size()))
+          {
+            msg.clear(); msg.str("");
+            msg << log_e(lbl.c_str(),"Register ") << jt.key() << " has invalid register ID " << reg_id;
+            resp["messages"].push_back(msg.str());
+            return OpcUa_BadInvalidArgument;
+          }
+          
+          // Validate register ID exists in map
+          try
+          {
+            (void)m_reg_map.at(reg_id);  // Check existence without throwing
+          }
+          catch (const std::out_of_range&)
+          {
+            msg.clear(); msg.str("");
+            msg << log_e(lbl.c_str(),"Register ") << jt.key() << " references non-existent register ID " << reg_id;
+            resp["messages"].push_back(msg.str());
+            return OpcUa_BadInvalidArgument;
+          }
+          
           conf_param_t tmp;
           // for these, nothing is optional
           // offset corresponds to the
-          tmp.reg = m_reg_map.at(jt.value().at(0));
+          tmp.reg = m_reg_map.at(reg_id);
           tmp.offset = jt.value().at(1);
           tmp.bit_high = jt.value().at(2);
           tmp.bit_low = jt.value().at(3);
@@ -733,10 +803,70 @@ namespace Device
         return st;
       }
     }
-    // -- now that registers are mapped, we can process the configuration
+    // -- Validation pass: ensure all required registers exist before writing anything
     for (json::iterator it = conf.begin(); it != conf.end(); ++it)
     {
-      LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
+      if (it.key() == "mmap")
+      {
+        continue;  // mmap already processed
+      }
+      if (it.key() == "dac_threshold")
+      {
+        // dac_threshold doesn't require a register lookup in set_dac_threshold
+        continue;
+      }
+      if (it.key() == "alignment_laser")
+      {
+        json sobj = it.value();
+        // Validate all required alignment registers exist
+        if (m_regs.find("align_width") == m_regs.end())
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Configuration validation failed: required register align_width not found");
+          resp["status"] = "ERROR";
+          resp["messages"].push_back(msg.str());
+          resp["statuscode"] = OpcUa_BadInvalidArgument;
+          return OpcUa_BadInvalidArgument;
+        }
+        if (m_regs.find("align_period") == m_regs.end())
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Configuration validation failed: required register align_period not found");
+          resp["status"] = "ERROR";
+          resp["messages"].push_back(msg.str());
+          resp["statuscode"] = OpcUa_BadInvalidArgument;
+          return OpcUa_BadInvalidArgument;
+        }
+        if (m_regs.find("align_state") == m_regs.end())
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Configuration validation failed: required register align_state not found");
+          resp["status"] = "ERROR";
+          resp["messages"].push_back(msg.str());
+          resp["statuscode"] = OpcUa_BadInvalidArgument;
+          return OpcUa_BadInvalidArgument;
+        }
+      }
+      if (it.key() == "lbls_width_clks")
+      {
+        // Validate lbls_width register exists
+        if (m_regs.find("lbls_width") == m_regs.end())
+        {
+          msg.clear(); msg.str("");
+          msg << log_e(lbl.c_str(),"Configuration validation failed: required register lbls_width not found");
+          resp["status"] = "ERROR";
+          resp["messages"].push_back(msg.str());
+          resp["statuscode"] = OpcUa_BadInvalidArgument;
+          return OpcUa_BadInvalidArgument;
+        }
+      }
+    }
+    
+    // -- All validation passed. Now apply the configuration (write pass)
+    for (json::iterator it = conf.begin(); it != conf.end(); ++it)
+    {
+      LOG(Log::INF) << "Processing config key: " << it.key();
+      // Use contains() for safer dispatch instead of string comparison
       if (it.key() == "dac_threshold")
       {
         //
@@ -765,15 +895,6 @@ namespace Device
 #endif
           set_cib_align_width(m_regs.at("align_width"),width);
         }
-        else
-        {
-          msg.clear(); msg.str("");
-          msg << log_e(lbl.c_str(),"Failed to find register in configuration fragment : align_width");
-          resp["status"]= "ERROR";
-          resp["messages"].push_back(msg.str());
-          resp["statuscode"]= OpcUa_BadInvalidArgument;
-          return OpcUa_BadInvalidArgument;
-        }
         period = sobj.at("period").get<uint32_t>();
         if (m_regs.find("align_period") != m_regs.end())
         {
@@ -782,15 +903,6 @@ namespace Device
 #endif
           set_cib_align_period(m_regs.at("align_period"),period);
         }
-        else
-        {
-          msg.clear(); msg.str("");
-          msg << log_e(lbl.c_str(),"Failed to find register in configuration fragment : align_period");
-          resp["status"]= "ERROR";
-          resp["messages"].push_back(msg.str());
-          resp["statuscode"]= OpcUa_BadInvalidArgument;
-          return OpcUa_BadInvalidArgument;
-        }
         bool align_enabled = sobj.at("enabled").get<bool>();
         if (m_regs.find("align_state") != m_regs.end())
         {
@@ -798,15 +910,6 @@ namespace Device
           LOG(Log::INF) << log_i(lbl.c_str(), "Setting align state to ") << align_enabled;
 #endif
           set_cib_align_state(m_regs.at("align_state"),align_enabled);
-        }
-        else
-        {
-          msg.clear(); msg.str("");
-          msg << log_e(lbl.c_str(),"Failed to find register in configuration fragment : align_state");
-          resp["status"]= "ERROR";
-          resp["messages"].push_back(msg.str());
-          resp["statuscode"]= OpcUa_BadInvalidArgument;
-          return OpcUa_BadInvalidArgument;
         }
       }
       if (it.key() == "lbls_width_clks")
@@ -1092,4 +1195,5 @@ namespace Device
     UaString ss(m_status_map.at(m_status).c_str());
     getAddressSpaceLink()->setState(ss,OpcUa_Good);
   }
-}
+
+} /* namespace Device */

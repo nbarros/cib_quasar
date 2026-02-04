@@ -185,7 +185,7 @@ UaStatus DIoLAttenuator::callConfigure_attenuator (
     {
       msg.clear(); msg.str("");
       msg << log_i("set_config","Configuration done!");
-      resp["status"] = "OK";
+      resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -215,7 +215,7 @@ UaStatus DIoLAttenuator::callSet_transmission (
     {
       msg.clear(); msg.str("");
       msg << log_i("set_transmission", "Operation successful!");
-      resp["status"] = "OK";
+      resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -247,7 +247,7 @@ UaStatus DIoLAttenuator::callSet_position (
     msg.clear();
     msg.str("");
     msg << log_i("set_position", "Operation successful!");
-    resp["status"] = "OK";
+    resp["status"] = "SUCCESS";
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
   }
@@ -277,7 +277,7 @@ UaStatus DIoLAttenuator::callSet_conn_details (
     {
       msg.clear(); msg.str("");
       msg << log_i("set_connection","Operation successful!");
-      resp["status"] = "OK";
+      resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -304,7 +304,7 @@ UaStatus DIoLAttenuator::callStop (
     {
       msg.clear(); msg.str("");
       msg << log_i("stop","Operation successful!");
-      resp["status"] = "OK";
+      resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -332,7 +332,7 @@ UaStatus DIoLAttenuator::callSet_resolution (
     {
       msg.clear(); msg.str("");
       msg << log_i("set_resolution","Operation successful!");
-      resp["status"] = "OK";
+      resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -362,7 +362,7 @@ UaStatus DIoLAttenuator::callSet_current (
     {
       msg.clear(); msg.str("");
       msg << log_i("set_current","Operation successful!");
-      resp["status"] = "OK";
+      resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -390,7 +390,7 @@ UaStatus DIoLAttenuator::callSet_acceleration (
     {
       msg.clear(); msg.str("");
       msg << log_i("set_acceleration","Operation successful!");
-      resp["status"] = "OK";
+      resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -418,7 +418,7 @@ UaStatus DIoLAttenuator::callSet_deceleration (
     {
       msg.clear(); msg.str("");
       msg << log_i("set_deceleration","Operation successful!");
-      resp["status"] = "OK";
+      resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -446,7 +446,7 @@ UaStatus DIoLAttenuator::callSet_max_speed (
     {
       msg.clear(); msg.str("");
       msg << log_i("set_speed","Operation successful!");
-      resp["status"] = "OK";
+      resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -483,7 +483,7 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
   {
     msg.clear(); msg.str("");
     msg << log_i("set_cal_params","Operation successful!");
-    resp["status"] = "OK";
+    resp["status"] = "SUCCESS";
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
   }
@@ -878,7 +878,7 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
 
       for (json::iterator it = config.begin(); it != config.end(); ++it)
       {
-        LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
+        LOG(Log::DBG) << "Processing config key: " << it.key();
         if (it.key() == "port")
         {
           // already processed
@@ -1763,7 +1763,7 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
     {
       msg.clear(); msg.str("");
       msg << log_i("terminate","System terminated");
-      resp["status"] = "OK";
+      resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["status_code"] = OpcUa_Good;
       return OpcUa_Good;

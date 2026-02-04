@@ -2906,7 +2906,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 #endif
       for (json::iterator it = conf.begin(); it != conf.end(); ++it)
       {
-        LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
+        LOG(Log::DBG) << "Processing config key: " << it.key();
         if (it.key() == "repetition_rate")
         {
 #ifdef DEBUG
@@ -3097,7 +3097,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_i(lbl.c_str(),"Laser system configured");
-      resp["status"] = "OK";
+      resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
       return OpcUa_Good;
@@ -3164,16 +3164,57 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         for (auto jt = reginfo.begin(); jt != reginfo.end(); ++jt)
         {
-          if (jt.value().at(0) == -1)
+          // Validate that each register entry is an array with required elements
+          if (!jt.value().is_array())
+          {
+            msg.clear(); msg.str("");
+            msg << log_e(lbl.c_str(),"Register ") << jt.key() << " is not an array";
+            resp["messages"].push_back(msg.str());
+            return OpcUa_BadInvalidArgument;
+          }
+          if (jt.value().size() < 4)
+          {
+            msg.clear(); msg.str("");
+            msg << log_e(lbl.c_str(),"Register ") << jt.key() << " has insufficient elements (need 4)";
+            resp["messages"].push_back(msg.str());
+            return OpcUa_BadInvalidArgument;
+          }
+          
+          // Get and validate the register ID
+          int reg_id = jt.value().at(0);
+          if (reg_id == -1)
           {
             // disabled register
             // skip
             continue;
           }
+          
+          // Validate register ID is within valid range
+          if (reg_id < 0 || reg_id >= static_cast<int>(m_reg_map.size()))
+          {
+            msg.clear(); msg.str("");
+            msg << log_e(lbl.c_str(),"Register ") << jt.key() << " has invalid register ID " << reg_id;
+            resp["messages"].push_back(msg.str());
+            return OpcUa_BadInvalidArgument;
+          }
+          
+          // Validate register ID exists in map
+          try
+          {
+            (void)m_reg_map.at(reg_id);  // Check existence without throwing
+          }
+          catch (const std::out_of_range&)
+          {
+            msg.clear(); msg.str("");
+            msg << log_e(lbl.c_str(),"Register ") << jt.key() << " references non-existent register ID " << reg_id;
+            resp["messages"].push_back(msg.str());
+            return OpcUa_BadInvalidArgument;
+          }
+          
           laser_regs_t tmp;
           // for these, nothing is optional
           // offset corresponds to the
-          tmp.reg_id = jt.value().at(0);
+          tmp.reg_id = reg_id;
           tmp.offset = jt.value().at(1);
           tmp.bit_high = jt.value().at(2);
           tmp.bit_low = jt.value().at(3);
