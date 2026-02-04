@@ -3,11 +3,19 @@
  *
  *  Created on: Mar 15, 2024
  *      Author: Nuno Barros
+ *
+ *  Note: Register memory address definitions are now included from cib_utils/common/cib_mem.h
+ *  to maintain consistency with the parent project and avoid duplication.
+ *  Local register indices remain for organizational purposes.
  */
 
 #ifndef DEVICE_INCLUDE_CIB_REGISTERS_H_
 #define DEVICE_INCLUDE_CIB_REGISTERS_H_
 
+// Include register memory definitions from parent cib_utils project
+#include <cib_mem.h>
+
+// Register indices (used for internal organization)
 #define PDTS_REG 0
 #define I_0_REG 1
 #define I_1_REG 2
@@ -20,60 +28,6 @@
 #define TRIGGER_REG 9
 #define TSTAMP_REG 10
 
-
-// #define CIB_CONFIG_ADDR_BASE      0x00A0040000
-// #define CIB_CONFIG_ADDR_HIGH      0x00A004FFFF
-
-// #define CIB_CTRL_GPIO_ADDR_BASE   0x00A0010000
-// #define CIB_CTRL_GPIO_ADDR_HIGH   0x00A001FFFF
-
-// #define CIB_MON1_GPIO_ADDR_BASE   0x00A0020000
-// #define CIB_MON1_GPIO_ADDR_HIGH   0x00A002FFFF
-
-// #define CIB_MON2_GPIO_ADDR_BASE   0x00A0030000
-// #define CIB_MON2_GPIO_ADDR_HIGH   0x00A003FFFF
-
-#define GPIO_PDTS_MEM_LOW         0xA0010000
-#define GPIO_PDTS_MEM_HIGH        0xA001FFFF
-
-#define GPIO_I_0_MEM_LOW          0xA0020000
-#define GPIO_I_0_MEM_HIGH         0xA002FFFF
-
-#define GPIO_I_1_MEM_LOW          0xA0030000
-#define GPIO_I_1_MEM_HIGH         0xA003FFFF
-
-#define GPIO_ALIGN_MEM_LOW        0x00A0040000
-#define GPIO_ALIGN_MEM_HIGH       0x00A004FFFF
-
-#define GPIO_LASER_MEM_LOW        0xA0060000
-#define GPIO_LASER_MEM_HIGH       0xA006FFFF
-
-#define GPIO_MISC_MEM_LOW         0x00A0080000
-#define GPIO_MISC_MEM_HIGH        0x00A008FFFF
-
-#define CIB_GPIO_MOTOR_1_MEM_LOW  0x00A0090000
-#define CIB_GPIO_MOTOR_1_MEM_HIGH 0x00A0090FFF
-
-#define CIB_GPIO_MOTOR_2_MEM_LOW  0x00A00A0000
-#define CIB_GPIO_MOTOR_2_MEM_HIGH 0x00A00A0FFF
-
-#define CIB_GPIO_MOTOR_3_MEM_LOW  0x00A00B0000
-#define CIB_GPIO_MOTOR_3_MEM_HIGH 0x00A00B0FFF
-
-#define CIB_GPIO_TRIGGER_MEM_LOW  0x00A00C0000
-#define CIB_GPIO_TRIGGER_MEM_HIGH 0x00A00C0FFF
-
-#define CIB_GPIO_TSTAMP_MEM_LOW   0x00A00D0000
-#define CIB_GPIO_TSTAMP_MEM_HIGH  0x00A00D0FFF
-
-
-// GPIO offsets
-#define CIB_GPIO_OFFSET_CH0 0x0
-#define CIB_GPIO_OFFSET_CH1 0x8
-
-
-// config offsets
-#define CIB_CONFIG_NUM_REGS 16
-
+// GPIO channel offsets are now defined in cib_mem.h as GPIO_CH_OFFSET
 
 #endif /* DEVICE_INCLUDE_CIB_REGISTERS_H_ */

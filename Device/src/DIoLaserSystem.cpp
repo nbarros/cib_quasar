@@ -1353,6 +1353,11 @@ UaStatus DIoLaserSystem::callClear_error (
       int n_moving_motors = 0;
       for (size_t i = 0; i < spos.size(); ++i)
       {
+        Device::DIoLMotor* lmotor = iolmotors().at(m_map_motor_coordinates.at(i));
+        if (!lmotor->check_motor_enabled())
+        {
+          continue;
+        }
         if (spos.at(i) != lpos.at(i))
         {
           n_moving_motors++;
@@ -1644,6 +1649,11 @@ UaStatus DIoLaserSystem::callClear_error (
     for (std::vector<OpcUa_Int32>::size_type idx = 0; idx < position.size(); idx++)
     {
       Device::DIoLMotor* lmotor = iolmotors().at(m_map_motor_coordinates.at(idx));
+      if (!lmotor->check_motor_enabled())
+      {
+        LOG(Log::DBG) << log_i("move_motor","Skipping disabled motor: ") << lmotor->get_id();
+        continue;
+      }
       st = lmotor->move_wrapper(position.at(idx),resp);
       if (st != OpcUa_Good)
       {
@@ -2242,6 +2252,11 @@ UaStatus DIoLaserSystem::callClear_error (
     {
       // get the motor that is responsible for this coordinate
       Device::DIoLMotor *lmotor = iolmotors().at(m_map_motor_coordinates.at(idx));
+      if (!lmotor->check_motor_enabled())
+      {
+        LOG(Log::DBG) << log_i(lbl.c_str(), "Skipping disabled motor: ") << lmotor->get_id();
+        continue;
+      }
       // get its current position
       int32_t c_pos;
       st = lmotor->get_position_motor(c_pos, resp);
@@ -3053,6 +3068,10 @@ UaStatus DIoLaserSystem::move_to_pos(
   {
     for (Device::DIoLMotor *lmotor : iolmotors())
     {
+      if (!lmotor->check_motor_enabled())
+      {
+        continue;
+      }
       wait_for_motor(lmotor, target.at(lmotor->get_coordinate_index()));
     }
   }
@@ -3084,7 +3103,11 @@ UaStatus DIoLaserSystem::move_to_pos(
         m_task_message_queue["statuscode"] = OpcUa_Good;
       }
     }
-    m_task_message_queue["messages"].insert(m_task_message_queue["messages"].end(), resp.at("messages").begin(), resp.at("messages").end());
+    m_task_message_queue["messages"].insert(
+      m_task_message_queue["messages"].end(),
+      resp.at("messages").begin(),
+      resp.at("messages").end()
+    );
   }
   UaStatus DIoLaserSystem::validate_grid_parameters(const json &plan, json &resp)
   {
@@ -3172,6 +3195,19 @@ UaStatus DIoLaserSystem::move_to_pos(
     {
       resp["messages"].push_back("Invalid 'scan_axis' value. Expected a value less than " + std::to_string(iolmotors().size()));
       return OpcUa_BadInvalidArgument;
+    }
+    else
+    {
+      auto scan_axis = plan["scan_axis"].get<uint32_t>();
+      if (m_map_motor_coordinates.find(scan_axis) != m_map_motor_coordinates.end())
+      {
+        Device::DIoLMotor* lmotor = iolmotors().at(m_map_motor_coordinates.at(scan_axis));
+        if (!lmotor->check_motor_enabled())
+        {
+          resp["messages"].push_back("Invalid 'scan_axis' value. Motor is disabled.");
+          return OpcUa_BadInvalidState;
+        }
+      }
     }
 
     resp["messages"].push_back("Grid parameters validated successfully.");
