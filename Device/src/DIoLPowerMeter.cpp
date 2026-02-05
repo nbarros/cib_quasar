@@ -583,16 +583,17 @@ UaStatus DIoLPowerMeter::callTerminate (
         // Guard against nullptr access during shutdown
         if (m_pm != nullptr && !m_pause_measurements)
         {
-          LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Querying for energy.";
+          LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Querying for energy. " << m_pm;
 
           success = m_pm->read_energy(m_energy_reading);
           if (success)
           {
             LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Calculating timestamp.";
-            m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
+            // m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
             LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Refreshing.";
-            getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
+            // getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
           }
+          LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Done with the measurement.";
         }
       }
       catch(std::exception &e)
@@ -1944,8 +1945,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       const std::lock_guard<std::mutex> lock(m_serial_mutex);
       LOG(Log::INF) << log_i(label.c_str()," ") << "Setting wavelength to " << lambda;
-      //m_pm->wavelength(lambda, success);
-      success = true;
+      m_pm->wavelength(lambda, success);
     }
     catch(serial::PortNotOpenedException &e)
     {
