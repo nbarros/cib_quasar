@@ -1792,12 +1792,14 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       // disable qswitch
       disable_qswitch();
+      // NFB: NP02 temp fix
+      // there seems to be an issue with the laser shutter on NP02, so the standby no longer closes the internal shutter
       // close the shutter
-      close_laser_shutter(resp);
+      // close_laser_shutter(resp);
+
       // this was the agreement with David
       close_ext_shutter();
       // if the external shutter is closed, open it
-      //force_ext_shutter(ShutterState::sClose,resp);
       // if we are in sReady, sPause and sLasing, we can move to standby
       if (m_part_state.state.fire_enable)
       {
