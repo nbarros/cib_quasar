@@ -568,6 +568,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     if (m_status != sOperating)
     {
       m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
+      LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Device is not operating. Setting energy reading to unavailable.";
       getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable, m_now);
     }
     else
@@ -583,8 +584,10 @@ UaStatus DIoLPowerMeter::callTerminate (
           success = m_pm->read_energy(m_energy_reading);
           if (success)
           {
+            LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Calculating timestamp.";
             m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
-            getAddressSpaceLink() -> setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
+            LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Refreshing.";
+            getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
           }
         }
       }
@@ -1455,7 +1458,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     // if it reached this point, we should be good to go
     update_status(sOperating);
     LOG(Log::INF) << log_i(label.c_str(),"Starting reading with a time interval of ") << m_measurement_interval << " ms.";
-    
+
     start_readings();
     // this should just flip a variable
     return OpcUa_Good;
