@@ -1295,6 +1295,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       for (json::iterator it = conf.begin(); it != conf.end(); ++it)
       {
         LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         if (it.key() == "select_range")
         {
           st = set_range(it.value(),resp);
@@ -1309,6 +1310,8 @@ UaStatus DIoLPowerMeter::callTerminate (
           st = set_lambda(it.value(),resp);
           LOG(Log::INF) << "Setting wavelength in user space to " << m_wavelength << "\n";
           getAddressSpaceLink()->setWavelength(m_wavelength, st);
+          LOG(Log::INF) << "Done setting wavelength in user space to " << m_wavelength << "\n";
+
           if (st != OpcUa_Good)
           {
             return st;
@@ -1339,6 +1342,8 @@ UaStatus DIoLPowerMeter::callTerminate (
         }
       }
       update_status(sReady);
+      LOG(Log::INF) << log_i(label.c_str(),"System configured. Starting measurements.");
+
       // -- will start right away
       st = start_readings(resp);
       if (st != OpcUa_Good)
@@ -1402,6 +1407,8 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["statuscode"] = OpcUa_Good;
       return OpcUa_Good;
     }
+    LOG(Log::INF) << log_i(label.c_str(), "System fully configured.");
+
     return OpcUa_Good;
   }
   UaStatus DIoLPowerMeter::stop_readings(json &resp)
@@ -1447,6 +1454,8 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     // if it reached this point, we should be good to go
     update_status(sOperating);
+    LOG(Log::INF) << log_i(label.c_str(),"Starting reading with a time interval of ") << m_measurement_interval << " ms.";
+    
     start_readings();
     // this should just flip a variable
     return OpcUa_Good;
