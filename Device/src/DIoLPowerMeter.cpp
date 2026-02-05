@@ -1307,6 +1307,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         if (it.key() == "wavelength")
         {
           st = set_lambda(it.value(),resp);
+          LOG(Log::INF) << "Setting wavelength in user space to " << m_wavelength << "\n";
           getAddressSpaceLink()->setWavelength(m_wavelength, st);
           if (st != OpcUa_Good)
           {
