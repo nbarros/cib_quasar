@@ -690,7 +690,7 @@ namespace Device
           }
           
           // Validate register ID is within valid range
-          if (reg_id < 0 || reg_id >= static_cast<int>(m_reg_map.size()))
+          if (reg_id < 0 || m_reg_map.count(reg_id) == 0)
           {
             msg.clear(); msg.str("");
             msg << log_e(lbl.c_str(),"Register ") << jt.key() << " has invalid register ID " << reg_id;
