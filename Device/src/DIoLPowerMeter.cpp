@@ -578,7 +578,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       {
         const std::lock_guard<std::mutex> lock(m_serial_mutex);
         // Guard against nullptr access during shutdown
-        if (m_pm != nullptr)
+        if (m_pm != nullptr && !m_pause_measurements)
         {
           success = m_pm->read_energy(m_energy_reading);
           if (success)
@@ -881,9 +881,12 @@ UaStatus DIoLPowerMeter::callTerminate (
     // if the port does not start by '/'
     bool got_exception = false;
     ostringstream msg("");
-    const std::string label = "init";
-
+    const std::string label = "init";    
     UaStatus ret = OpcUa_Good;
+
+    msg << log_i(label.c_str(), "Entering init.");
+    LOG(Log::INF) << msg.str();
+
     if (m_status != sOffline)
     {
       msg.clear(); msg.str("");
@@ -1018,6 +1021,11 @@ UaStatus DIoLPowerMeter::callTerminate (
       update_status(sReady);
       if (start)
       {
+        msg.clear(); msg.str("");
+        msg << log_i(label.c_str(),"Initialization complete. Starting measurements.");
+        resp["messages"].push_back(msg.str());
+        LOG(Log::INF) << msg.str();
+        
         // activate the measurements
         start_readings(resp);
       }
