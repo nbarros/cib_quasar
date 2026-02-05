@@ -92,13 +92,39 @@ namespace Device
     FILE* file = fopen("/proc/stat", "r");
     if (file != nullptr)
     {
-      int ret = fscanf(file, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low,&m_prev_tot_sys, &m_prev_tot_idle);
-      if (ret != 4)
+      // Read the full first line to debug format issues
+      char buffer[256] = {0};
+      char* line_result = fgets(buffer, sizeof(buffer), file);
+      
+      if (line_result != nullptr)
       {
-        LOG(Log::WRN) << log_w("constructor","Failed to parse /proc/stat, got only " << ret << " values");
+        LOG(Log::DBG) << log_i("constructor","First line of /proc/stat: [" << buffer << "]");
+        
+        // Try to parse using sscanf instead (more reliable for this case)
+        int ret = sscanf(buffer, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low, &m_prev_tot_sys, &m_prev_tot_idle);
+        if (ret != 4)
+        {
+          LOG(Log::WRN) << log_w("constructor","Failed to parse /proc/stat line, got only " << ret << " values. Got: usr=" << m_prev_tot_usr << " usr_low=" << m_prev_tot_usr_low << " sys=" << m_prev_tot_sys << " idle=" << m_prev_tot_idle);
+          // Reset to zero values if parse failed
+          m_prev_tot_usr = 0;
+          m_prev_tot_usr_low = 0;
+          m_prev_tot_sys = 0;
+          m_prev_tot_idle = 0;
+        }
+        else
+        {
+          LOG(Log::DBG) << log_i("constructor","CPU counters initialized: usr=" << m_prev_tot_usr << " usr_low=" << m_prev_tot_usr_low << " sys=" << m_prev_tot_sys << " idle=" << m_prev_tot_idle);
+        }
       }
-      ret = fclose(file);
-      (void)ret; // this is just to suppress the compilation warning
+      else
+      {
+        LOG(Log::WRN) << log_w("constructor","Failed to read first line from /proc/stat");
+        m_prev_tot_usr = 0;
+        m_prev_tot_usr_low = 0;
+        m_prev_tot_sys = 0;
+        m_prev_tot_idle = 0;
+      }
+      fclose(file);
     }
     else
     {
@@ -279,12 +305,24 @@ namespace Device
       getAddressSpaceLink()->setCpu_load(m_cpu_load, OpcUa_BadDataUnavailable);
       return;
     }
-    int ret = fscanf(file, "cpu %llu %llu %llu %llu", &tot_usr, &tot_usr_low,&tot_sys, &tot_idle);
-    ret = fclose(file);
-    (void)ret; // this is just to suppress the compilation warning
+    
+    char buffer[256] = {0};
+    char* line_result = fgets(buffer, sizeof(buffer), file);
+    fclose(file);
+    
+    if (line_result == nullptr)
+    {
+      LOG(Log::WRN) << log_w("poll_cpu","Failed to read line from /proc/stat");
+      m_cpu_load = -1.0;
+      getAddressSpaceLink()->setCpu_load(m_cpu_load, OpcUa_BadDataUnavailable);
+      return;
+    }
+    
+    int ret = sscanf(buffer, "cpu %llu %llu %llu %llu", &tot_usr, &tot_usr_low, &tot_sys, &tot_idle);
+    
     if (ret != 4)
     {
-      LOG(Log::WRN) << log_w("poll_cpu","Failed to parse /proc/stat, got only " << ret << " values");
+      LOG(Log::DBG) << log_w("poll_cpu","Failed to parse /proc/stat, got only " << ret << " values. Line was: [" << buffer << "]");
       m_cpu_load = -1.0;
       getAddressSpaceLink()->setCpu_load(m_cpu_load, OpcUa_BadDataUnavailable);
       return;
