@@ -567,6 +567,8 @@ UaStatus DIoLPowerMeter::callTerminate (
   {
     if (m_status != sOperating)
     {
+      LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Getting a timestamp for an unavailable reading.";
+
       m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
       LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Device is not operating. Setting energy reading to unavailable.";
       getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable, m_now);
@@ -581,6 +583,8 @@ UaStatus DIoLPowerMeter::callTerminate (
         // Guard against nullptr access during shutdown
         if (m_pm != nullptr && !m_pause_measurements)
         {
+          LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Querying for energy.";
+
           success = m_pm->read_energy(m_energy_reading);
           if (success)
           {
