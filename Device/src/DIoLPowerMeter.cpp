@@ -577,11 +577,15 @@ UaStatus DIoLPowerMeter::callTerminate (
       try
       {
         const std::lock_guard<std::mutex> lock(m_serial_mutex);
-        success = m_pm->read_energy(m_energy_reading);
-        if (success)
+        // Guard against nullptr access during shutdown
+        if (m_pm != nullptr)
         {
-          m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
-          getAddressSpaceLink() -> setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
+          success = m_pm->read_energy(m_energy_reading);
+          if (success)
+          {
+            m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
+            getAddressSpaceLink() -> setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
+          }
         }
       }
       catch(std::exception &e)
@@ -610,10 +614,14 @@ UaStatus DIoLPowerMeter::callTerminate (
       try
       {
         const std::lock_guard<std::mutex> lock(m_serial_mutex);
-        success = m_pm->read_average(m_average_reading);
-        if (success)
+        // Guard against nullptr access during shutdown
+        if (m_pm != nullptr)
         {
-          getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_Good, m_now);
+          success = m_pm->read_average(m_average_reading);
+          if (success)
+          {
+            getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_Good, m_now);
+          }
         }
       }
       catch(std::exception &e)
@@ -676,7 +684,11 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       {
         const std::lock_guard<std::mutex> lock(m_serial_mutex);
-        m_pm->head_info(type, sn, name, power, energy, freq);
+        // Guard against nullptr access during shutdown
+        if (m_pm != nullptr)
+        {
+          m_pm->head_info(type, sn, name, power, energy, freq);
+        }
       }
       // now build the map with the capabilities of the power meter
       m_measurement_modes.clear();
@@ -717,13 +729,17 @@ UaStatus DIoLPowerMeter::callTerminate (
     try
     {
       const std::lock_guard<std::mutex> lock(m_serial_mutex);
-      m_pm->query_user_threshold(current, min, max);
-      m_threshold_limits.first = min;
-      m_threshold_limits.second = max;
-      if (current != m_e_threshold)
+      // Guard against nullptr access during shutdown
+      if (m_pm != nullptr)
       {
-        LOG(Log::WRN) << "DIoLPowerMeter::refresh_threshold_limits : Mismatch between cached threshold and device reported ("
-            << m_e_threshold << " <> " << current << ")";
+        m_pm->query_user_threshold(current, min, max);
+        m_threshold_limits.first = min;
+        m_threshold_limits.second = max;
+        if (current != m_e_threshold)
+        {
+          LOG(Log::WRN) << "DIoLPowerMeter::refresh_threshold_limits : Mismatch between cached threshold and device reported ("
+              << m_e_threshold << " <> " << current << ")";
+        }
       }
     }
     catch(std::exception &e)
@@ -751,7 +767,11 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       {
         const std::lock_guard<std::mutex> lock(m_serial_mutex);
-        m_pm->get_all_ranges(v);
+        // Guard against nullptr access during shutdown
+        if (m_pm != nullptr)
+        {
+          m_pm->get_all_ranges(v);
+        }
       }
       if (v != m_sel_range)
       {
@@ -759,7 +779,11 @@ UaStatus DIoLPowerMeter::callTerminate (
       }
       {
         const std::lock_guard<std::mutex> lock(m_serial_mutex);
-        m_pm->get_range_map(m_ranges);
+        // Guard against nullptr access during shutdown
+        if (m_pm != nullptr)
+        {
+          m_pm->get_range_map(m_ranges);
+        }
       }
       // force address space update
       std::string s = util::serialize_map(m_ranges);
@@ -789,8 +813,12 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       {
         const std::lock_guard<std::mutex> lock(m_serial_mutex);
-        m_pm->pulse_length(0, a); // this guarantees that the map is filled
-        m_pm->get_pulse_map(m_pulse_widths);
+        // Guard against nullptr access during shutdown
+        if (m_pm != nullptr)
+        {
+          m_pm->pulse_length(0, a); // this guarantees that the map is filled
+          m_pm->get_pulse_map(m_pulse_widths);
+        }
       }
       // force address space update
       std::string s = util::serialize_map(m_pulse_widths);
@@ -821,8 +849,12 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       {
         const std::lock_guard<std::mutex> lock(m_serial_mutex);
-        m_pm->average_query(0, a); // this guarantees that the map is filled
-        m_pm->get_averages_map(m_ave_windows);
+        // Guard against nullptr access during shutdown
+        if (m_pm != nullptr)
+        {
+          m_pm->average_query(0, a); // this guarantees that the map is filled
+          m_pm->get_averages_map(m_ave_windows);
+        }
       }
       //
       // force address space update
