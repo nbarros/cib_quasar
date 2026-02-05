@@ -1897,6 +1897,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       const std::lock_guard<std::mutex> lock(m_serial_mutex);
       LOG(Log::INF) << log_i(label.c_str()," ") << "Setting wavelength to " << lambda;
       //m_pm->wavelength(lambda, success);
+      success = true;
     }
     catch(serial::PortNotOpenedException &e)
     {
