@@ -1953,6 +1953,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       return OpcUa_Bad;
     }
     m_wavelength = lambda;
+    LOG(Log::INF) << log_i(label.c_str()," ") << "Wavelength set to " << lambda;
     getAddressSpaceLink()->setWavelength(m_wavelength,OpcUa_Good);
     return OpcUa_Good;
   }
