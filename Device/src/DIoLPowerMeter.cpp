@@ -883,10 +883,6 @@ UaStatus DIoLPowerMeter::callTerminate (
     ostringstream msg("");
     const std::string label = "init";    
     UaStatus ret = OpcUa_Good;
-
-    msg << log_i(label.c_str(), "Entering init.");
-    LOG(Log::INF) << msg.str();
-
     if (m_status != sOffline)
     {
       msg.clear(); msg.str("");
@@ -1021,11 +1017,6 @@ UaStatus DIoLPowerMeter::callTerminate (
       update_status(sReady);
       if (start)
       {
-        msg.clear(); msg.str("");
-        msg << log_i(label.c_str(),"Initialization complete. Starting measurements.");
-        resp["messages"].push_back(msg.str());
-        LOG(Log::INF) << msg.str();
-        
         // activate the measurements
         start_readings(resp);
       }
