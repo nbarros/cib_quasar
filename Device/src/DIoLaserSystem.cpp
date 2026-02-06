@@ -232,6 +232,7 @@ UaStatus DIoLaserSystem::callStop (
     try
     {
       st = stop(resp);
+      LOG(Log::INF) << "Stop method returned with resp [" << resp.dump() << "]";
     }
     catch(json::exception &e)
     {
@@ -257,7 +258,9 @@ UaStatus DIoLaserSystem::callStop (
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
     }
-    //response = UaString(resp.dump().c_str());
+    // why was this commented out?
+    LOG(Log::INF) << "Returning [" << resp.dump() << "]";
+    response = UaString(resp.dump().c_str());
     return OpcUa_Good;
 }
 UaStatus DIoLaserSystem::callFire_at_position (
@@ -2508,6 +2511,12 @@ UaStatus DIoLaserSystem::move_to_pos(
     }
     for (Device::DIoLMotor* lmotor : iolmotors ())
     {
+      if (!lmotor->is_enabled())
+      {
+        // skip disabled motors
+        continue;
+      }
+
       lmotor->update();
     }
     for (Device::DIoLAttenuator* latt : iolattenuators ())
@@ -2534,6 +2543,10 @@ UaStatus DIoLaserSystem::move_to_pos(
     }
     for (Device::DIoLMotor* lmotor : iolmotors ())
     {
+      if (!lmotor->is_enabled())
+      {
+        continue;
+      }
       if (!lmotor->is_ready())
       {
         return false;

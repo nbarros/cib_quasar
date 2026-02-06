@@ -828,6 +828,12 @@ UaStatus DIoLMotor::callClear_alarm (
   {
     std::string request = "info";
     json reply, resp;
+    // if the motor is disabled, do nothing
+    if (!is_enabled())
+    {
+      return OpcUa_BadNoCommunication;
+    }
+    
     UaStatus st = query_motor(request,reply,resp);
     if (st != OpcUa_Good)
     {
