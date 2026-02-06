@@ -1372,6 +1372,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // at this stage, nothing else to be done.
     // just delete the device and go into offline mode
     // -- now just delete the device
+    m_is_terminating.store(true);  // Set flag to prevent new threads from accessing m_regs
+    {
+      const std::lock_guard<std::mutex> regs_lock(m_regs_mutex);
+      m_regs.clear();  // Clear register map
+    }
     const std::lock_guard<std::mutex> lock(m_serial_mutex);
     update_status(sOffline);
     if (m_laser)
@@ -1906,6 +1911,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     bool got_exception = false;
     const std::string lbl = "refresh_status";
     UaStatus st = OpcUa_Good;
+    // Check if terminating to avoid accessing freed resources
+    if (m_is_terminating.load())
+    {
+      return;
+    }
     const std::lock_guard<std::mutex> lock(m_serial_mutex);
     try
     {
@@ -3220,6 +3230,29 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
           tmp.offset = jt.value().at(1);
           tmp.bit_high = jt.value().at(2);
           tmp.bit_low = jt.value().at(3);
+          
+          // Validate bit range is sensible (high >= low, both < 32)
+          if (tmp.bit_high < tmp.bit_low || tmp.bit_high >= 32 || tmp.bit_low >= 32)
+          {
+            msg.clear(); msg.str("");
+            msg << log_e(lbl.c_str(),"Register ") << jt.key() << " has invalid bit range: ["
+                << tmp.bit_high << ":" << tmp.bit_low << "]";
+            resp["messages"].push_back(msg.str());
+            return OpcUa_BadInvalidArgument;
+          }
+          
+          // Validate that offset doesn't exceed mapped region size
+          uint32_t calculated_offset = tmp.offset * GPIO_CH_OFFSET;
+          uint32_t region_size = m_reg_map.at(tmp.reg_id).size;
+          if (calculated_offset > region_size)
+          {
+            msg.clear(); msg.str("");
+            msg << log_e(lbl.c_str(),"Register ") << jt.key() << " offset exceeds memory region size: "
+                << calculated_offset << " > " << region_size;
+            resp["messages"].push_back(msg.str());
+            return OpcUa_BadInvalidArgument;
+          }
+          
           tmp.addr = (m_reg_map.at(tmp.reg_id).vaddr+(tmp.offset*GPIO_CH_OFFSET));
           tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
           LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg_id
@@ -3256,6 +3289,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     const std::string lbl = "set_qswitch_delay";
     UaStatus st = OpcUa_Good;
     bool got_exception = false;
+    // Check if terminating to avoid accessing freed resources
+    if (m_is_terminating.load())
+    {
+      return OpcUa_BadInvalidState;
+    }
     // this method should *NEVER* be called before the connection to the CIB is established
     st = check_cib_mem(resp);
     if (st !=OpcUa_Good)
@@ -3287,19 +3325,26 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // this means that the code below is completely agnostic
       // set the value both at CIB and laser level
       // -- otherwise, set the memory region in the register, and the local cache variable too
+      {
+        const std::lock_guard<std::mutex> regs_lock(m_regs_mutex);
+        if (m_regs.find("qs_delay") == m_regs.end())
+        {
+          return OpcUa_BadInvalidState;
+        }
 #ifdef DEBUG
-      LOG(Log::WRN) << "Writing qs_delay " << v_clock << " with \n"
-          << "addr " << std::hex << m_regs.at("qs_delay").addr << std::dec << "\n"
-          << "mask " << std::hex << m_regs.at("qs_delay").mask << std::dec << "\n"
-          << "offset " << m_regs.at("qs_delay").bit_low;
+        LOG(Log::WRN) << "Writing qs_delay " << v_clock << " with \n"
+            << "addr " << std::hex << m_regs.at("qs_delay").addr << std::dec << "\n"
+            << "mask " << std::hex << m_regs.at("qs_delay").mask << std::dec << "\n"
+            << "offset " << m_regs.at("qs_delay").bit_low;
 
-      LOG(Log::INF) << "Original value :";
-      LOG(Log::INF) << std::hex << cib::util::reg_read(m_regs.at("qs_delay").addr);
+        LOG(Log::INF) << "Original value :";
+        LOG(Log::INF) << std::hex << cib::util::reg_read(m_regs.at("qs_delay").addr);
 #endif
-      cib::util::reg_write_mask_offset(m_regs.at("qs_delay").addr,
-                                       v_clock,
-                                       m_regs.at("qs_delay").mask,
-                                       m_regs.at("qs_delay").bit_low);
+        cib::util::reg_write_mask_offset(m_regs.at("qs_delay").addr,
+                                         v_clock,
+                                         m_regs.at("qs_delay").mask,
+                                         m_regs.at("qs_delay").bit_low);
+      }
 
 #ifdef DEBUG
       LOG(Log::WRN) << "Done writing qs_delay ";
@@ -3354,14 +3399,26 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       getAddressSpaceLink()->setQswitch_delay_us(delay_us, OpcUa_BadCommunicationError);
       return st;
     }
+    // Check if terminating to avoid accessing freed resources
+    if (m_is_terminating.load())
+    {
+      return OpcUa_BadInvalidState;
+    }
     // get the value from the register
-    uint32_t rval = cib::util::reg_read(m_regs.at("qs_delay").addr);
-    // now extract the delay from the register value
-    uint32_t delay = ((rval & m_regs.at("qs_delay").mask) >> m_regs.at("qs_delay").bit_low);
+    {
+      const std::lock_guard<std::mutex> regs_lock(m_regs_mutex);
+      if (m_regs.find("qs_delay") == m_regs.end())
+      {
+        return OpcUa_BadInvalidState;
+      }
+      uint32_t rval = cib::util::reg_read(m_regs.at("qs_delay").addr);
+      // now extract the delay from the register value
+      uint32_t delay = ((rval & m_regs.at("qs_delay").mask) >> m_regs.at("qs_delay").bit_low);
 //#ifdef DEBUG
 //    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch delay (clocks) :") << delay;
 //#endif
-    m_qswitch_delay = delay;
+      m_qswitch_delay = delay;
+    }
     // convert to floating point
     uint32_t delay_us = conv_to_us(delay);
 //#ifdef DEBUG
@@ -3378,14 +3435,26 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return st;
     }
+    // Check if terminating to avoid accessing freed resources
+    if (m_is_terminating.load())
+    {
+      return OpcUa_BadInvalidState;
+    }
     // convert the value into a 16 ns clock number
     // the set unit is us
     uint32_t v_clock= conv_to_clock(v);
     // -- otherwise, set the memory region in the register, and the local cache variable too
-    cib::util::reg_write_mask_offset(m_regs.at("qs_width").addr,
-                                     v_clock,
-                                     m_regs.at("qs_width").mask,
-                                     m_regs.at("qs_width").bit_low);
+    {
+      const std::lock_guard<std::mutex> regs_lock(m_regs_mutex);
+      if (m_regs.find("qs_width") == m_regs.end())
+      {
+        return OpcUa_BadInvalidState;
+      }
+      cib::util::reg_write_mask_offset(m_regs.at("qs_width").addr,
+                                       v_clock,
+                                       m_regs.at("qs_width").mask,
+                                       m_regs.at("qs_width").bit_low);
+    }
     m_qswitch_width = v_clock;
     getAddressSpaceLink()->setQswitch_width_us(conv_to_us(m_qswitch_width), OpcUa_Good);
     return OpcUa_Good;
@@ -3399,14 +3468,26 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       getAddressSpaceLink()->setQswitch_width_us(conv_to_us(m_qswitch_width), OpcUa_BadCommunicationError);
       return st;
     }
+    // Check if terminating to avoid accessing freed resources
+    if (m_is_terminating.load())
+    {
+      return OpcUa_BadInvalidState;
+    }
     // get the value from the register
-    uint32_t rval = cib::util::reg_read(m_regs.at("qs_width").addr);
-    // now extract the width from the register value
-    uint32_t width = ((rval & m_regs.at("qs_width").mask) >> m_regs.at("qs_width").bit_low);
+    {
+      const std::lock_guard<std::mutex> regs_lock(m_regs_mutex);
+      if (m_regs.find("qs_width") == m_regs.end())
+      {
+        return OpcUa_BadInvalidState;
+      }
+      uint32_t rval = cib::util::reg_read(m_regs.at("qs_width").addr);
+      // now extract the width from the register value
+      uint32_t width = ((rval & m_regs.at("qs_width").mask) >> m_regs.at("qs_width").bit_low);
 //#ifdef DEBUG
 //    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch width (clocks) :") << width;
 //#endif
-    m_qswitch_width = width;
+      m_qswitch_width = width;
+    }
     // convert to floating point
     uint32_t width_us = conv_to_us(width);
 //#ifdef DEBUG
@@ -4150,16 +4231,23 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   void DIoLLaserUnit::cib_free_mem()
   {
     // clear up the memory for the CIB
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Unammping CIB memory regions.";
+    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Unmapping CIB memory regions.";
 
     for (auto entry: m_reg_map)
     {
 #ifdef DEBUG
-      LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Clearing CIB memory [" << entry.first << "\n";
+      LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Clearing CIB memory [" << entry.first << "]\n";
 #endif
-      cib::util::unmap_mem(entry.second.vaddr,entry.second.size);
+      if (entry.second.vaddr != 0)
+      {
+        cib::util::unmap_mem(entry.second.vaddr, entry.second.size);
+      }
     }
-    close(m_mmap_fd);
-
+    if (m_mmap_fd > 0)
+    {
+      close(m_mmap_fd);
+      m_mmap_fd = 0;
+    }
+    m_reg_map.clear();
   }
 } // namespace

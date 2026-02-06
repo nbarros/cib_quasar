@@ -372,6 +372,7 @@ private:
 //    std::atomic<bool> m_serial_busy;
     bool m_config_completed;
     std::mutex m_serial_mutex;
+    std::mutex m_regs_mutex;  // Protects m_regs map from concurrent access
     std::atomic<bool> m_is_terminating;
 };
 
