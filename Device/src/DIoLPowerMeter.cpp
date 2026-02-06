@@ -1303,7 +1303,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       for (json::iterator it = conf.begin(); it != conf.end(); ++it)
       {
         LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
         if (it.key() == "select_range")
         {
           st = set_range(it.value(),resp);
