@@ -106,7 +106,7 @@ DIoLaserSystem::DIoLaserSystem(
      */
     lcmp = id();
     Log::registerLoggingComponent(lcmp, Log::TRC);
-    LOG(Log::TRC, lcmp) << log_i("constructor", "Creating DIoLaserSystem with id [" + id() + "]");
+    LOG(Log::TRC, lcmp) << log_t("constructor", "Creating DIoLaserSystem with id [" + id() + "]");
 }
 
 /* sample dtr */

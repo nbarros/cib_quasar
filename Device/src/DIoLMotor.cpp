@@ -672,7 +672,7 @@ UaStatus DIoLMotor::callClear_alarm (
         {
           m_monitor_status = OpcUa_BadResourceUnavailable;
           //getAddressSpaceLink()->setOperation_status(m_monitor_status,m_monitor_status);
-          LOG(Log::WRN, lcmp) << log_e("stat_mon","Failed to query device for status. Setting read values to InvalidData");
+          LOG(Log::WRN, lcmp) << log_w("stat_mon","Failed to query device for status. Setting read values to InvalidData");
         }
         // we should not use the speed readout to figure out
         // when it is moving
@@ -686,7 +686,7 @@ UaStatus DIoLMotor::callClear_alarm (
     // in this case, even though it is a separate thread, use the motor as the reference
     if (m_cib_monitor.load())
     {
-      LOG(Log::WRN, lcmp) << log_w("cib_mon","CIB monitor already running. Doing nothing.");
+      LOG(Log::DBG, lcmp) << log_d("cib_mon","CIB monitor already running. Doing nothing.");
       return;
     }
     m_cib_monitor.store(true);
@@ -700,7 +700,7 @@ UaStatus DIoLMotor::callClear_alarm (
       // since we know the speed of the motor, we can check the CIB only 
       // after the step period of the motor
       m_refresh_cib_ms = static_cast<uint32_t>((2.0 /static_cast<double>(m_speed_setpoint)) * 1000.0);
-      LOG(Log::INF, lcmp) << log_i("cib_monitor","Setting CIB monitor refresh period to ") << m_refresh_cib_ms << " ms";
+      LOG(Log::DBG, lcmp) << log_d("cib_monitor","Setting CIB monitor refresh period to ") << m_refresh_cib_ms << " ms";
 
       while (m_cib_monitor.load())
       {
@@ -709,7 +709,7 @@ UaStatus DIoLMotor::callClear_alarm (
         UaStatus st = cib_get_position(cpos);
         if (st != OpcUa_Good)
         {
-          LOG(Log::WRN, lcmp) << log_e("cib_monitor","Failed to get the current position : ") << cpos;
+          LOG(Log::WRN, lcmp) << log_w("cib_monitor","Failed to get the current position : ") << cpos;
         }
         m_position_cib = cpos;
         getAddressSpaceLink()->setCurrent_position_cib(m_position_cib,OpcUa_Good);
@@ -1119,6 +1119,14 @@ UaStatus DIoLMotor::callClear_alarm (
     UaStatus st = OpcUa_Good;
     const std::string lbl = "config";
     std::ostringstream msg("");
+    // check if there is a log_level setting
+    if (conf.contains("log_level"))
+    {
+      Log::setComponentLogLevel(Log::getComponentHandle(lcmp), static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
+      // if log level is set, update the log level for this system
+      LOG(Log::ERR, lcmp) << log_i(lbl.c_str(), "Log level set to ") << Log::logLevelToString(static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
+    }
+
     // -- first things first, validate the configuration fragment
     st = validate_config_fragment(conf,resp);
     if (st != OpcUa_Good )
@@ -1278,7 +1286,7 @@ UaStatus DIoLMotor::callClear_alarm (
         "refresh_period_ms","refresh_movement_ms","mmap"
     };
     std::vector<std::string> optional_keys = {   };
-    //
+    
     // actually, check for all entries and report all missing ones
     std::vector<std::string> missing;
     //

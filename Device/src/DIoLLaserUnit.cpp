@@ -37,13 +37,15 @@
 
 using json = nlohmann::json;
 //
-#define log_msg(s,dev,met,msg) "[" << s << "]::" << dev << ":" << met << " : " << msg
+#define log_msg(s,met,msg) "[" << s << "]::" << met << " : " << msg
 //
-#define log_e(m,s) log_msg("ERROR","laser",m,s)
-#define log_w(m,s) log_msg("WARN","laser",m,s)
-#define log_i(m,s) log_msg("INFO","laser",m,s)
+#define log_e(m,s) log_msg("ERROR", m,s)
+#define log_w(m,s) log_msg("WARN",  m,s)
+#define log_i(m,s) log_msg("INFO",  m,s)
+#define log_d(m,s) log_msg("DEBUG", m,s)
+#define log_t(m,s) log_msg("TRACE", m,s)
+
 //
-#define DEBUG 1
 using std::ostringstream;
 using std::map;
 using std::string;
@@ -104,13 +106,13 @@ DIoLLaserUnit::DIoLLaserUnit (
 //            ,m_serial_busy(false)
             ,m_config_completed(false)
             ,m_is_terminating(false)
+            ,lcmp()
 {
     /* fill up constructor body here */
     m_name = config.id();
-    LOG(Log::INF) << "DIoLLaserUnit::DIoLLaserUnit : Building instance of  [" << m_name << "]";
-    LOG(Log::INF) << "DIoLLaserUnit::DIoLLaserUnit : Using ID   [" << config.id() << "]";
-    m_serial_number = "";
-    LOG(Log::INF) << "DIoLLaserUnit::DIoLLaserUnit : Port set to [" << m_comport << "]";
+    lcmp = config.id();
+    Log::registerLoggingComponent(lcmp, Log::INF);
+    LOG(Log::INF, lcmp) << "DIoLLaserUnit::DIoLLaserUnit : Building instance of  [" << lcmp << "]";
 
     //m_part_state = laser_state_u(0x2);
     // -- initialize the status map
@@ -138,9 +140,7 @@ DIoLLaserUnit::~DIoLLaserUnit ()
 
 UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Double& v)
 {
-#ifdef DEBUG
-    LOG(Log::INF) << "Setting discharge voltage to " << v;
-#endif
+    LOG(Log::DBG, lcmp) << "Setting discharge voltage to " << v;
     std::ostringstream msg;
     // we need the system to be at least in unconfigured state
     // as we need the device connection to be established
@@ -164,9 +164,7 @@ UaStatus DIoLLaserUnit::writeDischarge_voltage_kV ( const OpcUa_Double& v)
 
 UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
 {
-#ifdef DEBUG
-    LOG(Log::INF) << "Setting Repetition rate";
-#endif
+    LOG(Log::DBG, lcmp) << "Setting Repetition rate";
     std::ostringstream msg;
     // we need the system to be at least in unconfigured state
     // as we need the device connection to be established
@@ -189,9 +187,7 @@ UaStatus DIoLLaserUnit::writeRep_rate_hz ( const OpcUa_Double& v)
 
 UaStatus DIoLLaserUnit::writeRep_rate_divider ( const OpcUa_UInt32& v)
 {
-#ifdef DEBUG
-  LOG(Log::INF) << "Setting Rate Divider / Prescale to " << v;
-#endif
+  LOG(Log::DBG, lcmp) << "Setting Rate Divider / Prescale to " << v;
   // we need the system to be at least in unconfigured state
     // as we need the device connection to be established
     if (m_status == sError)
@@ -216,15 +212,15 @@ UaStatus DIoLLaserUnit::writeRep_rate_divider ( const OpcUa_UInt32& v)
 
 UaStatus DIoLLaserUnit::writeWarmup_target_min ( const OpcUa_UInt32& v)
 {
-  LOG(Log::WRN) << "Setting warmup target to " << v << " minutes";
+  LOG(Log::DBG, lcmp) << "Setting warmup target to " << v << " minutes";
   if (m_status == sOffline)
   {
-    LOG(Log::ERR) << "Cannot set warmup target while offline. It will be overwritten during config.";
+    LOG(Log::ERR, lcmp) << "Cannot set warmup target while offline. It will be overwritten during config.";
     return OpcUa_BadInvalidState;
   }
   if (m_status != sReady)
   {
-    LOG(Log::WRN) << "Changing the warmup timer at this point is inconsequential (state :"
+    LOG(Log::WRN, lcmp) << "Changing the warmup timer at this point is inconsequential (state : "
     << m_status_map.at(m_status) << ").";
   }
   m_warmup_timer = v;
@@ -437,7 +433,7 @@ UaStatus DIoLLaserUnit::callStop (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to stop. See previous messages");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -447,7 +443,7 @@ UaStatus DIoLLaserUnit::callStop (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Stopped successfully.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -535,9 +531,7 @@ UaStatus DIoLLaserUnit::callStart_cib (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to start laser. See previous messages");
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -546,16 +540,12 @@ UaStatus DIoLLaserUnit::callStart_cib (
     {
       msg.clear(); msg.str("");
       msg << log_i(lbl.c_str(),"Laser started operating");
-#ifdef DEBUG
-      LOG(Log::INF) << msg.str();
-#endif
+      LOG(Log::INF, lcmp) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
-#ifdef DEBUG
-    LOG(Log::INF) << "[" << resp.dump() << "]";
-#endif
+    LOG(Log::TRC, lcmp) << "response: [" << resp.dump() << "]";
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
   }
@@ -582,7 +572,7 @@ UaStatus DIoLLaserUnit::callSwitch_laser_shutter (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to switch laser. See previous messages");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -591,7 +581,7 @@ UaStatus DIoLLaserUnit::callSwitch_laser_shutter (
     {
       msg.clear(); msg.str("");
       msg << log_i(lbl.c_str(),"Shutter switched to ") << close;
-      LOG(Log::INF) << msg.str();
+      LOG(Log::TRC, lcmp) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -628,7 +618,7 @@ UaStatus DIoLLaserUnit::callForce_ext_shutter (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to set ext shutter. See previous messages");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -636,8 +626,8 @@ UaStatus DIoLLaserUnit::callForce_ext_shutter (
     else
     {
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"ext shutter changed state successfully.");
-      LOG(Log::ERR) << msg.str();
+      msg << log_t(lbl.c_str(),"ext shutter changed state successfully.");
+      LOG(Log::TRC, lcmp) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -657,9 +647,7 @@ UaStatus DIoLLaserUnit::callTerminate (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to terminate laser. See previous messages");
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -668,9 +656,7 @@ UaStatus DIoLLaserUnit::callTerminate (
     {
       msg.clear(); msg.str("");
       msg << log_i(lbl.c_str(),"Laser unit connection terminated");
-#ifdef DEBUG
-      LOG(Log::INF) << msg.str();
-#endif
+      LOG(Log::INF, lcmp) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -693,7 +679,7 @@ UaStatus DIoLLaserUnit::callStop_cib (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to stop laser. See previous messages");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -702,7 +688,7 @@ UaStatus DIoLLaserUnit::callStop_cib (
     {
       msg.clear(); msg.str("");
       msg << log_i(lbl.c_str(),"Laser unit stopped. Back into a sReady state.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::INF, lcmp) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -724,7 +710,7 @@ UaStatus DIoLLaserUnit::callPause (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to pause laser. See previous messages");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -732,8 +718,8 @@ UaStatus DIoLLaserUnit::callPause (
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i(lbl.c_str(),"Laser unit paused. Beware of pause timer.");
-      LOG(Log::ERR) << msg.str();
+      msg << log_d(lbl.c_str(),"Laser unit paused. Beware of pause timer.");
+      LOG(Log::DBG, lcmp) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -756,7 +742,7 @@ UaStatus DIoLLaserUnit::callStandby (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to put laser in standby. See previous messages");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -764,8 +750,8 @@ UaStatus DIoLLaserUnit::callStandby (
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i(lbl.c_str(),"Laser unit in standby. Beware of standby timer.");
-      LOG(Log::ERR) << msg.str();
+      msg << log_d(lbl.c_str(),"Laser unit in standby. Beware of standby timer.");
+      LOG(Log::DBG, lcmp) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -785,7 +771,7 @@ UaStatus DIoLLaserUnit::callResume (
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to resume laser operation. See previous messages");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -793,8 +779,8 @@ UaStatus DIoLLaserUnit::callResume (
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i(lbl.c_str(),"Laser operation resumed.");
-      LOG(Log::ERR) << msg.str();
+      msg << log_d(lbl.c_str(),"Laser operation resumed.");
+      LOG(Log::DBG, lcmp) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -818,7 +804,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"System in error state. Aborting.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       return st;
     }
     //
@@ -828,7 +814,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Laser instance found. This is unexpected and therefore a failure.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       return st;
     }
     // do a second cross-check. At this stage there should not be any instantiated object
@@ -839,7 +825,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Laser instance found. This is unexpected and therefore a termination will be forced first.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -851,10 +837,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       automatic_port_search();
       msg.clear(); msg.str("");
-      msg << log_i(lbl.c_str(),"Automatic search found port [") << m_comport << "]";
-#ifdef DEBUG
-      LOG(Log::INF) << msg.str();
-#endif
+      msg << log_d(lbl.c_str(),"Automatic search found port [") << m_comport << "]";
+      LOG(Log::DBG, lcmp) << msg.str();
       resp["messages"].push_back(msg.str());
     }
     else
@@ -867,9 +851,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // the port is invalid. Something failed.
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Port is invalid [") << m_comport << "]";
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidArgument;
@@ -885,10 +867,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       // just leave what it is presently set
       msg.clear(); msg.str("");
-      msg << log_w(lbl.c_str(),"Baud rate kept to current value[") << m_baud_rate << "]";
-#ifdef DEBUG
-      LOG(Log::WRN) << msg.str();
-#endif
+      msg << log_t(lbl.c_str(),"Baud rate kept to current value[") << m_baud_rate << "]";
+      LOG(Log::TRC, lcmp) << msg.str();
       resp["messages"].push_back(msg.str());
     }
     else
@@ -1006,7 +986,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-
+      LOG(Log::TRC,lcmp) << msg.str();
       // check if the start bit is set.
       // if yes, status changes to sLasing
       // otherwise status changes to sReady
@@ -1046,7 +1026,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (got_exception)
     {
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1102,8 +1082,6 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         newstate = sPause;
         update_status(sPause);
         // now done in update_status
-        //start_pause_timer();
-
       }
       else
       {
@@ -1182,13 +1160,13 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
                 {
       uint32_t n_ticks = 0;
       const uint32_t n_ticks_per_sec = 2;
-      uint32_t nsecs = 0;
+      uint32_t n_secs = 0;
       while (n_ticks < (m_standby_timeout * 60 * n_ticks_per_sec))
       {
         if (m_status != sStandby)
         {
           // stop the timer
-          LOG(Log::WRN) << log_w("standby_timer","Left standy state. Resetting timer");
+          LOG(Log::WRN, lcmp) << log_w("standby_timer","Left standby state. Resetting timer");
           getAddressSpaceLink()->setStandby_timer_s(0,OpcUa_Good);
           return;
         }
@@ -1196,13 +1174,13 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         n_ticks++;
         if ((n_ticks%n_ticks_per_sec) == 0)
         {
-          nsecs++;
-          getAddressSpaceLink()->setStandby_timer_s(nsecs,OpcUa_Good);
+          n_secs++;
+          getAddressSpaceLink()->setStandby_timer_s(n_secs,OpcUa_Good);
         }
       }
       // reached the end of the loop and shutter is still closed
       // stop the system
-      LOG(Log::WRN) << "Reached the end of the standby timer. Stopping the laser.";
+      LOG(Log::WRN, lcmp) << "Reached the end of the standby timer. Stopping the laser.";
       json r;
       stop(r);
                 }
@@ -1240,7 +1218,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       }
       // reached the end of the loop and shutter is still closed
       // switch to standby and open this
-      LOG(Log::WRN) << "Reached the end of the pause timer. Switching to standby.";
+      LOG(Log::WRN, lcmp) << "Reached the end of the pause timer. Switching to standby.";
       json r;
       standby(r);
                 }
@@ -1262,7 +1240,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         if (m_status != sWarmup)
         {
           // stop the timer
-          LOG(Log::WRN) << "Warmup timer canceled before reaching the end.";
+          LOG(Log::WRN, lcmp) << "Warmup timer canceled before reaching the end.";
           getAddressSpaceLink()->setWarmup_timer_s(0,OpcUa_Good);
           return;
         }
@@ -1276,12 +1254,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       }
       // reached the end of the loop and shutter is still closed
       // stop the system
-      LOG(Log::WRN) << "Reached the end of the warmup timer. ";
+      LOG(Log::WRN, lcmp) << "Reached the end of the warmup timer. ";
       if (m_status != sWarmup)
       {
         // state charged for some reason. Do nothing.
         // only stop and terminate can actually interfere with warmup
-        LOG(Log::WRN) << "Warmup timer reached end but state no longer in warmup. Doing nothing.";
+        LOG(Log::WRN, lcmp) << "Warmup timer reached end but state no longer in warmup. Doing nothing.";
         return;
       }
       else
@@ -1309,8 +1287,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     set_counting_flashes(false);
     // terminate should take on a mutex right away so other methods do nothing during this period
 
-            LOG(Log::WRN)
-        << log_w(lbl.c_str(), "Terminating the current object instance.");
+    LOG(Log::WRN, lcmp) << log_w(lbl.c_str(), "Terminating the current object instance.");
     // this is meant to do a smooth temrination of the device
     if (m_status == sOffline)
     {
@@ -1322,7 +1299,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         // this should *NEVER* happen, but if it does, we're in trouble.
         msg.clear(); msg.str("");
         msg << log_w(lbl.c_str(),"There is a live pointer but state is offline. This should NEVER happen. Attempting to clear object.");
-        LOG(Log::WRN) << msg.str();
+        LOG(Log::WRN, lcmp) << msg.str();
         resp["messages"].push_back(msg.str());
         //FIXME: What happens we if we lose the serial connection while the laser is connected?
         // Answer... it really goes belly up. The problem is that 
@@ -1356,11 +1333,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"CIB memory not mapped. Can't control the laser driver.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["messages"].push_back(msg.str());
     }
     // close the internal shutter
-      LOG(Log::INF) << log_i(lbl.c_str(),"Closing laser shutter");
+      LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Closing laser shutter");
     // potential source of trouble here...close/open shutter
     // also lock the mutex, which will put them hanging, since the mutex is already on hold here
     
@@ -1381,15 +1358,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     update_status(sOffline);
     if (m_laser)
     {
-#ifdef DEBUG
       std::ostringstream msg("");
-      msg << log_w(lbl.c_str(),"Deleting the laser pointer");
-      LOG(Log::WRN) << msg.str();
-#endif
+      msg << log_i(lbl.c_str(),"Deleting the laser pointer");
+      LOG(Log::INF, lcmp) << msg.str();
       delete m_laser;
-#ifdef DEBUG
-      LOG(Log::INF) << "Pointer deleted";
-#endif
+      LOG(Log::INF, lcmp) << "Pointer deleted";
     }
     m_laser = nullptr;
     m_config_completed = false;
@@ -1479,7 +1452,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (got_exception)
     {
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1490,6 +1463,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     msg << log_i(lbl.c_str(),"Laser stopped.");
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
+    LOG(Log::DBG, lcmp) << msg.str();
     return OpcUa_Good;
   }
 
@@ -1604,7 +1578,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (got_exception)
     {
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1612,10 +1586,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     resp["status"] = "SUCCESS";
     msg.clear(); msg.str("");
-    msg << log_i(lbl.c_str(),"Laser started.");
-#ifdef DEBUG
-    LOG(Log::INF) << msg.str();
-#endif
+    msg << log_d(lbl.c_str(),"Laser started.");
+    LOG(Log::DBG, lcmp) << msg.str();
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
@@ -1651,7 +1623,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Laser not in a state that can be paused. Current state : ") << m_status_map[m_status];
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1678,8 +1650,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         // if the shutter fails to open return the failure
         msg.clear();
         msg.str("");
-        msg << log_e(lbl.c_str(), "Laser failed to open the laser shutter");
-        LOG(Log::ERR) << msg.str();
+        msg << log_e(lbl.c_str(), "Failed to open the laser shutter");
+        LOG(Log::ERR, lcmp) << msg.str();
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_Bad;
@@ -1691,7 +1663,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         msg.clear(); msg.str("");
         msg << log_w(lbl.c_str(),"Pause called before laser was started. The shutter will close, but the laser will remain off.");
-        LOG(Log::WRN) << msg.str();
+        LOG(Log::WRN, lcmp) << msg.str();
         resp["status"] = "SUCCESS";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_Uncertain;
@@ -1742,7 +1714,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (got_exception)
     {
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1751,9 +1723,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     resp["status"] = "SUCCESS";
     msg.clear(); msg.str("");
     msg << log_i(lbl.c_str(),"Laser operation paused.");
-#ifdef DEBUG
-    LOG(Log::INF) << msg.str();
-#endif
+    LOG(Log::INF, lcmp) << msg.str();
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
@@ -1789,7 +1759,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Laser not in a state that can be switched to standby. Current state : ") << m_status_map[m_status];
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1857,9 +1827,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (got_exception)
     {
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1868,9 +1836,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     resp["status"] = "SUCCESS";
     msg.clear(); msg.str("");
     msg << log_i(lbl.c_str(),"Laser operation on standby.");
-#ifdef DEBUG
-      LOG(Log::INF) << msg.str();
-#endif
+      LOG(Log::DBG, lcmp) << msg.str();
     resp["messages"].push_back(msg.str());
     resp["statuscode"] = OpcUa_Good;
     return OpcUa_Good;
@@ -1884,19 +1850,20 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       // serial number
       // this has been shown to work for most cases, but there is always a chance that something fails
       // for example, the wrong serial number was provided
-      m_comport = util::find_port(m_serial_number);
+      m_comport = util::find_port(m_serial_number);      
       if (m_comport.size() == 0)
       {
-        LOG(Log::ERR) << "DIoLLaserUnit::automatic_port_search : Couldn't find device port";
+        LOG(Log::ERR, lcmp) << "DIoLLaserUnit::automatic_port_search : Couldn't find device port";
       }
       update_status(sOffline);
     }
     catch(...)
     {
       update_status(sOffline);
-      LOG(Log::ERR) << "DIoLLaserUnit::automatic_port_search : Caught an exception searching for the port";
+      LOG(Log::ERR, lcmp) << "DIoLLaserUnit::automatic_port_search : Caught an exception searching for the port";
       m_comport = "";
     }
+    LOG(Log::DBG, lcmp) << "DIoLLaserUnit::automatic_port_search : Port found : " << m_comport;
   }
   void DIoLLaserUnit::refresh_status()
   {
@@ -1931,13 +1898,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         return;
       }
-// #ifdef DEBUG
-// 	LOG(Log::INF) << log_i(lbl.c_str(),"Checking security");
-// #endif
+// 	LOG(Log::INF, lcmp) << log_i(lbl.c_str(),"Checking security");
       m_laser->security(status, desc);
-// #ifdef DEBUG
-//       LOG(Log::INF) << log_i(lbl.c_str(),"Checking passed check");
-// #endif
+      // actually, this could be a good time to catch bad operation
+      // TODO: NFB : Add catch for bad security outcome
+      LOG(Log::TRC, lcmp) << log_t(lbl.c_str(),"Checking passed check. Returned ") << status;
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
       // UaString ss(m_status_map.at(m_status).c_str());
       // getAddressSpaceLink()->setState(ss,OpcUa_Good);
@@ -1946,35 +1911,35 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear();
       msg.str("");
-      msg << log_e(lbl.c_str(), " ") << "Port not open [" << e.what() << "]";
+      msg << log_e(lbl.c_str(), "refresh") << "Port not open [" << e.what() << "]";
       got_exception = true;
     }
     catch (serial::IOException &e)
     {
       msg.clear();
       msg.str("");
-      msg << log_e(lbl.c_str(), " ") << "Failed with a serial IO exception [" << e.what() << "]";
+      msg << log_e(lbl.c_str(), "refresh") << "Failed with a serial IO exception [" << e.what() << "]";
       got_exception = true;
     }
     catch (serial::SerialException &e)
     {
       msg.clear();
       msg.str("");
-      msg << log_e(lbl.c_str(), "Failed with a Serial exception :") << e.what();
+      msg << log_e(lbl.c_str(), "refresh") << "Failed with a Serial exception :" << e.what();
       got_exception = true;
     }
     catch (std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Failed with an STL exception :") << e.what();
-      LOG(Log::ERR) << msg.str();
+      msg << log_e(lbl.c_str(),"refresh") << "Failed with an STL exception :" << e.what();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(...)
     {
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"Failed with an unknown exception.");
-      LOG(Log::ERR) << msg.str();
+      msg << log_e(lbl.c_str(),"refresh") << "Failed with an unknown exception.";
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     if (got_exception)
@@ -2031,9 +1996,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     catch(std::exception &e)
     {
-#ifdef DEBUG
-      LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to refresh the registers. Got exception : ") << e.what();
-#endif
+      LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"Failed to refresh the registers. Got exception : ") << e.what();
       has_error = true;
     }
     if (has_error)
@@ -2041,9 +2004,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       std::ostringstream msg("");
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str()," ") << "Errors found refreshing registers";
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["messages"].push_back(msg.str());
       return OpcUa_Bad;
     }
@@ -2053,7 +2014,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   {
     if (m_count_flashes)
     {
-      LOG(Log::WRN) << "Trying to set a timer that has already been set up. Skipping.";
+      LOG(Log::WRN, lcmp) << "Trying to set a timer that has already been set up. Skipping.";
       return;
     }
     // disable temporarily
@@ -2066,7 +2027,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     //     auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(200);
     //     if (refresh_shot_count() != OpcUa_Good)
     //     {
-    //       LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
+    //       LOG(Log::ERR, lcmp) << "Failed to query device for status. Setting read values to InvalidData";
     //     }
     //     std::this_thread::sleep_until(x);
     //   }
@@ -2150,7 +2111,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (caught_exception)
     {
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       getAddressSpaceLink()->setFlash_count(m_shot_count, OpcUa_BadCommunicationError);
     }
     return OpcUa_Good;
@@ -2245,12 +2206,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         // something failed. Whatever it was, should already be in the
         // response string
         msg.clear(); msg.str("");
-        msg << log_w(lbl.c_str(),"Some parameters failed to be set. Check previous messages.");
+        msg << log_e(lbl.c_str(),"Some parameters failed to be set. Check previous messages.");
         return OpcUa_Bad;
       }
       else {
         msg.clear(); msg.str("");
-        msg << log_i(lbl.c_str(),"System reconfigured sucessfully.");
+        msg << log_d(lbl.c_str(),"System reconfigured sucessfully.");
       }
     }
     catch(serial::PortNotOpenedException &e)
@@ -2287,7 +2248,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     if (got_exception)
     {
       terminate(resp);
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -2296,7 +2257,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     else
     {
       msg.clear(); msg.str("");
-      msg << log_i(lbl.c_str(),"System initialized.");
+      msg << log_i(lbl.c_str(),"Laser initialized.");
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -2327,9 +2288,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg.clear(); msg.str("");
       msg << log_w(lbl.c_str()," ") << "Value out of bounds. Truncating to max [ " << v << " --> " << nv << "]";
       resp["messages"].push_back(msg.str());
-#ifdef DEBUG
-      LOG(Log::WRN) << msg.str();
-#endif
+      LOG(Log::WRN, lcmp) << msg.str();
     }
     try
     {
@@ -2371,9 +2330,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     if (got_exception)
     {
       getAddressSpaceLink()->setRep_rate_divider(m_divider, OpcUa_BadCommunicationError);
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -2397,9 +2354,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Value out of bounds: ") << v << "<> [0.0,20.0]";
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadOutOfRange;
@@ -2420,9 +2375,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     try
     {
       m_laser->set_repetition_rate(v);
-#ifdef DEBUG
-      LOG(Log::INF) << log_i(lbl.c_str(),"Repetition rate set");
-#endif
+      LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Repetition rate set");
       m_rate_hz = v;
       getAddressSpaceLink()->setRep_rate_hz(m_rate_hz, OpcUa_Good);
     }
@@ -2460,9 +2413,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     if (got_exception)
     {
       getAddressSpaceLink()->setRep_rate_hz(m_rate_hz, OpcUa_BadCommunicationError);
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -2484,9 +2435,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Value out of bounds: ") << v << "<> [0.0,20.0]";
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadOutOfRange;
@@ -2506,9 +2455,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     try
     {
       m_laser->set_pump_voltage(v);
-#ifdef DEBUG
-      LOG(Log::INF) << log_i(lbl.c_str(),"Voltage set");
-#endif
+      LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Voltage set");
       m_pump_hv = v;
       getAddressSpaceLink()->setDischarge_voltage_kV(m_pump_hv, OpcUa_Good);
     }
@@ -2546,9 +2493,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     if (got_exception)
     {
       getAddressSpaceLink()->setDischarge_voltage_kV(m_pump_hv, OpcUa_BadCommunicationError);
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -2587,6 +2532,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
           // do nothing
           return;
         }
+        else
+        {
+          m_last_status_check = x;
+          // and let it query the system. May as well find a failure
+        }
       }
 
       // this could potentially cause a race condition
@@ -2602,7 +2552,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       st = refresh_registers(resp);
       if (st != OpcUa_Good)
       {
-        LOG(Log::ERR) << "DIoLLaserUnit::update : Detected an error reading registers.";
+        LOG(Log::ERR, lcmp) << "DIoLLaserUnit::update : Detected an error reading registers.";
       }
     }
   }
@@ -2635,7 +2585,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e("fire_discrete_shots","The laser is NOT operating") << " (current state " << m_status_map.at(m_status) << ")";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -2690,7 +2640,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e("single_shot","The laser shutter is not open");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -2702,7 +2652,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e("single_shot","The external shutter is not open");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -2758,7 +2708,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     if (caught_exception)
     {
 //      m_serial_busy.store(false);
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -2769,8 +2719,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     else {
       // all was good
       msg.clear(); msg.str("");
-      msg << log_i("single_shot","Laser single shot fired");
-      LOG(Log::INF) << msg.str();
+      msg << log_w("single_shot","Laser single shot fired");
+      LOG(Log::WRN, lcmp) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -2836,6 +2786,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         msg << "(" <<  e << "),";
       }
       msg << "]";
+      LOG(Log::WRN,lcmp) << msg.str();
       resp["messages"].push_back(msg.str());
     }
     // all good, return true
@@ -2862,6 +2813,16 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         return st;
       }
+      if (!conf.contains("id"))
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Missing id entry in configuration fragment");
+        LOG(Log::ERR, lcmp) << msg.str();
+        resp["status"] = "ERROR";
+        resp["messages"].push_back(msg.str());
+        resp["statuscode"] = OpcUa_BadInvalidArgument;
+        return OpcUa_BadInvalidArgument;
+      }
       // then check the configuration is aimed to the proper device
       if (conf.at("id").get<std::string>() != m_name)
       {
@@ -2871,8 +2832,17 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadInvalidArgument;
+        LOG(Log::ERR,lcmp) << msg.str();
         return OpcUa_BadInvalidArgument;
       }
+      // check if there is a log_level entry and adjust log level accordingly
+      if (conf.contains("log_level"))
+      {
+        Log::setComponentLogLevel(Log::getComponentHandle(lcmp), static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
+        // if log level is set, update the log level for this system
+        LOG(Log::ERR, lcmp) << log_i(lbl.c_str(), "Log level set to ") << Log::logLevelToString(static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
+      }
+
       // validate that all settings are here
       if (!validate_config_fragment(conf,resp))
       {
@@ -2890,7 +2860,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       if ( st != OpcUa_Good)
       {
         // just fail
-        LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to determine device connection settings");
+        LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"Failed to determine device connection settings");
         return st;
       }
       // all good so far, so lets initiate the connection by creating an instance of the laser system
@@ -2898,9 +2868,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       st = check_laser_instance(resp);
       if (st != OpcUa_Good)
       {
-#ifdef DEBUG
-        LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to create a laser instance");
-#endif
+        LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"Failed to create a laser instance");
         // cleaning up the 
         terminate(resp);
         return st;
@@ -2916,54 +2884,40 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         msg.clear();msg.str("");
         msg << log_e(lbl.c_str(),"Failed to map configuration registers");
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
         resp["messages"].push_back(msg.str());
         resp["status"] = "ERROR";
         resp["statuscode"] = OpcUa_Bad;
         update_status(sOffline);
         return st;
       }
-#ifdef DEBUG
       else
       {
-        LOG(Log::INF) << log_i(lbl.c_str(),"Registers mapped");
+        LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Registers mapped");
       }
-#endif
       for (json::iterator it = conf.begin(); it != conf.end(); ++it)
       {
-        LOG(Log::DBG) << "Processing config key: " << it.key();
+        LOG(Log::TRC, lcmp) << "Processing config key: " << it.key();
         if (it.key() == "repetition_rate")
         {
-#ifdef DEBUG
-            LOG(Log::INF) << log_i(lbl.c_str(),"Setting repetition rate to ") << it.value();
-#endif
+            LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Setting repetition rate to ") << it.value();
           st = write_rate(it.value(),resp);
           if (st != OpcUa_Good)
           {
-#ifdef DEBUG
-            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set repetition rate");
-#endif
+            LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"Failed to set repetition rate");
             getAddressSpaceLink()->setRep_rate_hz(m_rate_hz, st);
             terminate(resp);
             return st;
           }
-#ifdef DEBUG
-            LOG(Log::INF) << log_i(lbl.c_str(),"Repetition rate set ");
-#endif
+            LOG(Log::TRC, lcmp) << log_t(lbl.c_str(),"Repetition rate set ");
         }
         if (it.key() == "repetition_rate_divider")
         {
-#ifdef DEBUG
-            LOG(Log::INF) << log_i(lbl.c_str(),"Setting repetition rate divider to ") << it.value();
-#endif
+            LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Setting repetition rate divider to ") << it.value();
           st = write_divider(it.value(),resp);
           if (st != OpcUa_Good)
           {
-#ifdef DEBUG
-            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set repetition rate divider");
-#endif
+            LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"Failed to set repetition rate divider");
             getAddressSpaceLink()->setRep_rate_divider(m_divider,st);
             terminate(resp);
             return st;
@@ -2971,48 +2925,34 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         }
         if (it.key() == "discharge_voltage")
         {
-#ifdef DEBUG
-            LOG(Log::INF) << log_i(lbl.c_str(),"Setting voltage");
-#endif
+            LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Setting voltage");
           st = write_hv(it.value(), resp);
           if (st != OpcUa_Good)
           {
-#ifdef DEBUG
-            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set voltage");
-#endif
+            LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"Failed to set voltage");
             getAddressSpaceLink()->setDischarge_voltage_kV(m_pump_hv, st);
             terminate(resp);
             return st;
           }
-#ifdef DEBUG
-            LOG(Log::INF) << log_i(lbl.c_str(),"Voltage set");
-#endif
+            LOG(Log::TRC, lcmp) << log_t(lbl.c_str(),"Voltage set");
         }
         if (it.key() == "pause_timeout_min")
         {
-#ifdef DEBUG
-            LOG(Log::INF) << log_i(lbl.c_str(),"Setting pause timeout to ") << it.value();
-#endif
+            LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Setting pause timeout to ") << it.value();
           set_pause_timeout(it.value(), resp);
         }
         if (it.key() == "standby_timeout_min")
         {
-#ifdef DEBUG
-            LOG(Log::INF) << log_i(lbl.c_str(),"Setting standby timeout to ") << it.value();
-#endif
+            LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Setting standby timeout to ") << it.value();
           set_standby_timeout(it.value(), resp);
         }
         if (it.key() == "qswitch_delay_us")
         {
-#ifdef DEBUG
-            LOG(Log::INF) << log_i(lbl.c_str(),"Setting qswitch delay to ") << it.value();
-#endif
+            LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Setting qswitch delay to ") << it.value();
           st = set_qswitch_delay(it.value(), resp);
           if (st != OpcUa_Good)
           {
-#ifdef DEBUG
-            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set qswitch delay");
-#endif
+            LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"Failed to set qswitch delay");
             getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, st);
             terminate(resp);
             return st;
@@ -3020,22 +2960,16 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         }
         if (it.key() == "warmup_timer_min")
         {
-#ifdef DEBUG
-          LOG(Log::INF) << log_i(lbl.c_str(), "Setting warmup timer to ") << it.value();
-#endif
+          LOG(Log::INF, lcmp) << log_i(lbl.c_str(), "Setting warmup timer to ") << it.value();
         set_warmup_timer(it.value(), resp);
         }
         if (it.key() == "qswitch_width_us")
         {
-#ifdef DEBUG
-            LOG(Log::INF) << log_i(lbl.c_str(),"Setting qswitch width to ") << it.value();
-#endif
+            LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Setting qswitch width to ") << it.value();
           st = set_qswitch_width(it.value(), resp);
           if (st != OpcUa_Good)
           {
-#ifdef DEBUG
-            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set qswitch width");
-#endif
+            LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"Failed to set qswitch width");
 
             getAddressSpaceLink()->setQswitch_width_us(m_qswitch_width, st);
             terminate(resp);
@@ -3044,24 +2978,18 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         }
         if (it.key() == "fire_width_us")
         {
-#ifdef DEBUG
-            LOG(Log::INF) << log_i(lbl.c_str(),"Setting fire width to ") << it.value();
-#endif
+            LOG(Log::INF, lcmp) << log_i(lbl.c_str(),"Setting fire width to ") << it.value();
           st = set_fire_width(it.value(), resp);
           if (st != OpcUa_Good)
           {
-#ifdef DEBUG
-            LOG(Log::ERR) << log_e(lbl.c_str(),"Failed to set fire width");
-#endif
+            LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"Failed to set fire width");
             getAddressSpaceLink()->setFire_width_us(m_fire_width, st);
             terminate(resp);
             return st;
           }
         }
       }
-#ifdef DEBUG
-      LOG(Log::INF) << log_i(lbl.c_str(),"Done with config");
-#endif
+      LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Done with config");
       // update the timers so that they don't complain about Waiting for data
       getAddressSpaceLink()->setWarmup_timer_s(0,OpcUa_Good);
       getAddressSpaceLink()->setStandby_timer_s(0,OpcUa_Good);
@@ -3127,6 +3055,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
+      LOG(Log::DBG, lcmp) << msg.str();
       return OpcUa_Good;
     }
     return OpcUa_Good;
@@ -3168,15 +3097,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // -- first obtain a map to all the memory
     std::ostringstream msg("");
     const std::string lbl = "map_registers";
-#ifdef DEBUG
-    LOG(Log::INF) << log_i(lbl.c_str(),"Mapping registers");
-#endif
+    LOG(Log::INF, lcmp) << log_i(lbl.c_str(),"Mapping registers");
     UaStatus st = check_cib_mem(resp);
     if(st != OpcUa_Good)
     {
-#ifdef DEBUG
-    LOG(Log::ERR) << log_e(lbl.c_str(),"CIB memory not mapped");
-#endif
+    LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"CIB memory not mapped");
       return st;
     }
     else
@@ -3270,7 +3195,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
           
           tmp.addr = (m_reg_map.at(tmp.reg_id).vaddr+(tmp.offset*GPIO_CH_OFFSET));
           tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
-          LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg_id
+          LOG(Log::TRC, lcmp) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg_id
               << " offset " << tmp.offset << " bh " << tmp.bit_high << " bl " << tmp.bit_low
               << " addr " << std::hex << tmp.addr << std::dec << " mask " << std::hex << tmp.mask
               << std::dec << " ";
@@ -3327,9 +3252,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg.clear(); msg.str("");
       msg << log_w(lbl.c_str()," ") << "Value out of bounds. Truncating to max [ " << v << " --> " << nv << "]";
       resp["messages"].push_back(msg.str());
-#ifdef DEBUG
-      LOG(Log::WRN) << msg.str();
-#endif
+      LOG(Log::WRN, lcmp) << msg.str();
       }
     try
     {
@@ -3346,24 +3269,20 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         {
           return OpcUa_BadInvalidState;
         }
-#ifdef DEBUG
-        LOG(Log::WRN) << "Writing qs_delay " << v_clock << " with \n"
+        LOG(Log::TRC, lcmp) << "Writing qs_delay " << v_clock << " with \n"
             << "addr " << std::hex << m_regs.at("qs_delay").addr << std::dec << "\n"
             << "mask " << std::hex << m_regs.at("qs_delay").mask << std::dec << "\n"
             << "offset " << m_regs.at("qs_delay").bit_low;
 
-        LOG(Log::INF) << "Original value :";
-        LOG(Log::INF) << std::hex << cib::util::reg_read(m_regs.at("qs_delay").addr);
-#endif
+        LOG(Log::TRC, lcmp) << "Original value :";
+        LOG(Log::TRC, lcmp) << std::hex << cib::util::reg_read(m_regs.at("qs_delay").addr);
         cib::util::reg_write_mask_offset(m_regs.at("qs_delay").addr,
                                          v_clock,
                                          m_regs.at("qs_delay").mask,
                                          m_regs.at("qs_delay").bit_low);
       }
 
-#ifdef DEBUG
-      LOG(Log::WRN) << "Done writing qs_delay ";
-#endif
+      LOG(Log::TRC, lcmp) << "Done writing qs_delay ";
           //      m_laser->set_qswitch(nv);
       m_qswitch_delay = v_clock;
       // update the address space as well
@@ -3396,7 +3315,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     if (got_exception)
     {
       getAddressSpaceLink()->setQswitch_delay_us(conv_to_us(m_qswitch_delay), OpcUa_Bad);
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -3430,16 +3349,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       uint32_t rval = cib::util::reg_read(m_regs.at("qs_delay").addr);
       // now extract the delay from the register value
       delay = ((rval & m_regs.at("qs_delay").mask) >> m_regs.at("qs_delay").bit_low);
-//#ifdef DEBUG
-//    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch delay (clocks) :") << delay;
-//#endif
+//    LOG(Log::INF, lcmp) << log_i(lbl.c_str()," Qswitch delay (clocks) :") << delay;
       m_qswitch_delay = delay;
     }
     // convert to floating point
     uint32_t delay_us = conv_to_us(delay);
-//#ifdef DEBUG
-//    LOG(Log::INF) << log_i(lbl.c_str()," QSwitch delay (us) :") << delay_us;
-//#endif
+//    LOG(Log::INF, lcmp) << log_i(lbl.c_str()," QSwitch delay (us) :") << delay_us;
     getAddressSpaceLink()->setQswitch_delay_us(delay_us, OpcUa_Good);
     return OpcUa_Good;
   }
@@ -3500,16 +3415,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       uint32_t rval = cib::util::reg_read(m_regs.at("qs_width").addr);
       // now extract the width from the register value
       width = ((rval & m_regs.at("qs_width").mask) >> m_regs.at("qs_width").bit_low);
-//#ifdef DEBUG
-//    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch width (clocks) :") << width;
-//#endif
+//    LOG(Log::INF, lcmp) << log_i(lbl.c_str()," Qswitch width (clocks) :") << width;
       m_qswitch_width = width;
     }
     // convert to floating point
     uint32_t width_us = conv_to_us(width);
-//#ifdef DEBUG
-//    LOG(Log::INF) << log_i(lbl.c_str()," QSwitch width (us) :") << width_us;
-//#endif
+//    LOG(Log::INF, lcmp) << log_i(lbl.c_str()," QSwitch width (us) :") << width_us;
     getAddressSpaceLink()->setQswitch_width_us(width_us, OpcUa_Good);
     return OpcUa_Good;
   }
@@ -3546,15 +3457,11 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     uint32_t rval = cib::util::reg_read(m_regs.at("fire_width").addr);
     // now extract the width from the register value
     uint32_t width = ((rval & m_regs.at("fire_width").mask) >> m_regs.at("fire_width").bit_low);
-//#ifdef DEBUG
-//    LOG(Log::INF) << log_i(lbl.c_str()," Fire width (clocks) :") << width;
-//#endif
+//    LOG(Log::INF, lcmp) << log_i(lbl.c_str()," Fire width (clocks) :") << width;
     m_fire_width = width;
     // convert to floating point
     uint32_t width_us = conv_to_us(width);
-//#ifdef DEBUG
-//    LOG(Log::INF) << log_i(lbl.c_str()," Fire width (us) :") << width_us;
-//#endif
+//    LOG(Log::INF, lcmp) << log_i(lbl.c_str()," Fire width (us) :") << width_us;
     getAddressSpaceLink()->setFire_width_us(width_us, OpcUa_Good);
     return OpcUa_Good;
   }
@@ -3635,7 +3542,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Laser Unit not in a valid state. Resume should only be called in sPause or sStandby state. Currently in : ") << m_status_map.at(m_status);
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -3646,7 +3553,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Inconsistent state. Laser Unit is not firing.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -3688,7 +3595,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed to resume laser. See previous messages");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -3707,11 +3614,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   }
   void DIoLLaserUnit::set_fire(const uint32_t s)
   {
-#ifdef DEBUG
-    LOG(Log::INF) << log_i("set_fire","Setting to ") << s << " (addr,mask,offset)=[0x"
+    LOG(Log::TRC, lcmp) << log_t("set_fire","Setting to ") << s << " (addr,mask,offset)=[0x"
         << std::hex << m_regs.at("fire_state").addr << " " << m_regs.at("fire_state").mask << std::dec
         << " " << m_regs.at("fire_state").bit_low;
-#endif
     cib::util::reg_write_mask_offset(m_regs.at("fire_state").addr,
                                      s,
                                      m_regs.at("fire_state").mask,
@@ -3729,11 +3634,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   void DIoLLaserUnit::set_qswitch(const uint32_t s)
   {
 
-#ifdef DEBUG
-    LOG(Log::INF) << log_i("set_qswitch","Setting to ") << s << " (addr,mask,offset)=[0x"
+    LOG(Log::TRC, lcmp) << log_t("set_qswitch","Setting to ") << s << " (addr,mask,offset)=[0x"
         << std::hex << m_regs.at("fire_state").addr << " " << m_regs.at("fire_state").mask << std::dec
         << " " << m_regs.at("fire_state").bit_low;
-#endif
     cib::util::reg_write_mask_offset(m_regs.at("qs_state").addr,
                                      s,
                                      m_regs.at("qs_state").mask,
@@ -3750,11 +3653,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   }
   void DIoLLaserUnit::set_ext_shutter(const uint32_t s)
   {
-#ifdef DEBUG
-    LOG(Log::INF) << log_i("set_ext_shutter","Setting to ") << s << " (addr,mask,offset)=[0x"
+    LOG(Log::TRC, lcmp) << log_t("set_ext_shutter","Setting to ") << s << " (addr,mask,offset)=[0x"
         << std::hex << m_regs.at("fire_state").addr << " " << m_regs.at("fire_state").mask << std::dec
         << " " << m_regs.at("fire_state").bit_low;
-#endif
     // we want to close and it wasn't yet
     cib::util::reg_write_mask_offset(m_regs.at("force_shutter").addr,
                                      s,
@@ -3790,12 +3691,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   }
   void DIoLLaserUnit::close_ext_shutter()
   {
-    LOG(Log::WRN) << log_w("open_ext_shutter", "Closing external shutter");
+    LOG(Log::DBG, lcmp) << log_d("open_ext_shutter", "Closing external shutter");
     set_ext_shutter(0x1);
   }
   void DIoLLaserUnit::open_ext_shutter()
   {
-    LOG(Log::WRN) << log_w("open_ext_shutter","Opening external shutter");
+    LOG(Log::DBG, lcmp) << log_d("open_ext_shutter","Opening external shutter");
     set_ext_shutter(0x0);  
   }
   //
@@ -3813,7 +3714,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         return st;
       }
-      LOG(Log::WRN) << log_w("close_shutter", "Closing laser shutter");
+      LOG(Log::DBG, lcmp) << log_d("close_shutter", "Closing laser shutter");
       m_laser->shutter_close();      
     }
     catch(serial::PortNotOpenedException &e)
@@ -3842,9 +3743,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (got_exception)
     {
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"]= OpcUa_BadCommunicationError;
@@ -3868,7 +3767,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         return st;
       }
-      LOG(Log::WRN) << log_w("open_shutter", "Opening laser shutter");
+      LOG(Log::DBG, lcmp) << log_d("open_shutter", "Opening laser shutter");
       m_laser->shutter_open();
     }
     catch(serial::PortNotOpenedException &e)
@@ -3897,9 +3796,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (got_exception)
     {
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"]= OpcUa_BadCommunicationError;
@@ -3951,9 +3848,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (got_exception)
     {
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"]= OpcUa_BadCommunicationError;
@@ -4004,9 +3899,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (got_exception)
     {
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"]= OpcUa_BadCommunicationError;
@@ -4057,9 +3950,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     }
     if (got_exception)
     {
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"]= OpcUa_BadCommunicationError;
@@ -4113,7 +4004,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       std::ostringstream msg("");
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Laser is offline. No operation possible.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -4132,7 +4023,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       std::ostringstream msg("");
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"CIB memory not mapped. System on lockdown.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -4152,7 +4043,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       std::ostringstream msg("");
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"There is no connection to the laser. Doing nothing.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -4172,9 +4063,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
        msg.clear(); msg.str("");
        msg << log_e(lbl.c_str()," ") << "Laser is not in ready state. Current state :" << m_status_map.at(m_status);
        resp["messages"].push_back(msg.str());
-#ifdef DEBUG
-       LOG(Log::ERR) << msg.str();
-#endif
+       LOG(Log::ERR, lcmp) << msg.str();
        return OpcUa_BadInvalidState;
      }
     else
@@ -4189,6 +4078,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       cib_free_mem();
     }
+    const std::string lbl = "cib_init";
     // -- there are several registers to be mapped:
     cib_reg_t tmpreg;
     tmpreg.id = LASER_REG;
@@ -4197,64 +4087,55 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_LASER_MEM_LOW,GPIO_LASER_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map LASER CIB memory region. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR, lcmp) << log_e(lbl,"Failed to map LASER CIB memory region.");
     }
     m_reg_map[LASER_REG] = tmpreg;
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : LASER_REG mapped to " << std::hex << m_reg_map.at(LASER_REG).vaddr << std::dec;
-#endif
+    LOG(Log::TRC, lcmp) << log_t(lbl,"LASER_REG mapped to ") << std::hex << m_reg_map.at(LASER_REG).vaddr << std::dec;
     tmpreg.id= MISC_REG;
     tmpreg.paddr = GPIO_MISC_MEM_LOW;
     tmpreg.size = 0xFFF;
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MISC_MEM_LOW,GPIO_MISC_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR, lcmp) << log_e(lbl,"Failed to map MISC CIB memory region.");
     }
     m_reg_map[MISC_REG] = tmpreg;
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : MISC_REG mapped to " << std::hex << m_reg_map.at(MISC_REG).vaddr << std::dec;
-#endif
+    LOG(Log::TRC, lcmp) << log_t(lbl,"MISC_REG mapped to ") << std::hex << m_reg_map.at(MISC_REG).vaddr << std::dec;
     tmpreg.id= ALIGN_REG;
     tmpreg.paddr = GPIO_ALIGN_MEM_LOW;
     tmpreg.size = 0xFFF;
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR, lcmp) << log_e(lbl,"Failed to map ALIGN CIB memory region.");
     }
     m_reg_map[ALIGN_REG] = tmpreg;
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : ALIGN_REG mapped to " << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
-#endif
+    LOG(Log::TRC, lcmp) << log_t(lbl,"ALIGN_REG mapped to ") << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
     tmpreg.id = TRIGGER_REG;
     tmpreg.paddr = GPIO_TRIGGER_MEM_LOW;
     tmpreg.size = 0xFFF;
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd, GPIO_TRIGGER_MEM_LOW, GPIO_TRIGGER_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map TRIGGER CIB memory region. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR, lcmp) << log_e(lbl,"Failed to map TRIGGER CIB memory region.");
     }
     m_reg_map[TRIGGER_REG] = tmpreg;
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : TRIGGER_REG mapped to " << std::hex << m_reg_map.at(TRIGGER_REG).vaddr << std::dec;
-#endif
+    LOG(Log::TRC, lcmp) << log_t(lbl,"TRIGGER_REG mapped to ") << std::hex << m_reg_map.at(TRIGGER_REG).vaddr << std::dec;
     if (m_reg_map.size() != 4)
     {
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regionss. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR, lcmp) << log_e(lbl,"Failed to map one or more CIB memory regionss.");
       update_status(sError);
     }
   }
   void DIoLLaserUnit::cib_free_mem()
   {
+    const std::string lbl = "cib_free";
     // clear up the memory for the CIB
-    LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Unmapping CIB memory regions.";
+    LOG(Log::INF, lcmp) << log_i(lbl,"Unmapping CIB memory regions.");
 
     for (auto entry: m_reg_map)
     {
-#ifdef DEBUG
-      LOG(Log::INF) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Clearing CIB memory [" << entry.first << "]\n";
-#endif
+      LOG(Log::DBG, lcmp) << log_i(lbl,"Clearing CIB memory [" + std::to_string(entry.first) + "]");
       if (entry.second.vaddr != 0)
       {
         cib::util::unmap_mem(entry.second.vaddr, entry.second.size);
