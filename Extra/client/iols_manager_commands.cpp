@@ -693,7 +693,6 @@ int run_command(int argc, char **argv)
     std::string method = argv[1];
     std::string value = argv[2];
     std::string type = argv[3];
-    
     bool success = g_monitor.call_method(method, value, type, feedback);
     std::vector<FeedbackMessage> messages = feedback.get_messages();
     update_feedback(messages);

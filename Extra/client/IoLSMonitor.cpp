@@ -738,7 +738,7 @@ bool IoLSMonitor::execute_grid_scan(const std::string &run_plan, FeedbackManager
     // Convert the JSON variable to a UA_Variant
     UA_Variant requestVariant;
     UA_Variant_init(&requestVariant);
-    std::string requestString = jrun_plan.dump();
+    std::string requestString = jrun_plan.dump();    
     UA_String uaRequestString = UA_STRING_ALLOC(requestString.c_str());
     UA_Variant_setScalarCopy(&requestVariant, &uaRequestString, &UA_TYPES[UA_TYPES_STRING]);
     UA_String_clear(&uaRequestString);

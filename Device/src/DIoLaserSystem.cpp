@@ -3225,8 +3225,22 @@ UaStatus DIoLaserSystem::move_to_pos(
 
     const uint32_t overstep = 500;
     // Extract the parameters
-    
+
+    LOG(Log::INF) << "Received scan plan: " << plan.dump(-1);
+
     std::vector<int32_t> center = plan["center"].get<std::vector<int32_t> >();
+    LOG(Log::INF) << "reinterpreted center: " << center.at(0) << ", " << center.at(1) << ", " << center.at(2);
+
+    if (center.at(2) > 0xFFFFF)
+    {
+      LOG(Log::ERR) << log_e("execute_grid_scan", "Center position for Z axis is out of range for 20-bit motor controller.");
+      std::vector<uint32_t> tmp = plan["center"];
+      for (size_t i = 0; i < 3; i++)
+      {
+        center[i] = static_cast<int32_t>(tmp.at(i));
+      }
+      LOG(Log::INF) << "Reinterpreted center: " << center.at(0) << ", " << center.at(1) << ", " << center.at(2);
+    }
 
     std::vector<uint32_t> range = plan["range"];
     std::vector<uint32_t> step = plan["step"];
