@@ -3223,9 +3223,11 @@ UaStatus DIoLaserSystem::move_to_pos(
       return OpcUa_BadInvalidArgument;
     }
 
-    const uint32_t overstep = 200;
+    const uint32_t overstep = 500;
     // Extract the parameters
-    std::vector<int32_t> center = plan["center"];
+    
+    std::vector<int32_t> center = plan["center"].get<std::vector<int32_t> >();
+
     std::vector<uint32_t> range = plan["range"];
     std::vector<uint32_t> step = plan["step"];
     std::string approach = plan["approach"];
