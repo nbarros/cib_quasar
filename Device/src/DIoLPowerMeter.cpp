@@ -567,10 +567,10 @@ UaStatus DIoLPowerMeter::callTerminate (
   {
     if (m_status != sOperating)
     {
-      LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Getting a timestamp for an unavailable reading.";
+      // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Getting a timestamp for an unavailable reading.";
 
       m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
-      LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Device is not operating. Setting energy reading to unavailable.";
+      // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Device is not operating. Setting energy reading to unavailable.";
       getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable, m_now);
     }
     else
@@ -583,17 +583,17 @@ UaStatus DIoLPowerMeter::callTerminate (
         // Guard against nullptr access during shutdown
         if (m_pm != nullptr && !m_pause_measurements)
         {
-          LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Querying for energy. " << m_pm;
+          // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Querying for energy. " << m_pm;
 
           success = m_pm->read_energy(m_energy_reading);
           if (success)
           {
-            LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Calculating timestamp.";
+            // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Calculating timestamp.";
             // m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
-            LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Refreshing.";
+            // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Refreshing.";
             // getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
           }
-          LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Done with the measurement.";
+          // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Done with the measurement.";
         }
       }
       catch(std::exception &e)
@@ -1422,10 +1422,15 @@ UaStatus DIoLPowerMeter::callTerminate (
   UaStatus DIoLPowerMeter::stop_readings(json &resp)
   {
     const std::string label = "stop_readings";
-    UaStatus st = check_offline_state(resp);
-    if (st != OpcUa_Good)
+    // Only check offline state if we're actually running measurements
+    // During shutdown, we may already be offline, which is expected
+    if (m_do_measurements.load())
     {
-      return st;
+      UaStatus st = check_offline_state(resp);
+      if (st != OpcUa_Good)
+      {
+        return st;
+      }
     }
     // this should just flip a variable
     m_do_measurements.store(false);
@@ -1946,7 +1951,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     try
     {
       const std::lock_guard<std::mutex> lock(m_serial_mutex);
-      LOG(Log::INF) << log_i(label.c_str()," ") << "Setting wavelength to " << lambda;
+      // LOG(Log::INF) << log_i(label.c_str()," ") << "Setting wavelength to " << lambda;
       m_pm->wavelength(lambda, success);
     }
     catch(serial::PortNotOpenedException &e)
@@ -2003,9 +2008,9 @@ UaStatus DIoLPowerMeter::callTerminate (
       return OpcUa_Bad;
     }
     m_wavelength = lambda;
-    LOG(Log::INF) << log_i(label.c_str()," ") << "Wavelength set to " << lambda;
+    // LOG(Log::INF) << log_i(label.c_str()," ") << "Wavelength set to " << lambda;
     getAddressSpaceLink()->setWavelength(m_wavelength,OpcUa_Good);
-    LOG(Log::INF) << log_i(label.c_str(), " ") << "Returning from set_wavelength";
+    // LOG(Log::INF) << log_i(label.c_str(), " ") << "Returning from set_wavelength";
     return OpcUa_Good;
   }
   UaStatus DIoLPowerMeter::set_mmode(const uint16_t mmode, json &resp)
