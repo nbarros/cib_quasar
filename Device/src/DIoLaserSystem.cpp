@@ -2241,7 +2241,7 @@ UaStatus DIoLaserSystem::callClear_error (
 
   void DIoLaserSystem::move_task(const std::vector<OpcUa_Int32> position, const std::string approach)
   {
-    const uint32_t overstep = 200;
+    // const uint32_t overstep = 500;
     std::ostringstream msg("");
     const std::string lbl = "move_task";
     UaStatus st;
@@ -2275,7 +2275,7 @@ UaStatus DIoLaserSystem::callClear_error (
         // current position is "below" the target, only 'd' requires overstepping
         if (approach.at(idx) == 'd')
         {
-          interim_target = position.at(idx) + overstep;
+          interim_target = position.at(idx) + lmotor->get_overstep();
           reset(msg);
           msg << log_i(lbl.c_str(), "Setting overstep position for motor (id : ")
               << lmotor->get_id() << ") : " << interim_target;
@@ -2305,7 +2305,7 @@ UaStatus DIoLaserSystem::callClear_error (
         // current position is "below" the target, only 'u' requires overstepping
         if (approach.at(idx) == 'u')
         {
-          interim_target = position.at(idx) - overstep;
+          interim_target = position.at(idx) - lmotor->get_overstep();
           reset(msg);
           msg << log_i(lbl.c_str(), "Setting overstep position for motor (id : ")
               << lmotor->get_id() << ") : " << interim_target;

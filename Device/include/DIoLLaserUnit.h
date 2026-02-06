@@ -374,6 +374,7 @@ private:
     std::mutex m_serial_mutex;
     std::mutex m_regs_mutex;  // Protects m_regs map from concurrent access
     std::atomic<bool> m_is_terminating;
+    std::chrono::steady_clock::time_point m_last_status_check;
 };
 
 }

@@ -187,7 +187,8 @@ public:
     bool is_moving(); 
     bool is_in_range(const int32_t &v);
     bool check_motor_enabled();
-
+    uint32_t get_overstep() {return m_overstep;}
+    void set_overstep(const uint32_t overstep) {m_overstep = overstep;}
 private:
 
 
@@ -262,6 +263,7 @@ private:
     std::map<Status,std::string> m_status_map;
     Status m_status;
     bool m_enabled;
+    uint32_t m_overstep;
 
 };
 

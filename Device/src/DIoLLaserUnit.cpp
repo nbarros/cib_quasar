@@ -1521,6 +1521,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return st;
     }
+    m_last_status_check = std::chrono::steady_clock::now();
+
     try
     {
       // deassert qswitch enable
@@ -2564,6 +2566,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // This is a problematic method, since it runs on a separate thread.
     // Therefore it needs to do several checks to make sure it does not enter into race conditions with the normal operation
     // the main issue here is when there is a race condition with the termination
+    return;
     json resp;
     if (m_is_terminating.load())
     {
@@ -2574,6 +2577,18 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
 
     if (m_laser)
     {
+
+      if (m_part_state.state.fire_enable)
+      {
+        // do this only once every 30 min
+        auto x = std::chrono::steady_clock::now();
+        if (x < (m_last_status_check + std::chrono::minutes(30)))
+        {
+          // do nothing
+          return;
+        }
+      }
+
       // this could potentially cause a race condition
       refresh_status(resp);
       // this could potentially cause a race condition

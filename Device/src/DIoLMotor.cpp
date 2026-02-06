@@ -99,7 +99,8 @@ DIoLMotor::DIoLMotor(
                                 m_id("NONE"),
                                 m_mmap_fd(0),
                                 m_status(sOffline),
-                                m_enabled(false)
+                                m_enabled(false),
+                                m_overstep(500)
 {
     /* fill up constructor body here */
     // initialize cURL
@@ -1269,6 +1270,10 @@ UaStatus DIoLMotor::callClear_alarm (
       if (it.key() == "refresh_period_ms")
       {
         st = set_refresh_period(it.value());
+      }
+      if (it.key() == "overstep")
+      {
+        set_overstep(it.value());
       }
       if (it.key() == "range")
       {

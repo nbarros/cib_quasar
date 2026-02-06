@@ -589,9 +589,9 @@ UaStatus DIoLPowerMeter::callTerminate (
           if (success)
           {
             // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Calculating timestamp.";
-            // m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
+            m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
             // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Refreshing.";
-            // getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
+            getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
           }
           // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Done with the measurement.";
         }
