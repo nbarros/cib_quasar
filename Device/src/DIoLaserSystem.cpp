@@ -3249,7 +3249,7 @@ UaStatus DIoLaserSystem::move_to_pos(
 
     // Generate the scan plan
     json scan_plan;
-    uint32_t scan_start, scan_end;
+    int32_t scan_start, scan_end;
 
     scan_plan["scan_plan"] = json::array();
     if (approach[scan_axis] == 'u')
