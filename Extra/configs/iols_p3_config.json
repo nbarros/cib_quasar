@@ -97,7 +97,7 @@
 	"measurement_mode":3,
 	"select_range":4,
 	"wavelength":266,
-	"energy_threshold":200,
+	"energy_threshold":300,
 	"average_setting":1,
 	"pulse_width":2,
 	"measurement_interval_ms" : 80

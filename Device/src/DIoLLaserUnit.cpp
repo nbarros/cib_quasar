@@ -2056,20 +2056,21 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       LOG(Log::WRN) << "Trying to set a timer that has already been set up. Skipping.";
       return;
     }
-    m_count_flashes = true;
-    std::thread([this]()
-                {
-      while (get_counting_flashes())
-      {
-        // We know that the laser will be firing at 10 Hz, that means 100 ms period
-        auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(200);
-        if (refresh_shot_count() != OpcUa_Good)
-        {
-          LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
-        }
-        std::this_thread::sleep_until(x);
-      }
-                }).detach();
+    // disable temporarily
+    // m_count_flashes = true;
+    // std::thread([this]()
+    //             {
+    //   while (get_counting_flashes())
+    //   {
+    //     // We know that the laser will be firing at 10 Hz, that means 100 ms period
+    //     auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(200);
+    //     if (refresh_shot_count() != OpcUa_Good)
+    //     {
+    //       LOG(Log::ERR) << "Failed to query device for status. Setting read values to InvalidData";
+    //     }
+    //     std::this_thread::sleep_until(x);
+    //   }
+    //             }).detach();
   }
 
   UaStatus DIoLLaserUnit::refresh_shot_count()
@@ -2566,7 +2567,6 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     // This is a problematic method, since it runs on a separate thread.
     // Therefore it needs to do several checks to make sure it does not enter into race conditions with the normal operation
     // the main issue here is when there is a race condition with the termination
-    return;
     json resp;
     if (m_is_terminating.load())
     {
