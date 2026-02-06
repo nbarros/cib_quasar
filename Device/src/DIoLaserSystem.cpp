@@ -92,7 +92,8 @@ DIoLaserSystem::DIoLaserSystem(
     m_state_map.insert({sError,"sError"});
 
     // initialize the timestamp reader
-    cib::util::cib_time::initialize(GPIO_TSTAMP_MEM_LOW);
+    // TODO: NFB : Finish implementing this
+    // cib::util::cib_time::initialize(GPIO_TSTAMP_MEM_LOW);
     // by default only log warnings
     /**
      * Log levels:         

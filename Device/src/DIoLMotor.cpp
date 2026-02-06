@@ -43,6 +43,8 @@ extern "C" {
 #define log_e(m,s) log_msg("ERROR",m,s)
 #define log_w(m,s) log_msg("WARN",m,s)
 #define log_i(m,s) log_msg("INFO",m,s)
+#define log_d(m, s) log_msg("DEBUG", m, s)
+#define log_t(m, s) log_msg("TRACE", m, s)
 
 using std::ostringstream;
 
@@ -100,7 +102,8 @@ DIoLMotor::DIoLMotor(
                                 m_mmap_fd(0),
                                 m_status(sOffline),
                                 m_enabled(false),
-                                m_overstep(500)
+                                m_overstep(500),
+                                lcmp()
 {
     /* fill up constructor body here */
     // initialize cURL
@@ -115,6 +118,10 @@ DIoLMotor::DIoLMotor(
     m_status_map.insert({sError,"error"});
 
     m_id = id();
+    lcmp = id();
+
+    Log::registerLoggingComponent(lcmp, Log::TRC);
+    LOG(Log::TRC, lcmp) << log_t("constructor", "Creating DIoLMotor instance with id [" + id() + "]");
 }
 
 /* sample dtr */
@@ -170,9 +177,9 @@ UaStatus DIoLMotor::callConfig (
     UaString& response
 )
 {
-    LOG(Log::INF) << "Received JSON configuration file ";
+    LOG(Log::INF, lcmp) << "Received JSON configuration file ";
 
-    LOG(Log::INF) << "Raw content : " << config_json.toUtf8();
+    LOG(Log::INF, lcmp) << "Raw content : " << config_json.toUtf8();
 
     json resp;
     const std::string lbl = "config";
@@ -279,12 +286,10 @@ UaStatus DIoLMotor::callStop (
         return OpcUa_Good;
     }
     UaStatus st = motor_stop(resp);
-#ifdef DEBUG
     if (st != OpcUa_Good)
     {
-      LOG(Log::ERR) << "Remote command execution failed.";
+      LOG(Log::WRN, lcmp) << "Remote command (stop) execution failed.";
     }
-#endif
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
 }
@@ -300,12 +305,10 @@ UaStatus DIoLMotor::callReset (
       return OpcUa_Good;
   }
   UaStatus st = motor_clear_alarm(resp);
-#ifdef DEBUG
   if (st != OpcUa_Good)
   {
-    LOG(Log::ERR) << "Remote command execution failed.";
+    LOG(Log::WRN, lcmp) << "Remote command (clear alarm) execution failed.";
   }
-#endif
   response = UaString(resp.dump().c_str());
 
   return OpcUa_Good;
@@ -322,12 +325,10 @@ UaStatus DIoLMotor::callClear_alarm (
         return OpcUa_Good;
     }
     UaStatus st = motor_clear_alarm(resp);
-#ifdef DEBUG
     if (st != OpcUa_Good)
     {
-      LOG(Log::ERR) << "Remote command execution failed.";
+      LOG(Log::WRN, lcmp) << "Remote command (clear alarm) execution failed.";
     }
-#endif
     response = UaString(resp.dump().c_str());
 
     return OpcUa_Good;
@@ -383,7 +384,7 @@ UaStatus DIoLMotor::callClear_alarm (
       msg << log_w("start_move","Motor is already at destination") << " (" << m_position_motor << " vs " << m_position_setpoint << ")";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-      LOG(Log::WRN) << msg.str();
+      LOG(Log::WRN, lcmp) << msg.str();
       // refresh the position regardless
       cib_set_init_position(m_position_motor);
       return OpcUa_Good;
@@ -460,9 +461,7 @@ UaStatus DIoLMotor::callClear_alarm (
       std::ostringstream msg("");
       status = OpcUa_Good;
       msg << log_i(lbl.c_str(),"Remote command successful");
-#ifdef DEBUG
-      LOG(Log::INF) << msg.str();
-#endif
+      LOG(Log::DBG, lcmp) << msg.str();
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -471,7 +470,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "ERROR";
       std::ostringstream msg("");
       msg << log_e(lbl.c_str(),"Failed to execute remote command : ") << answer["status"];
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
       status =  OpcUa_Bad;
@@ -587,7 +586,7 @@ UaStatus DIoLMotor::callClear_alarm (
     // 2.1. position_set_point
     // 2.2. speed
     // 2.3. acceleration
-    //    LOG(Log::INF) << "Checking readiness for motor ID=" << m_id
+    //    LOG(Log::INF, lcmp) << "Checking readiness for motor ID=" << m_id
     //        << " with positionSetPoint = (" << m_position_setpoint << ")";
     // if the server and port are not defined, certainly it is not ready
     if (m_server_host.size() == 0)
@@ -601,7 +600,7 @@ UaStatus DIoLMotor::callClear_alarm (
     // if the motor is moving, do not take new requests
     if (is_moving())
     {
-      LOG(Log::WRN) << log_w("is_ready","Motor is moving. Not ready for new commands.");
+      LOG(Log::WRN, lcmp) << log_w("is_ready","Motor is moving. Not ready for new commands.");
       return false;
     }
     return true;
@@ -616,9 +615,7 @@ UaStatus DIoLMotor::callClear_alarm (
   {
     if (m_position_monitor.load())
     {
-#ifdef DEBUG
-      LOG(Log::WRN) << log_w("motor_monitor","Trying to set a position monitor timer that has already been set up. Skipping.");
-#endif
+      LOG(Log::DBG, lcmp) << log_w("motor_monitor","Trying to set a position monitor timer that has already been set up. Skipping.");
       return;
     }
     m_position_monitor.store(true);
@@ -636,10 +633,7 @@ UaStatus DIoLMotor::callClear_alarm (
         st = motor_get_position(resp);
         if (st != OpcUa_Good)
         {
-#ifdef DEBUG
-          LOG(Log::ERR) << log_e("motor_monitor","Failed to query device for position. Setting read values to InvalidData");
-#endif
-
+          LOG(Log::WRN, lcmp) << log_e("motor_monitor","Failed to query device for position. Setting read values to InvalidData");
         }
         // use the CIB as the reference for identifying motor movement
         // // check if we are moving based on the comparison with the previous position
@@ -663,9 +657,7 @@ UaStatus DIoLMotor::callClear_alarm (
   {
     if (m_stats_monitor.load())
     {
-#ifdef DEBUG
-      LOG(Log::WRN) << "Trying to set a stats monitor timer that has already been set up. Skipping.";
-#endif
+      LOG(Log::DBG, lcmp) << "Trying to set a stats monitor timer that has already been set up. Skipping.";
       return;
     }
     m_stats_monitor.store(true);
@@ -680,9 +672,7 @@ UaStatus DIoLMotor::callClear_alarm (
         {
           m_monitor_status = OpcUa_BadResourceUnavailable;
           //getAddressSpaceLink()->setOperation_status(m_monitor_status,m_monitor_status);
-#ifdef DEBUG
-          LOG(Log::ERR) << log_e("stat_mon","Failed to query device for status. Setting read values to InvalidData");
-#endif
+          LOG(Log::WRN, lcmp) << log_e("stat_mon","Failed to query device for status. Setting read values to InvalidData");
         }
         // we should not use the speed readout to figure out
         // when it is moving
@@ -696,7 +686,7 @@ UaStatus DIoLMotor::callClear_alarm (
     // in this case, even though it is a separate thread, use the motor as the reference
     if (m_cib_monitor.load())
     {
-      LOG(Log::WRN) << log_w("cib_mon","CIB monitor already running. Doing nothing.");
+      LOG(Log::WRN, lcmp) << log_w("cib_mon","CIB monitor already running. Doing nothing.");
       return;
     }
     m_cib_monitor.store(true);
@@ -710,19 +700,17 @@ UaStatus DIoLMotor::callClear_alarm (
       // since we know the speed of the motor, we can check the CIB only 
       // after the step period of the motor
       m_refresh_cib_ms = static_cast<uint32_t>((2.0 /static_cast<double>(m_speed_setpoint)) * 1000.0);
-      LOG(Log::INF) << log_i("cib_monitor","Setting CIB monitor refresh period to ") << m_refresh_cib_ms << " ms";
+      LOG(Log::INF, lcmp) << log_i("cib_monitor","Setting CIB monitor refresh period to ") << m_refresh_cib_ms << " ms";
 
       while (m_cib_monitor.load())
       {
         // prev_prev_pos = prev_pos;
         // prev_pos = m_position_cib;
         UaStatus st = cib_get_position(cpos);
-#ifdef DEBUG
         if (st != OpcUa_Good)
         {
-          LOG(Log::ERR) << log_e("cib_monitor","Failed to get the current position : ") << cpos;
+          LOG(Log::WRN, lcmp) << log_e("cib_monitor","Failed to get the current position : ") << cpos;
         }
-#endif
         m_position_cib = cpos;
         getAddressSpaceLink()->setCurrent_position_cib(m_position_cib,OpcUa_Good);
         // if the motor speed is very slow, this is certainly going to fail
@@ -754,7 +742,7 @@ UaStatus DIoLMotor::callClear_alarm (
     addr += "/api/";
     addr += request;
 //#ifdef DEBUG
-//    LOG(Log::INF) << log_i(lbl.c_str(),"Query address : ") << addr;
+//    LOG(Log::INF, lcmp) << log_i(lbl.c_str(),"Query address : ") << addr;
 //#endif
     uint16_t lport = m_server_port;
     //mutex to
@@ -786,9 +774,7 @@ UaStatus DIoLMotor::callClear_alarm (
       {
         std::ostringstream msg("");
         msg << log_e(lbl.c_str(),"curl_easy_perform() failed: ") << curl_easy_strerror(res);
-#ifdef DEBUG
-        LOG(Log::ERR) << msg.str();
-#endif
+        LOG(Log::DBG, lcmp) << msg.str();
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadCommunicationError;
@@ -799,7 +785,7 @@ UaStatus DIoLMotor::callClear_alarm (
         return OpcUa_BadCommunicationError;
       }
 //#ifdef DEBUG
-//      LOG(Log::INF) << log_i(lbl.c_str(),"Received response [") << response_string << "]";
+//      LOG(Log::INF, lcmp) << log_i(lbl.c_str(),"Received response [") << response_string << "]";
 //#endif
       try
       {
@@ -809,9 +795,7 @@ UaStatus DIoLMotor::callClear_alarm (
       {
         std::ostringstream msg("");
         msg << log_e(lbl.c_str(),"Caucght an exception parsing the server response: ") << e.what();
-#ifdef DEBUG
-        LOG(Log::ERR) << msg.str();
-#endif
+        LOG(Log::DBG, lcmp) << msg.str();
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadCommunicationError;
@@ -869,21 +853,17 @@ UaStatus DIoLMotor::callClear_alarm (
     catch(json::exception &e)
     {
       m_monitor_status = OpcUa_BadCommunicationError;
-#ifdef DEBUG
       std::ostringstream msg("");
       msg << log_e("get_info","Caught a JSON exception : ") << e.what();
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::WRN, lcmp) << msg.str();
       return OpcUa_BadCommunicationError;
     }
     catch(std::exception &e)
     {
       m_monitor_status = OpcUa_BadCommunicationError;
-#ifdef DEBUG
       std::ostringstream msg("");
       msg << log_e("get_info","Caught an STL exception : ") << e.what();
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       return OpcUa_BadCommunicationError;
     }
 
@@ -897,9 +877,7 @@ UaStatus DIoLMotor::callClear_alarm (
     std::string query = "stop";
     json answer;
     st = query_motor(query,answer,resp);
-#ifdef DEBUG
-    LOG(Log::INF) << "Received response [" << answer << "]";
-#endif
+    LOG(Log::DBG, lcmp) << "Received response [" << answer << "]";
     // now we should parse the answer
     // it is meant to be a json object
     if (answer["status"] == string("OK"))
@@ -909,9 +887,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-#ifdef DEBUG
-      LOG(Log::INF) << msg.str();
-#endif
+      LOG(Log::DBG, lcmp) << msg.str();
       st =  OpcUa_Good;
     }
     else
@@ -921,9 +897,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       st = OpcUa_Bad;
     }
     // -- why not, refresh also the current position, as stated by the motor
@@ -937,9 +911,7 @@ UaStatus DIoLMotor::callClear_alarm (
     std::string query = "clear_alarm";
     json answer;
     st = query_motor(query,answer,resp);
-#ifdef DEBUG
-    LOG(Log::INF) << "Received response [" << answer << "]";
-#endif
+    LOG(Log::DBG, lcmp) << "Received response [" << answer << "]";
     // now we should parse the answer
     // it is meant to be a json object
     if (answer["status"] == string("OK"))
@@ -949,9 +921,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-#ifdef DEBUG
-      LOG(Log::INF) << msg.str();
-#endif
+      LOG(Log::DBG, lcmp) << msg.str();
       st =  OpcUa_Good;
     }
     else
@@ -961,9 +931,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       st = OpcUa_Bad;
     }
     return st;
@@ -976,7 +944,7 @@ UaStatus DIoLMotor::callClear_alarm (
     json answer;
     st = query_motor(query,answer,resp);
 //#ifdef DEBUG
-//    LOG(Log::INF) << "Received response [" << answer << "]";
+//    LOG(Log::INF, lcmp) << "Received response [" << answer << "]";
 //#endif
     // now we should parse the answer
     // it is meant to be a json object
@@ -988,9 +956,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-//#ifdef DEBUG
-//      LOG(Log::INF) << msg.str();
-//#endif
+      LOG(Log::DBG, lcmp) << msg.str();
       st =  OpcUa_Good;
     }
     else
@@ -1000,7 +966,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       st = OpcUa_Bad;
     }
     return st;
@@ -1019,18 +985,18 @@ UaStatus DIoLMotor::callClear_alarm (
       int32_t new_value = answer.at("speed").get<int>();
       if (std::abs(new_value) > 1000)
       {
-        LOG(Log::WRN) << log_w(lbl.c_str(),"Speed readout is too high (") << new_value << "). Ignoring.";
+        LOG(Log::WRN, lcmp) << log_w(lbl.c_str(),"Speed readout is too high (") << new_value << "). Ignoring.";
         return OpcUa_Good;
       }
       m_speed_readout = new_value; 
-      LOG(Log::INF) << "Speed readout [" << get_id() << "] : " << m_speed_readout;
+      LOG(Log::INF, lcmp) << "Speed readout [" << get_id() << "] : " << m_speed_readout;
       std::ostringstream msg("");
       // msg << log_i(lbl.c_str(), "Remote command successful");
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
       // #ifdef DEBUG
-      //       LOG(Log::INF) << msg.str();
+      //       LOG(Log::INF, lcmp) << msg.str();
       // #endif
       st = OpcUa_Good;
     }
@@ -1041,7 +1007,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       st = OpcUa_Bad;
     }
     return st;
@@ -1053,9 +1019,7 @@ UaStatus DIoLMotor::callClear_alarm (
     std::string query = "get_alarm";
     json answer;
     st = query_motor(query,answer,resp);
-#ifdef DEBUG
-    LOG(Log::INF) << "Received response [" << answer << "]";
-#endif
+    LOG(Log::TRC, lcmp) << "Received response [" << answer << "]";
     // now we should parse the answer
     // it is meant to be a json object
     if (answer["status"] == string("OK"))
@@ -1066,9 +1030,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-#ifdef DEBUG
-      LOG(Log::INF) << msg.str();
-#endif
+      LOG(Log::DBG, lcmp) << msg.str();
       st =  OpcUa_Good;
     }
     else
@@ -1078,7 +1040,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       st = OpcUa_Bad;
     }
     return st;
@@ -1107,23 +1069,17 @@ UaStatus DIoLMotor::callClear_alarm (
   UaStatus DIoLMotor::set_refresh_period(const uint16_t &v)
   {
     m_refresh_ms = v;
-#ifdef DEBUG
-    LOG(Log::INF) << "Updating refresh rate for motor " << m_id << " to " << v << " ms";
-#endif
+    LOG(Log::TRC, lcmp) << "Updating refresh rate for motor " << m_id << " to " << v << " ms";
     if (v != 0 && !m_stats_monitor)
     {
-#ifdef DEBUG
-      LOG(Log::INF) << "Starting a timer on motor " << m_id << " to refresh every " << v << " ms";
-#endif
+      LOG(Log::DBG, lcmp) << "Starting a timer on motor " << m_id << " to refresh every " << v << " ms";
 //      motor_position_monitor();
 //      // -- do 10 times that for the stats
 //      motor_stats_monitor();
     }
     else if (v == 0)
     {
-#ifdef DEBUG
-      LOG(Log::WRN) << "Stopping the monitor timer" ;
-#endif
+      LOG(Log::DBG, lcmp) << "Stopping the monitor timer" ;
       m_stats_monitor = false;
     }
     UaStatus st = getAddressSpaceLink()->setRefresh_period_ms(v,OpcUa_Good);
@@ -1132,27 +1088,21 @@ UaStatus DIoLMotor::callClear_alarm (
   }
   UaStatus DIoLMotor::set_acceleration(const uint32_t &v)
   {
-#ifdef DEBUG
-    LOG(Log::INF) << "Updating acceleration motor " << m_id << " to " << v ;
-#endif
+    LOG(Log::DBG, lcmp) << "Updating acceleration motor " << m_id << " to " << v ;
     m_acceleration = v;
     UaStatus st = getAddressSpaceLink()->setAcceleration(m_acceleration,OpcUa_Good);
     return st;
   }
   UaStatus DIoLMotor::set_deceleration(const uint32_t &v)
   {
-#ifdef DEBUG
-    LOG(Log::INF) << "Updating deceleration motor " << m_id << " to " << v ;
-#endif
+    LOG(Log::DBG, lcmp) << "Updating deceleration motor " << m_id << " to " << v ;
     m_deceleration = v;
     UaStatus st= getAddressSpaceLink()->setDeceleration(m_deceleration,OpcUa_Good);
     return st;
   }
   UaStatus DIoLMotor::set_speed(const uint32_t &v)
   {
-#ifdef DEBUG
-    LOG(Log::INF) << "Updating spped of motor " << m_id << " to " << v ;
-#endif
+    LOG(Log::DBG, lcmp) << "Updating speed of motor " << m_id << " to " << v ;
     m_speed_setpoint = v;
     /* Accepts format
     *"%Y-%m-%dT%H:%M:%S%ZP" * e.g.unix epoch : "1970-01-01T00:00:00Z" * e.g.open62541 epoch "1601-01-01T00:00:00Z"(i.e.windows epoch)UaDateTime now = UaDateTime::fromString()
@@ -1175,22 +1125,16 @@ UaStatus DIoLMotor::callClear_alarm (
     {
       msg.clear();msg.str("");
       msg << log_e(lbl.c_str()," ") << "Incomplete config fragment.";
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["messages"].push_back(msg.str());
       return OpcUa_BadInvalidArgument;
     }
     // first confirm that this configuration is for the correct motor
-#ifdef DEBUG
-    LOG(Log::INF) << "Dumping  config fragment : " << conf.dump();
-#endif
+    LOG(Log::TRC, lcmp) << "Dumping  config fragment : " << conf.dump();
     if (conf.at("id").get<std::string>() != m_id)
     {
       msg << log_e("config"," ") << "Mismatch in motor id on configuration token (" << m_id << "!=" << conf.at("id").get<std::string>() << ")";
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidArgument;
@@ -1202,9 +1146,7 @@ UaStatus DIoLMotor::callClear_alarm (
     {
       msg.clear();msg.str("");
       msg << log_w(lbl.c_str(),"Motor is disabled. Skipping configuration.");
-#ifdef DEBUG
-      LOG(Log::WRN) << msg.str();
-#endif
+      LOG(Log::WRN, lcmp) << msg.str();
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -1221,9 +1163,7 @@ UaStatus DIoLMotor::callClear_alarm (
     {
       msg.clear();msg.str("");
       msg << log_e(lbl.c_str()," ") << "Failed to map registers.";
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidArgument;
@@ -1231,7 +1171,7 @@ UaStatus DIoLMotor::callClear_alarm (
     }
     for (json::iterator it = conf.begin(); it != conf.end(); ++it)
     {
-      LOG(Log::DBG) << "Processing config key: " << it.key();
+      LOG(Log::DBG, lcmp) << "Processing config key: " << it.key();
       if (it.key() == "server_address")
       {
         m_server_host = it.value();
@@ -1242,9 +1182,7 @@ UaStatus DIoLMotor::callClear_alarm (
           msg.clear(); msg.str("");
           msg << log_w(lbl.c_str(),"Failure updating [server_addr] in adress space. Returned code ") << st;
           resp["messages"].push_back(msg.str());
-#ifdef DEBUG
-          LOG(Log::WRN) << msg.str();
-#endif
+          LOG(Log::WRN, lcmp) << msg.str();
         }
       }
       if (it.key() == "server_port")
@@ -1256,9 +1194,7 @@ UaStatus DIoLMotor::callClear_alarm (
           msg.clear(); msg.str("");
           msg << log_w(lbl.c_str(),"Failure updating [server_port] in adress space. Returned code ") << st;
           resp["messages"].push_back(msg.str());
-#ifdef DEBUG
-          LOG(Log::WRN) << msg.str();
-#endif
+          LOG(Log::WRN, lcmp) << msg.str();
         }
       }
       if (it.key() == "speed")
@@ -1326,7 +1262,7 @@ UaStatus DIoLMotor::callClear_alarm (
         motor_stats_monitor();
         cib_movement_monitor();
     } else {
-        LOG(Log::INF) << "Motor " << m_id << " is disabled. Monitors will not start.";
+        LOG(Log::INF, lcmp) << "Motor " << m_id << " is disabled. Monitors will not start.";
     }
     //
     return st;
@@ -1432,41 +1368,35 @@ UaStatus DIoLMotor::callClear_alarm (
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MOTOR_1_MEM_LOW,GPIO_MOTOR_1_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nFailed to map MOTOR_1 CIB memory region. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR, lcmp) << "Failed to map MOTOR_1 CIB memory region. This is going to fail spectacularly!!!";
     }
     m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\n MOTOR_1_REG mapped to "
+    LOG(Log::TRC, lcmp) << "MOTOR_1_REG mapped to "
         << std::hex << m_reg_map.at(MOTOR_1_REG).vaddr << std::dec;
-#endif
     tmpreg.id= MOTOR_2_REG;
     tmpreg.paddr = GPIO_MOTOR_2_MEM_LOW;
     tmpreg.size = 0xFFF;
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MOTOR_2_MEM_LOW,GPIO_MOTOR_2_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nFailed to map MOTOR_2 CIB memory region. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR, lcmp) << "Failed to map MOTOR_2 CIB memory region. This is going to fail spectacularly!!!";
     }
     m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\n MOTOR_2_REG mapped to " << std::hex << m_reg_map.at(MOTOR_2_REG).vaddr << std::dec;
-#endif
+    LOG(Log::TRC, lcmp) << "MOTOR_2_REG mapped to " << std::hex << m_reg_map.at(MOTOR_2_REG).vaddr << std::dec;
     tmpreg.id= MOTOR_3_REG;
     tmpreg.paddr = GPIO_MOTOR_3_MEM_LOW;
     tmpreg.size = 0xFFF;
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MOTOR_3_MEM_LOW,GPIO_MOTOR_3_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nFailed to map MOTOR_3 CIB memory region. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR, lcmp) << "Failed to map MOTOR_3 CIB memory region. This is going to fail spectacularly!!!";
     }
     m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\nMOTOR_3_REG mapped to " << std::hex << m_reg_map.at(MOTOR_3_REG).vaddr << std::dec;
-#endif
+    LOG(Log::TRC, lcmp) << "MOTOR_3_REG mapped to " << std::hex << m_reg_map.at(MOTOR_3_REG).vaddr << std::dec;
     if (m_reg_map.size() != 3)
     {
       // sError is a special case of status, since this
-      LOG(Log::ERR) << "\n\nDIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regions. This is going to fail spectacularly!!!\n\n";
+      LOG(Log::ERR, lcmp) << "DIoLLaserUnit::DIoLLaserUnit : Failed to map one or more CIB memory regions. This is going to fail spectacularly!!!";
     }
     return OpcUa_Good;
   }
@@ -1494,7 +1424,7 @@ UaStatus DIoLMotor::callClear_alarm (
       std::ostringstream msg("");
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"CIB memory not mapped. System on lockdown.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1540,6 +1470,7 @@ UaStatus DIoLMotor::callClear_alarm (
     //
     missing.clear();
     // all good, return true
+    LOG(Log::TRC, lcmp) << log_t(lbl.c_str(),"CIB register configuration fragment validated successfully"); 
     return OpcUa_Good;
   }
   UaStatus DIoLMotor::map_registers(json &conf,json &resp)
@@ -1554,15 +1485,11 @@ UaStatus DIoLMotor::callClear_alarm (
     std::ostringstream msg("");
     const std::string lbl = "map_registers";
     json reginfo = conf;
-#ifdef DEBUG
-    LOG(Log::INF) << log_i(lbl.c_str(),"Mapping registers");
-#endif
+    LOG(Log::DBG, lcmp) << log_i(lbl.c_str(),"Mapping registers");
     st = check_cib_mem(resp);
     if(st != OpcUa_Good)
     {
-#ifdef DEBUG
-      LOG(Log::ERR) << log_e(lbl.c_str(),"CIB memory not mapped");
-#endif
+      LOG(Log::WRN, lcmp) << log_e(lbl.c_str(),"CIB memory not mapped");
       return st;
     }
     else
@@ -1633,12 +1560,10 @@ UaStatus DIoLMotor::callClear_alarm (
           tmp.bit_low = jt.value().at(3);
           tmp.maddr = (tmp.reg.vaddr+(tmp.offset*GPIO_CH_OFFSET));
           tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
-#ifdef DEBUG
-          LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg.id
+          LOG(Log::TRC, lcmp) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg.id
               << " offset " << tmp.offset << " bh " << tmp.bit_high << " bl " << tmp.bit_low
               << " addr " << std::hex << tmp.maddr << std::dec << " mask " << std::hex << tmp.mask
               << std::dec << " ";
-#endif
           m_regs.insert(std::pair<std::string,cib_param_t>(jt.key(),tmp));
         }
       }
@@ -1680,7 +1605,7 @@ UaStatus DIoLMotor::callClear_alarm (
       msg << log_w(lbl.c_str(),"Motor is not ready to operate");
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
-      LOG(Log::WRN) << msg.str();
+      LOG(Log::WRN, lcmp) << msg.str();
       return OpcUa_BadInvalidState;
     }
     return OpcUa_Good;
@@ -1695,9 +1620,7 @@ UaStatus DIoLMotor::callClear_alarm (
       msg << log_e("mon_status","Bad motor monitor status ") << m_monitor_status;
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::DBG, lcmp) << msg.str();
       return OpcUa_BadInvalidState;
     }
     return OpcUa_Good;
@@ -1741,7 +1664,7 @@ UaStatus DIoLMotor::callClear_alarm (
     uint32_t reg_val = cib::util::reg_read(m_regs.at("cur_pos").maddr);
     int32_t m_pos = cib::util::cast_to_signed((reg_val & m_regs.at("cur_pos").mask),m_regs.at("cur_pos").mask);
 //#ifdef DEBUG
-//    LOG(Log::INF) << log_i("cib_get_position","Readout position ") << m_pos;
+//    LOG(Log::INF, lcmp) << log_i("cib_get_position","Readout position ") << m_pos;
 //#endif
     pos = m_pos;
     return OpcUa_Good;
@@ -1755,9 +1678,7 @@ UaStatus DIoLMotor::callClear_alarm (
       msg << log_e("check_range","Requested position") << " (" << pos << ") not in motor range [" << m_range_min << ", " << m_range_max << "]";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidArgument;
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::DBG, lcmp) << msg.str();
       return OpcUa_BadInvalidArgument;
     }
     else
@@ -1772,7 +1693,7 @@ UaStatus DIoLMotor::callClear_alarm (
       // no change. do nothing
       return;
     }
-    //LOG(Log::INF) << "Motor " << m_id << " status changed from " << m_status_map.at(m_status) << " to " << m_status_map.at(s);
+    //LOG(Log::INF, lcmp) << "Motor " << m_id << " status changed from " << m_status_map.at(m_status) << " to " << m_status_map.at(s);
     m_status = s;
     UaString ss(m_status_map.at(m_status).c_str());
     getAddressSpaceLink()->setState(ss,OpcUa_Good);

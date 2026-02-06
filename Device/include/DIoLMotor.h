@@ -264,6 +264,7 @@ private:
     Status m_status;
     bool m_enabled;
     uint32_t m_overstep;
+    std::string lcmp;
 
 };
 
