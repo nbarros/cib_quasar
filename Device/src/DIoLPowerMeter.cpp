@@ -1480,11 +1480,13 @@ UaStatus DIoLPowerMeter::callTerminate (
                 {
       while(m_do_measurements.load())
         {
-        auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_measurement_interval);
+        // auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_measurement_interval);
         refresh_energy_reading();
-        refresh_average_reading();
-        std::this_thread::sleep_until(x);
-        }
+        //refresh_average_reading();
+        //std::this_thread::sleep_until(x);
+        // -- we don't want to sleep until, because if the reading takes a long time, we want to start the next one right away
+        std::this_thread::sleep_for(std::chrono::milliseconds(m_measurement_interval));
+      }
                 }
                 ).detach();
 
