@@ -1,5 +1,6 @@
 {
 "id":"LS1",
+"log_level": 1,
 "cib":{
 	"log_level": 2,
 	"dac_threshold":70,

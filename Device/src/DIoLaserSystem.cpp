@@ -41,6 +41,8 @@
 #define log_e(m,s) log_msg("ERROR","iols",m,s)
 #define log_w(m,s) log_msg("WARN","iols",m,s)
 #define log_i(m,s) log_msg("INFO","iols",m,s)
+#define log_d(m, s) log_msg("DEBUG", "iols", m, s)
+#define log_t(m, s) log_msg("TRACE", "iols", m, s)
 
 using std::ostringstream;
 
@@ -102,7 +104,8 @@ DIoLaserSystem::DIoLaserSystem(
 
      */
     lcmp = id();
-    Log::registerLoggingComponent(lcmp, Log::WRN);
+    Log::registerLoggingComponent(lcmp, Log::TRC);
+    LOG(Log::TRC, lcmp) << log_i("constructor", "Creating DIoLaserSystem with id [" + id() + "]");
 }
 
 /* sample dtr */
@@ -2463,6 +2466,7 @@ UaStatus DIoLaserSystem::move_to_pos(
     {
       Log::setComponentLogLevel(Log::getComponentHandle(lcmp), static_cast<Log::LOG_LEVEL>(frag.at("log_level").get<int>()));
       // if log level is set, update the log level for this system
+      LOG(Log::ERR, lcmp) << log_i(lbl.c_str(), "Log level set to ") << Log::logLevelToString(static_cast<Log::LOG_LEVEL>(frag.at("log_level").get<int>()));
     }
 
     std::ostringstream msg("");
