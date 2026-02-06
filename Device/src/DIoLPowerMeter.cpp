@@ -569,9 +569,10 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Getting a timestamp for an unavailable reading.";
 
-      m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
+      // m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
       // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Device is not operating. Setting energy reading to unavailable.";
-      getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable, m_now);
+      // getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable, m_now);
+    getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable);
     }
     else
     {
@@ -589,9 +590,10 @@ UaStatus DIoLPowerMeter::callTerminate (
           if (success)
           {
             // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Calculating timestamp.";
-            m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
+            // m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
             // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Refreshing.";
-            getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
+            // getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
+            getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good);
           }
           // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Done with the measurement.";
         }
@@ -609,11 +611,11 @@ UaStatus DIoLPowerMeter::callTerminate (
 
   void DIoLPowerMeter::refresh_average_reading()
   {
-    m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
+    // m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
 
     if (m_status != sOperating)
     {
-      getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_BadDataUnavailable, m_now);
+      getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_BadDataUnavailable);
     }
     else
     {
@@ -628,7 +630,7 @@ UaStatus DIoLPowerMeter::callTerminate (
           success = m_pm->read_average(m_average_reading);
           if (success)
           {
-            getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_Good, m_now);
+            getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_Good);
           }
         }
       }
