@@ -3405,6 +3405,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       return OpcUa_BadInvalidState;
     }
     // get the value from the register
+    uint32_t delay = 0;
     {
       const std::lock_guard<std::mutex> regs_lock(m_regs_mutex);
       if (m_regs.find("qs_delay") == m_regs.end())
@@ -3413,7 +3414,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       }
       uint32_t rval = cib::util::reg_read(m_regs.at("qs_delay").addr);
       // now extract the delay from the register value
-      uint32_t delay = ((rval & m_regs.at("qs_delay").mask) >> m_regs.at("qs_delay").bit_low);
+      delay = ((rval & m_regs.at("qs_delay").mask) >> m_regs.at("qs_delay").bit_low);
 //#ifdef DEBUG
 //    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch delay (clocks) :") << delay;
 //#endif
@@ -3474,6 +3475,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       return OpcUa_BadInvalidState;
     }
     // get the value from the register
+    uint32_t width = 0;
     {
       const std::lock_guard<std::mutex> regs_lock(m_regs_mutex);
       if (m_regs.find("qs_width") == m_regs.end())
@@ -3482,7 +3484,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       }
       uint32_t rval = cib::util::reg_read(m_regs.at("qs_width").addr);
       // now extract the width from the register value
-      uint32_t width = ((rval & m_regs.at("qs_width").mask) >> m_regs.at("qs_width").bit_low);
+      width = ((rval & m_regs.at("qs_width").mask) >> m_regs.at("qs_width").bit_low);
 //#ifdef DEBUG
 //    LOG(Log::INF) << log_i(lbl.c_str()," Qswitch width (clocks) :") << width;
 //#endif
