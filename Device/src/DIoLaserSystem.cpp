@@ -2647,6 +2647,10 @@ UaStatus DIoLaserSystem::move_to_pos(
           // 3. check each coordinate to be in range
           for (size_t i = 0; i < v.size(); i++)
           {
+            if (!iolmotors().at(m_map_motor_coordinates.at(i))->is_enabled())
+            {
+              continue;
+            }
             if (!iolmotors().at(m_map_motor_coordinates.at(i))->is_in_range(v.at(i)))
             {
               reset(msg);
