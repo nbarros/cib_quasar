@@ -835,11 +835,12 @@ namespace Device
     const std::string lbl  = "config";
     UaStatus st = OpcUa_Good;
     std::ostringstream msg("");
+    // check if there is a log level setting in the configuration
     if (conf.contains("log_level"))
     {
       Log::setComponentLogLevel(Log::getComponentHandle(lcmp), static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
       // if log level is set, update the log level for this system
-      LOG(Log::ERR, lcmp) << log_i(lbl.c_str(), "Log level set to ") << Log::logLevelToString(static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
+      LOG(Log::INF, lcmp) << log_i(lbl.c_str(), "Log level set to ") << Log::logLevelToString(static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
     }
 
     st = validate_config_fragment(conf,resp);
