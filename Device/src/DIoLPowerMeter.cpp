@@ -90,7 +90,7 @@ DIoLPowerMeter::DIoLPowerMeter (
         ,m_measurement_mode(1)
         ,m_sel_range(2)
         ,m_wavelength(266)
-        ,m_e_threshold(1)
+        ,m_e_threshold(300)
         ,m_ave_setting(1)
         ,m_pulse_width(1)
         ,m_energy_reading(0.0)
@@ -721,6 +721,8 @@ UaStatus DIoLPowerMeter::callTerminate (
         {
           LOG(Log::WRN, lcmp) << log_w(lbl,"Mismatch between cached threshold and device reported (")
               << m_e_threshold << " <> " << current << ")";
+          // and we don't do anything about this?
+
         }
       }
     }
@@ -1292,7 +1294,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       refresh_all_ranges();
       for (json::iterator it = conf.begin(); it != conf.end(); ++it)
       {
-        LOG(Log::DBG, lcmp) << "Processing " << it.key() << " : " << it.value() << "\n";
+        LOG(Log::DBG, lcmp) << "Processing " << it.key() << " : " << it.value();
         if (it.key() == "select_range")
         {
           LOG(Log::TRC, lcmp) << log_t(label,"Setting range to ") << it.value();
@@ -1317,6 +1319,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         {
           LOG(Log::TRC, lcmp) << log_t(label,"Setting energy_threshold to ") << it.value();
           st = set_thresh(it.value(),resp);
+          m_e_threshold = it.value();
           getAddressSpaceLink()->setTrigger_threshold(m_e_threshold, st);
           if (st != OpcUa_Good)
           {
