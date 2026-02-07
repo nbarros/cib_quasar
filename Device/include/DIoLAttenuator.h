@@ -178,8 +178,8 @@ private:
     //
     Status m_status;
     std::string m_id;
-//    std::atomic<bool> m_serial_busy;
     std::mutex m_serial_mutex;
+    std::string lcmp; // log component name, set to the ID of the device for easier tracing in the logs
 };
 
 }

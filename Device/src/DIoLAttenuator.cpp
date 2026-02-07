@@ -103,6 +103,7 @@ DIoLAttenuator::DIoLAttenuator (
     /* fill up constructor body here */
     m_id = id();
     m_name = config.name();
+    lcmp = m_id;
     m_sn = "";
     // Fill up the resolution settings
     m_resolution_states.insert(std::pair<uint16_t,std::string>(1,"full"));
@@ -120,6 +121,9 @@ DIoLAttenuator::DIoLAttenuator (
     m_status_map.insert(std::pair<Status,std::string>(sOffline,"offline"));
     m_status_map.insert(std::pair<Status,std::string>(sReady,"ready"));
     m_status_map.insert(std::pair<Status, std::string>(sError, "error"));
+
+    Log::registerLoggingComponent(lcmp, Log::INF);
+    LOG(Log::INF, lcmp) << log_i("constructor","Initialized with name [" + m_name + "]");
 }
 
 /* sample dtr */
