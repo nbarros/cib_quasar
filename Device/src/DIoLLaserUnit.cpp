@@ -1965,6 +1965,10 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
   {
     const std::string lbl = "refresh_registers";
     bool has_error = false;
+    if (m_is_terminating.load())
+    {
+      return OpcUa_Good;
+    }
     UaStatus st = check_cib_mem(resp);
     if (st != OpcUa_Good)
     {
