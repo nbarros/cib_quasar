@@ -26,7 +26,6 @@
 #include <PowerMeterSim.hh>
 #else
 #include <PowerMeter.hh>
-#endif
 
 #include <utilities.hh>
 #include <sstream>
@@ -47,6 +46,8 @@ using json = nlohmann::json;
 #define log_e(m,s) log_msg("ERROR",m,s)
 #define log_w(m,s) log_msg("WARN",m,s)
 #define log_i(m,s) log_msg("INFO",m,s)
+#define log_d(m,s) log_msg("DEBUG",m,s)
+#define log_t(m,s) log_msg("TRACE",m,s)
 
 using std::ostringstream;
 using cib_time = cib::util::cib_time;
@@ -100,15 +101,17 @@ DIoLPowerMeter::DIoLPowerMeter (
 {
     m_name = config.id();
     m_serial_number = "";
-    /* fill up constructor body here */
+    lcmp = id();
+    Log::registerLoggingComponent(lcmp, Log::INF);
+    LOG(Log::INF,lcmp) << "DIoLPowerMeter::DIoLPowerMeter : Initializing with ID [" << m_name << "]";
     // first probe the for the port that this meter is attached to
     m_threshold_limits.first = 0;
     m_threshold_limits.second = 0;
     //
-    LOG(Log::INF) << "DIoLPowerMeter::DIoLPowerMeter : Port set to [" << m_comport << "]";
+    LOG(Log::INF, lcmp) << "DIoLPowerMeter::DIoLPowerMeter : Port set to [" << m_comport << "]";
     if (m_comport == "auto")
     {
-      LOG(Log::WRN) << "DIoLPowerMeter::DIoLPowerMeter : Attempting automatic port detection based off serial number.";
+      LOG(Log::WRN, lcmp) << "DIoLPowerMeter::DIoLPowerMeter : Attempting automatic port detection based off serial number.";
       automatic_port_search();
     }
     //
@@ -567,10 +570,10 @@ UaStatus DIoLPowerMeter::callTerminate (
   {
     if (m_status != sOperating)
     {
-      // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Getting a timestamp for an unavailable reading.";
+      // LOG(Log::INF, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Getting a timestamp for an unavailable reading.";
 
       // m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
-      // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Device is not operating. Setting energy reading to unavailable.";
+      // LOG(Log::INF, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Device is not operating. Setting energy reading to unavailable.";
       // getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable, m_now);
     getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable);
     }
@@ -584,18 +587,18 @@ UaStatus DIoLPowerMeter::callTerminate (
         // Guard against nullptr access during shutdown
         if (m_pm != nullptr && !m_pause_measurements)
         {
-          // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Querying for energy. " << m_pm;
+          // LOG(Log::INF, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Querying for energy. " << m_pm;
 
           success = m_pm->read_energy(m_energy_reading);
           if (success)
           {
-            // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Calculating timestamp.";
+            // LOG(Log::INF, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Calculating timestamp.";
             // m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
-            // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Refreshing.";
+            // LOG(Log::INF, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Refreshing.";
             // getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
             getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good);
           }
-          // LOG(Log::INF) << "DIoLPowerMeter::refresh_energy_reading : Done with the measurement.";
+          // LOG(Log::INF, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Done with the measurement.";
         }
       }
       catch(std::exception &e)
@@ -655,7 +658,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       m_comport = util::find_port(m_serial_number);
       if (m_comport.size() == 0)
       {
-        LOG(Log::ERR) << "DIoLPowerMeter::automatic_port_search : Couldn't find device port";
+        LOG(Log::ERR, lcmp) << "DIoLPowerMeter::automatic_port_search : Couldn't find device port";
       }
 
       m_status = sOffline;
@@ -663,7 +666,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     catch(...)
     {
       m_status = sOffline;
-      LOG(Log::ERR) << "DIoLPowerMeter::automatic_port_search : Caught an exception searching for the port";
+      LOG(Log::ERR, lcmp) << "DIoLPowerMeter::automatic_port_search : Caught an exception searching for the port";
       m_comport = "";
     }
   }
@@ -747,7 +750,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         m_threshold_limits.second = max;
         if (current != m_e_threshold)
         {
-          LOG(Log::WRN) << "DIoLPowerMeter::refresh_threshold_limits : Mismatch between cached threshold and device reported ("
+          LOG(Log::WRN, lcmp) << "DIoLPowerMeter::refresh_threshold_limits : Mismatch between cached threshold and device reported ("
               << m_e_threshold << " <> " << current << ")";
         }
       }
@@ -785,7 +788,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       }
       if (v != m_sel_range)
       {
-        LOG(Log::WRN) << "DIoLPowerMeter::refresh_measurement_ranges : Mismatch between cached range and device reported (" << m_sel_range << " <> " << v << ")";
+        LOG(Log::WRN, lcmp) << "DIoLPowerMeter::refresh_measurement_ranges : Mismatch between cached range and device reported (" << m_sel_range << " <> " << v << ")";
       }
       {
         const std::lock_guard<std::mutex> lock(m_serial_mutex);
@@ -908,7 +911,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       return OpcUa_Bad;
     }
     if (m_comport.at(0)!= '/')
@@ -1019,7 +1022,7 @@ UaStatus DIoLPowerMeter::callTerminate (
             msg.clear(); msg.str("");
             msg << log_e(label.c_str()," ") << "Failed to complete Power Meter configuration. See previous messages";
             resp["messages"].push_back(msg.str());
-            LOG(Log::ERR) << msg.str();
+            LOG(Log::ERR, lcmp) << msg.str();
             return OpcUa_Uncertain;
           }
         }
@@ -1041,21 +1044,21 @@ UaStatus DIoLPowerMeter::callTerminate (
       // don't commit any assignments
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(...)
@@ -1064,7 +1067,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       // Assume one is offline
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     if (got_exception)
@@ -1127,21 +1130,21 @@ UaStatus DIoLPowerMeter::callTerminate (
       // don't commit any assignments
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(...)
@@ -1150,7 +1153,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       // Assume one is offline
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     if (got_exception)
@@ -1193,6 +1196,13 @@ UaStatus DIoLPowerMeter::callTerminate (
         resp["statuscode"] = OpcUa_BadInvalidState;
         return OpcUa_BadInvalidState;
       }
+          // check if there is a log level setting in the configuration
+    if (conf.contains("log_level"))
+    {
+      Log::setComponentLogLevel(Log::getComponentHandle(lcmp), static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
+      // if log level is set, update the log level for this system
+      LOG(Log::INF, lcmp) << log_i(lbl.c_str(), "Log level set to ") << Log::logLevelToString(static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
+    }
       // validate that all settings are here
       if (!validate_config_fragment(conf,resp))
       {
@@ -1280,7 +1290,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_Bad;
-        LOG(Log::ERR) << msg.str();
+        LOG(Log::ERR, lcmp) << msg.str();
         return OpcUa_Bad;
       }
       refresh_pulse_width_ranges();
@@ -1296,7 +1306,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_Bad;
-        LOG(Log::ERR) << msg.str();
+        LOG(Log::ERR, lcmp) << msg.str();
         return OpcUa_Bad;
       }
 
@@ -1304,10 +1314,10 @@ UaStatus DIoLPowerMeter::callTerminate (
       refresh_all_ranges();
       for (json::iterator it = conf.begin(); it != conf.end(); ++it)
       {
-        LOG(Log::INF) << "Processing " << it.key() << " : " << it.value() << "\n";
-        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        LOG(Log::DBG, lcmp) << "Processing " << it.key() << " : " << it.value() << "\n";
         if (it.key() == "select_range")
         {
+          LOG(Log::TRC, lcmp) << log_t(label,"Setting range to ") << it.value()
           st = set_range(it.value(),resp);
           getAddressSpaceLink()->setRange_selected(m_sel_range, st);
           if (st != OpcUa_Good)
@@ -1317,11 +1327,9 @@ UaStatus DIoLPowerMeter::callTerminate (
         }
         if (it.key() == "wavelength")
         {
+          LOG(Log::TRC, lcmp) << "Setting wavelength to " << it.value();
           st = set_lambda(it.value(),resp);
-          LOG(Log::INF) << "Setting wavelength in user space to " << m_wavelength << "\n";
           getAddressSpaceLink()->setWavelength(m_wavelength, st);
-          LOG(Log::INF) << "Done setting wavelength in user space to " << m_wavelength << "\n";
-
           if (st != OpcUa_Good)
           {
             return st;
@@ -1329,6 +1337,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         }
         if (it.key() == "energy_threshold")
         {
+          LOG(Log::TRC, lcmp) << log_t(label,"Setting energy_threshold to ") << it.value()
           st = set_thresh(it.value(),resp);
           getAddressSpaceLink()->setTrigger_threshold(m_e_threshold, st);
           if (st != OpcUa_Good)
@@ -1338,6 +1347,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         }
         if (it.key() == "average_setting")
         {
+          LOG(Log::TRC, lcmp) << log_t(label,"Setting average_setting to ") << it.value();
           st = set_average(it.value(),resp);
           getAddressSpaceLink()->setAverage_window(m_ave_setting, st);
           if (st != OpcUa_Good)
@@ -1347,12 +1357,13 @@ UaStatus DIoLPowerMeter::callTerminate (
         }
         if (it.key() == "measurement_interval_ms")
         {
+          LOG(Log::TRC, lcmp) << log_t(label,"Setting measurement_interval_ms to ") << it.value();
           m_measurement_interval = it.value();
           getAddressSpaceLink()->setMeasurement_interval_ms(m_measurement_interval, OpcUa_Good);
         }
       }
       update_status(sReady);
-      LOG(Log::INF) << log_i(label.c_str(),"System configured. Starting measurements.");
+      LOG(Log::DBG, lcmp) << log_d(label.c_str(),"System configured. Starting measurements.");
 
       // -- will start right away
       st = start_readings(resp);
@@ -1361,7 +1372,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         resp["status"] = "ERROR";
         resp["messages"].push_back("Failed to start readings");
         resp["statuscode"] = static_cast<int>(st);
-        LOG(Log::ERR) << "Failed to start readings";
+        LOG(Log::ERR, lcmp) << "Failed to start readings";
       }
     }
     catch(serial::PortNotOpenedException &e)
@@ -1370,21 +1381,21 @@ UaStatus DIoLPowerMeter::callTerminate (
       // don't commit any assignments
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(...)
@@ -1393,7 +1404,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       // Assume one is offline
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     // if we get an exception, destroy the hardware connection
@@ -1415,10 +1426,9 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
+      LOG(Log::DBG, lcmp) << log_d(label.c_str(), "System configured.");
       return OpcUa_Good;
     }
-    LOG(Log::INF) << log_i(label.c_str(), "System fully configured.");
-
     return OpcUa_Good;
   }
   UaStatus DIoLPowerMeter::stop_readings(json &resp)
@@ -1469,7 +1479,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     }
     // if it reached this point, we should be good to go
     update_status(sOperating);
-    LOG(Log::INF) << log_i(label.c_str(),"Starting reading with a time interval of ") << m_measurement_interval << " ms.";
+    LOG(Log::INF, lcmp) << log_i(label.c_str(),"Starting reading with a time interval of ") << m_measurement_interval << " ms.";
 
     start_readings();
     // this should just flip a variable
@@ -1479,7 +1489,7 @@ UaStatus DIoLPowerMeter::callTerminate (
   {
     if (m_do_measurements.load())
     {
-      LOG(Log::WRN) << log_w("start_readings","Readings are already ongoing.");
+      LOG(Log::WRN, lcmp) << log_w("start_readings","Readings are already ongoing.");
       return;
     }
     m_do_measurements.store(true);
@@ -1518,21 +1528,21 @@ UaStatus DIoLPowerMeter::callTerminate (
       // don't commit any assignments
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(...)
@@ -1541,7 +1551,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       // Assume one is offline
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     if (got_exception)
@@ -1617,21 +1627,21 @@ UaStatus DIoLPowerMeter::callTerminate (
       // don't commit any assignments
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(...)
@@ -1640,7 +1650,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       // Assume one is offline
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     if (got_exception)
@@ -1661,7 +1671,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       getAddressSpaceLink()->setAverage_window(u16,OpcUa_Bad);
       return OpcUa_Bad;
     }
@@ -1703,21 +1713,21 @@ UaStatus DIoLPowerMeter::callTerminate (
       // don't commit any assignments
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
      msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(...)
@@ -1726,7 +1736,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       // Assume one is offline
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     if (got_exception)
@@ -1747,7 +1757,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
       getAddressSpaceLink()->setRange_selected(m_sel_range,OpcUa_Bad);
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       return OpcUa_Bad;
     }
     m_sel_range = range;
@@ -1789,21 +1799,21 @@ UaStatus DIoLPowerMeter::callTerminate (
       // don't commit any assignments
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(...)
@@ -1812,7 +1822,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       // Assume one is offline
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     if (got_exception)
@@ -1822,7 +1832,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       // the return value is actually not very relevant
       // one does not call terminate checking its result
       return OpcUa_Bad;
@@ -1833,7 +1843,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       getAddressSpaceLink()->setPulse_width(u16,OpcUa_Bad);
       return OpcUa_Bad;
     }
@@ -1854,7 +1864,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       return OpcUa_BadInvalidState;
     }
     try
@@ -1878,7 +1888,7 @@ UaStatus DIoLPowerMeter::callTerminate (
             resp["status"] = "ERROR";
             resp["messages"].push_back(msg.str());
             resp["statuscode"] = OpcUa_Bad;
-            LOG(Log::ERR) << msg.str();
+            LOG(Log::ERR, lcmp) << msg.str();
             getAddressSpaceLink()->setTrigger_threshold(u16, OpcUa_Bad);
             return OpcUa_Bad;
           }
@@ -1893,21 +1903,21 @@ UaStatus DIoLPowerMeter::callTerminate (
       // don't commit any assignments
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(...)
@@ -1916,7 +1926,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       // Assume one is offline
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     if (got_exception)
@@ -1947,13 +1957,13 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       return OpcUa_BadInvalidState;
     }
     try
     {
       const std::lock_guard<std::mutex> lock(m_serial_mutex);
-      // LOG(Log::INF) << log_i(label.c_str()," ") << "Setting wavelength to " << lambda;
+      // LOG(Log::INF, lcmp) << log_i(label.c_str()," ") << "Setting wavelength to " << lambda;
       m_pm->wavelength(lambda, success);
     }
     catch(serial::PortNotOpenedException &e)
@@ -1962,21 +1972,21 @@ UaStatus DIoLPowerMeter::callTerminate (
       // don't commit any assignments
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(...)
@@ -1985,7 +1995,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       // Assume one is offline
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     if (got_exception)
@@ -2005,14 +2015,14 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       getAddressSpaceLink()->setWavelength(m_wavelength,OpcUa_Bad);
       return OpcUa_Bad;
     }
     m_wavelength = lambda;
-    // LOG(Log::INF) << log_i(label.c_str()," ") << "Wavelength set to " << lambda;
+    // LOG(Log::INF, lcmp) << log_i(label.c_str()," ") << "Wavelength set to " << lambda;
     getAddressSpaceLink()->setWavelength(m_wavelength,OpcUa_Good);
-    // LOG(Log::INF) << log_i(label.c_str(), " ") << "Returning from set_wavelength";
+    // LOG(Log::INF, lcmp) << log_i(label.c_str(), " ") << "Returning from set_wavelength";
     return OpcUa_Good;
   }
   UaStatus DIoLPowerMeter::set_mmode(const uint16_t mmode, json &resp)
@@ -2030,7 +2040,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       return OpcUa_BadInvalidState;
     }
     if (m_measurement_modes.count(mmode))
@@ -2047,7 +2057,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       // remain online, but unconfigured
       // in this case update the local variable with whatever is set in the hardware
       st = OpcUa_Bad;
@@ -2067,21 +2077,21 @@ UaStatus DIoLPowerMeter::callTerminate (
       // don't commit any assignments
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Exception: Port not open [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(serial::SerialException &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an STL exception : [" << e.what() << "].";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     catch(...)
@@ -2090,7 +2100,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       // Assume one is offline
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught an unknown exception.";
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
     if (got_exception)
@@ -2101,7 +2111,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       // the return value is actually not very relevant
       // one does not call terminate checking its result
       return OpcUa_Bad;
@@ -2158,7 +2168,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       std::ostringstream msg("");
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Power Meter is offline. No operation possible.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;

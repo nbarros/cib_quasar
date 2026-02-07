@@ -183,6 +183,7 @@ private:
     uint16_t m_measurement_interval;
     std::mutex m_serial_mutex;
     UaDateTime m_now;
+    std::string lcmp;
 };
 
 }
