@@ -2069,6 +2069,10 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return st;
     }
+    if (m_is_terminating.load())
+    {
+      return OpcUa_Good;
+    }
     try
     {
 
@@ -2535,7 +2539,6 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return;
     }
-    
 
     // if the laser is not yet initialized, skip the update
     update_status(m_status);    
