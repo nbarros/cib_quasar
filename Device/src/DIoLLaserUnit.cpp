@@ -1362,7 +1362,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg << log_i(lbl.c_str(),"Deleting the laser pointer");
       LOG(Log::INF, lcmp) << msg.str();
       delete m_laser;
-      LOG(Log::INF, lcmp) << "Pointer deleted";
+      LOG(Log::INF, lcmp) << log_i(lbl.c_str(),"Pointer deleted");
     }
     m_laser = nullptr;
     m_config_completed = false;
@@ -2517,6 +2517,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return;
     }
+    // if the laser is not yet initialized, skip the update
     update_status(m_status);
     get_laser_shutter();
 
@@ -2842,7 +2843,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         Log::setComponentLogLevel(Log::getComponentHandle(lcmp), static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
         // if log level is set, update the log level for this system
-        LOG(Log::ERR, lcmp) << log_i(lbl.c_str(), "Log level set to ") << Log::logLevelToString(static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
+        LOG(Log::WRN, lcmp) << log_i(lbl.c_str(), "Log level set to ") << Log::logLevelToString(static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
       }
 
       // validate that all settings are here
@@ -2866,8 +2867,10 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
         return st;
       }
       // all good so far, so lets initiate the connection by creating an instance of the laser system
+      LOG(Log::TRC, lcmp) << log_t(lbl.c_str(),"Creating laser instance");
       m_laser = new device::Laser(m_comport.c_str(),static_cast<uint32_t>(m_baud_rate));
       // there seems to be some sort of race condition here. 
+      // confirm that the instance does exist
       st = check_laser_instance(resp);
       if (st != OpcUa_Good)
       {
@@ -2955,8 +2958,9 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
           st = set_qswitch_delay(it.value(), resp);
           if (st != OpcUa_Good)
           {
-            LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"Failed to set qswitch delay");
+            LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"Failed to set qswitch delay") << " (resp was " << resp << ". Terminating.";
             getAddressSpaceLink()->setQswitch_delay_us(m_qswitch_delay, st);
+
             terminate(resp);
             return st;
           }
@@ -3261,6 +3265,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       // convert the value into 16 ns clocks
       uint32_t v_clock = conv_to_clock(nv);
+      LOG(Log::TRC, lcmp) << "Converted qswitch delay " << nv << " us into " << v_clock << " clocks";
 //      uint32_t v_clock= nv*1000/16;
       // when reading out the configuration from JSON
       // this means that the code below is completely agnostic

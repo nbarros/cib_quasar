@@ -1,8 +1,8 @@
 {
 "id":"LS1",
-"log_level": 1,
+"log_level": 3,
 "cib":{
-	"log_level": 1,
+	"log_level": 3,
 	"dac_threshold":70,
 	"lbls_width_clocks":2,
 	"alignment_laser" : {
@@ -28,7 +28,7 @@
 	{
 	"id":"RNN800",
 	"enabled":false,
-	"log_level": 1,
+	"log_level": 3,
 	"coordinate_index":0,
 	"server_address":"10.73.137.154",
 	"server_port":5005,
@@ -51,7 +51,7 @@
 	{
 	"id":"RNN600",
 	"enabled":true,
-	"log_level": 1,
+	"log_level": 3,
 	"coordinate_index":1,
 	"server_address":"10.73.137.154",
 	"server_port":5000,
@@ -74,7 +74,7 @@
 	{
 	"id":"LSTAGE",
 	"enabled":true,
-	"log_level": 1,
+	"log_level": 3,
 	"coordinate_index":2,
 	"server_address":"10.73.137.154",
 	"server_port":5001,
@@ -96,7 +96,7 @@
 ],
 "power_meter" : {
 	"name" : "PM1",
-	"log_level": 1,
+	"log_level": 3,
 	"serial_number":"A9LMFBRZ",
 	"port":"auto",
 	"baud_rate":9600,
@@ -110,7 +110,7 @@
 },
 "attenuator" : {
 	"name":"A1",
-	"log_level": 1,
+	"log_level": 3,
 	"serial_number":"6ATT1789D",
 	"port":"auto",
 	"baud_rate":38400,
@@ -129,7 +129,7 @@
 },
 "laser" : {
 		"id": "L1",
-		"log_level": 1,
+		"log_level": 0,
 		"serial_number": "A9JCTU8M",
 		"port": "auto",
 		"baud_rate": 9600,
