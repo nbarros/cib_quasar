@@ -881,17 +881,17 @@ UaStatus DIoLMotor::callClear_alarm (
     if (answer["status"] == string("OK"))
     {
       std::ostringstream msg("");
-      msg << log_i(lbl.c_str(),"Remote command successful");
+      msg << log_i(lbl.c_str(),"Remote command (stop) successful");
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-      LOG(Log::DBG, lcmp) << msg.str();
+      LOG(Log::TRC, lcmp) << msg.str();
       st =  OpcUa_Good;
     }
     else
     {
       std::ostringstream msg("");
-      msg << log_e(lbl.c_str(),"Failed to execute remote command successful");
+      msg << log_e(lbl.c_str(),"Failed to execute remote command (stop) : ") << answer["status"];
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -909,23 +909,23 @@ UaStatus DIoLMotor::callClear_alarm (
     std::string query = "clear_alarm";
     json answer;
     st = query_motor(query,answer,resp);
-    LOG(Log::DBG, lcmp) << "Received response [" << answer << "]";
+    LOG(Log::TRC, lcmp) << "Received response [" << answer << "]";
     // now we should parse the answer
     // it is meant to be a json object
     if (answer["status"] == string("OK"))
     {
       std::ostringstream msg("");
-      msg << log_i(lbl.c_str(),"Remote command successful");
+      msg << log_i(lbl.c_str(),"Remote command (clear alarm) successful");
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-      LOG(Log::DBG, lcmp) << msg.str();
+      LOG(Log::TRC, lcmp) << msg.str();
       st =  OpcUa_Good;
     }
     else
     {
       std::ostringstream msg("");
-      msg << log_e(lbl.c_str(),"Failed to execute remote command successful");
+      msg << log_e(lbl.c_str(),"Failed to execute remote command (clear alarm) : ") << answer["status"];
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -958,7 +958,7 @@ UaStatus DIoLMotor::callClear_alarm (
     else
     {
       std::ostringstream msg("");
-      msg << log_e(lbl.c_str(),"Failed to execute remote command successful");
+      msg << log_e(lbl.c_str(),"Failed to execute remote command (get position) : ") << answer["status"];
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -969,7 +969,7 @@ UaStatus DIoLMotor::callClear_alarm (
   }
   UaStatus DIoLMotor::motor_get_speed(json &resp)
   {
-    const std::string lbl = "motor_get_spped";
+    const std::string lbl = "motor_get_speed";
     UaStatus st = OpcUa_Good;
     std::string query = "speed";
     json answer;
@@ -979,7 +979,7 @@ UaStatus DIoLMotor::callClear_alarm (
     if (answer["status"] == string("OK"))
     {
       int32_t new_value = answer.at("speed").get<int>();
-      if (std::abs(new_value) > 1000)
+      if (std::abs(new_value) > 2000)
       {
         LOG(Log::WRN, lcmp) << log_w(lbl.c_str(),"Speed readout is too high (") << new_value << "). Ignoring.";
         return OpcUa_Good;
@@ -995,7 +995,7 @@ UaStatus DIoLMotor::callClear_alarm (
     else
     {
       std::ostringstream msg("");
-      msg << log_e(lbl.c_str(), "Failed to execute remote command successful");
+      msg << log_e(lbl.c_str(), "Failed to execute remote command (get speed) : ") << answer["status"];
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
@@ -1018,7 +1018,7 @@ UaStatus DIoLMotor::callClear_alarm (
     {
       m_alarm_code_motor = answer.at("alarm_code").get<int32_t>();
       std::ostringstream msg("");
-      msg << log_i(lbl.c_str(),"Remote command successful");
+      msg << log_i(lbl.c_str(),"Remote command (get alarm) successful");
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -1028,7 +1028,7 @@ UaStatus DIoLMotor::callClear_alarm (
     else
     {
       std::ostringstream msg("");
-      msg << log_e(lbl.c_str(),"Failed to execute command : ") << answer["status"];
+      msg << log_e(lbl.c_str(),"Failed to execute command (get alarm): ") << answer["status"];
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
