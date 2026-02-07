@@ -40,6 +40,8 @@ using json = nlohmann::json;
 #define log_e(m,s) log_msg("ERROR",m,s)
 #define log_w(m,s) log_msg("WARN",m,s)
 #define log_i(m,s) log_msg("INFO",m,s)
+#define log_d(m,s) log_msg("DEBUG",m,s)
+#define log_t(m,s) log_msg("TRACE",m,s)
 
 //#define DEBUG 1
 using std::ostringstream;
@@ -88,6 +90,8 @@ namespace Device
             {
     /* fill up constructor body here */
     m_id = id();
+    lcmp = id();
+    Log::registerLoggingComponent(lcmp, Log::DBG);
     // start by initializing the initial counters
     FILE* file = fopen("/proc/stat", "r");
     if (file != nullptr)
@@ -98,13 +102,16 @@ namespace Device
       
       if (line_result != nullptr)
       {
-        LOG(Log::DBG) << log_i("constructor","First line of /proc/stat: [" << buffer << "]");
+        LOG(Log::DBG, lcmp) << log_d("constructor","First line of /proc/stat: [" << buffer << "]");
         
-        // Try to parse using sscanf instead (more reliable for this case)
-        int ret = sscanf(buffer, "cpu %llu %llu %llu %llu", &m_prev_tot_usr, &m_prev_tot_usr_low, &m_prev_tot_sys, &m_prev_tot_idle);
-        if (ret != 4)
+        // Parse using stringstream - more idiomatic C++
+        std::stringstream ss(buffer);
+        std::string cpu_label;
+        ss >> cpu_label >> m_prev_tot_usr >> m_prev_tot_usr_low >> m_prev_tot_sys >> m_prev_tot_idle;
+        
+        if (!ss || cpu_label != "cpu")
         {
-          LOG(Log::WRN) << log_w("constructor","Failed to parse /proc/stat line, got only " << ret << " values. Got: usr=" << m_prev_tot_usr << " usr_low=" << m_prev_tot_usr_low << " sys=" << m_prev_tot_sys << " idle=" << m_prev_tot_idle);
+          LOG(Log::WRN, lcmp) << log_w("constructor","Failed to parse /proc/stat line. Got: usr=" << m_prev_tot_usr << " usr_low=" << m_prev_tot_usr_low << " sys=" << m_prev_tot_sys << " idle=" << m_prev_tot_idle);
           // Reset to zero values if parse failed
           m_prev_tot_usr = 0;
           m_prev_tot_usr_low = 0;
@@ -113,12 +120,12 @@ namespace Device
         }
         else
         {
-          LOG(Log::DBG) << log_i("constructor","CPU counters initialized: usr=" << m_prev_tot_usr << " usr_low=" << m_prev_tot_usr_low << " sys=" << m_prev_tot_sys << " idle=" << m_prev_tot_idle);
+          LOG(Log::DBG, lcmp) << log_d("constructor","CPU counters initialized: usr=" << m_prev_tot_usr << " usr_low=" << m_prev_tot_usr_low << " sys=" << m_prev_tot_sys << " idle=" << m_prev_tot_idle);
         }
       }
       else
       {
-        LOG(Log::WRN) << log_w("constructor","Failed to read first line from /proc/stat");
+        LOG(Log::WRN, lcmp) << log_w("constructor","Failed to read first line from /proc/stat");
         m_prev_tot_usr = 0;
         m_prev_tot_usr_low = 0;
         m_prev_tot_sys = 0;
@@ -128,13 +135,13 @@ namespace Device
     }
     else
     {
-      LOG(Log::WRN) << log_w("constructor","Failed to open /proc/stat for reading CPU load");
+      LOG(Log::WRN, lcmp) << log_w("constructor","Failed to open /proc/stat for reading CPU load");
     }
     // initialize the CIB memory maps
     UaStatus st = init_cib_mem();
     if (st != OpcUa_Good)
     {
-      LOG(Log::ERR) << log_e("constructor","Failed to map CIB memory. This is definitely not good.");
+      LOG(Log::ERR, lcmp) << log_e("constructor","Failed to map CIB memory.");
     }
 
     m_status_map.insert({sOffline,"offline"});
@@ -233,6 +240,8 @@ namespace Device
   UaStatus DIoLCIB::init_cib_mem()
   {
     // -- there may be several registers to be mapped
+    const std::string lbl = "cib_init";
+    std::ostringstream msg("");
     cib_gpio_t tmpreg;
     tmpreg.id = PDTS_REG;
     tmpreg.paddr = GPIO_PDTS_MEM_LOW;
@@ -240,44 +249,55 @@ namespace Device
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_PDTS_MEM_LOW,GPIO_PDTS_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nDIoLCIB::init_cib_mem : Failed to map PDTS CIB memory region. This is going to fail spectacularly!!!\n\n";
+      msg.clear(); msg.str("");
+      msg << log_e(lbl,"Failed to map PDTS CIB memory region");
+      LOG(Log::ERR, lcmp) << msg.str();
+    }
+    else
+    {
+      msg.clear(); msg.str("");
+      msg << log_t(lbl,"PDTS CIB memory region mapped into 0x") << std::hex << tmpreg.vaddr << std::dec;
+      LOG(Log::TRC, lcmp) << msg.str();
     }
     m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLCIB::init_cib_mem : PDTS_REG mapped to "
-        << std::hex << m_reg_map.at(PDTS_REG).vaddr << std::dec;
-#endif
+    //
+    // misc
     tmpreg.id= MISC_REG;
     tmpreg.paddr = GPIO_MISC_MEM_LOW;
     tmpreg.size = 0xFFF;
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_MISC_MEM_LOW,GPIO_MISC_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nDIoLCIB::init_cib_mem : Failed to map MISC CIB memory region. This is going to fail spectacularly!!!\n\n";
+      msg.clear(); msg.str("");
+      msg << log_e(lbl,"Failed to map MISC CIB memory region");
+      LOG(Log::ERR, lcmp) << msg.str();
     }
     m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLCIB::init_cib_mem : MISC_REG mapped to " << std::hex << m_reg_map.at(MISC_REG).vaddr << std::dec;
-#endif
+    msg.clear(); msg.str("");
+    msg << log_t(lbl,"MISC CIB memory region mapped into 0x") << std::hex << tmpreg.vaddr << std::dec;
+    LOG(Log::TRC, lcmp) << msg.str();
+    // 
+    // align
     tmpreg.id= ALIGN_REG;
     tmpreg.paddr = GPIO_ALIGN_MEM_LOW;
     tmpreg.size = 0xFFF;
     tmpreg.vaddr = cib::util::map_phys_mem(m_mmap_fd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
     if (tmpreg.vaddr == 0x0)
     {
-      LOG(Log::ERR) << "\n\nDIoLCIB::init_cib_mem : Failed to map ALIGN CIB memory region. This is going to fail spectacularly!!!\n\n";
+      msg.clear(); msg.str("");
+      msg << log_e(lbl,"Failed to map ALIGN CIB memory region");
+      LOG(Log::ERR, lcmp) << msg.str();
     }
     m_reg_map.insert(std::pair<int,cib_gpio_t>(tmpreg.id,tmpreg));
-#ifdef DEBUG
-    LOG(Log::INF) << "\n\nDIoLCIB::init_cib_mem : ALIGN_REG mapped to " << std::hex << m_reg_map.at(ALIGN_REG).vaddr << std::dec;
-#endif
-
-    //#endif
+    msg.clear(); msg.str("");
+    msg << log_t(lbl,"ALIGN CIB memory region mapped into 0x") << std::hex << tmpreg.vaddr << std::dec;
+    LOG(Log::TRC, lcmp) << msg.str();
 
     if (m_reg_map.size() != 3)
     {
-      // sError is a special case of status, 
-      LOG(Log::ERR) << "\n\nDIoLCIB::init_cib_mem : Failed to map one or more CIB memory regions. This is going to fail spectacularly!!!\n\n";
+      msg.clear(); msg.str("");
+      msg << log_e(lbl,"Failed to map one or more CIB memory regions. Expected 3, got ") << m_reg_map.size();
+      LOG(Log::ERR, lcmp) << msg.str();
       update_status(sError);
     }
     return OpcUa_Good;
@@ -291,16 +311,18 @@ namespace Device
     uint64_t total = memInfo.totalram*memInfo.mem_unit/(1024*1024);
     uint64_t free  = memInfo.freeram*memInfo.mem_unit/(1024*1024);
     m_used_mem = static_cast<float>(total-free)/static_cast<float>(total);
+    LOG(Log::TRC) << log_t("poll_mem","Memory usage: total=") << total << " MB, free=" << free << " MB, used=" << m_used_mem*100.0 << " %";
     getAddressSpaceLink()->setMem_load(m_used_mem,OpcUa_Good);
   }
   //
   void DIoLCIB::poll_cpu()
   {
+    const std::string lbl = "poll_cpu";
     unsigned long long tot_usr, tot_usr_low, tot_sys, tot_idle;
     FILE* file = fopen("/proc/stat", "r");
     if (file == nullptr)
     {
-      LOG(Log::WRN) << log_w("poll_cpu","Failed to open /proc/stat for reading CPU load");
+      LOG(Log::ERR, lcmp) << log_e(lbl,"Failed to open /proc/stat for reading CPU load");
       m_cpu_load = -1.0;
       getAddressSpaceLink()->setCpu_load(m_cpu_load, OpcUa_BadDataUnavailable);
       return;
@@ -312,17 +334,20 @@ namespace Device
     
     if (line_result == nullptr)
     {
-      LOG(Log::WRN) << log_w("poll_cpu","Failed to read line from /proc/stat");
+      LOG(Log::ERR, lcmp) << log_e(lbl,"Failed to read line from /proc/stat");
       m_cpu_load = -1.0;
       getAddressSpaceLink()->setCpu_load(m_cpu_load, OpcUa_BadDataUnavailable);
       return;
     }
     
-    int ret = sscanf(buffer, "cpu %llu %llu %llu %llu", &tot_usr, &tot_usr_low, &tot_sys, &tot_idle);
+    // Parse using stringstream - more idiomatic C++
+    std::stringstream ss(buffer);
+    std::string cpu_label;
+    ss >> cpu_label >> tot_usr >> tot_usr_low >> tot_sys >> tot_idle;
     
-    if (ret != 4)
+    if (!ss || cpu_label != "cpu")
     {
-      LOG(Log::DBG) << log_w("poll_cpu","Failed to parse /proc/stat, got only " << ret << " values. Line was: [" << buffer << "]");
+      LOG(Log::ERR, lcmp) << log_e(lbl,"Failed to parse /proc/stat. Line was: [" + std::string(buffer) + "]");
       m_cpu_load = -1.0;
       getAddressSpaceLink()->setCpu_load(m_cpu_load, OpcUa_BadDataUnavailable);
       return;
@@ -334,6 +359,7 @@ namespace Device
         (tot_idle < m_prev_tot_idle))
     {
       //Overflow detection. Just skip this value.
+      LOG(Log::WRN, lcmp) << log_w(lbl,"Overflow detected in CPU load counters. Skipping this value.");
       m_cpu_load = -1.0;
       getAddressSpaceLink()->setCpu_load(m_cpu_load,OpcUa_Uncertain);
     }
@@ -364,19 +390,19 @@ namespace Device
       st = cib_pdts_status(m_regs.at("pdts_status").maddr, pdts_stat, pdts_addr);
       if (st != OpcUa_Good)
       {
-        LOG(Log::ERR) << log_e("is_ready","Failed to get pdts_status");
+        LOG(Log::ERR, lcmp) << log_e("is_ready","Failed to get pdts_status");
         return false;
       }
       // if the status is not 0x8
       if (pdts_stat != 0x8)
       {
-        LOG(Log::ERR) << log_e("is_ready", "PDTS status is not GOOD : 0x") << std::hex << pdts_stat << std::dec;
+        LOG(Log::ERR, lcmp) << log_e("is_ready", "PDTS status is not GOOD : 0x") << std::hex << pdts_stat << std::dec;
         return false;
       }
     }
     else
     {
-      LOG(Log::ERR) << log_e("is_ready","Failed to find pdts_status register");
+      LOG(Log::ERR, lcmp) << log_e("is_ready","Failed to find pdts_status register");
       return false;      
     }
     
@@ -510,7 +536,7 @@ namespace Device
     {
       if(first)
       {
-        LOG(Log::INF) << "NFB: Opening the connection to the DAC";
+        LOG(Log::DBG, lcmp) << log_d("dac","Opening the connection to the DAC");
         first = false;
       }
       ret = init_dac();
@@ -539,7 +565,7 @@ namespace Device
     {
       if (first)
       {
-        LOG(Log::ERR) << "NFB: Failed to set DAC bus number. Returned " << res << " : " << cib::i2c::strerror(res);
+        LOG(Log::ERR, lcmp) << log_e("dac","Failed to set DAC bus number. Returned " + std::to_string(res) + " : " + cib::i2c::strerror(res));
         first = false;
       }
       return res;
@@ -549,7 +575,7 @@ namespace Device
     {
       if (first)
       {
-        LOG(Log::ERR) << "NFB: Failed to set dev number. Returned " << res << " : " << cib::i2c::strerror(res);
+        LOG(Log::ERR, lcmp) << log_e("dac","Failed to set dev number. Returned ") << std::to_string(res) << " : " << cib::i2c::strerror(res);
         first = false;
       }
       return res;
@@ -559,7 +585,7 @@ namespace Device
     {
       if (first)
       {
-        LOG(Log::ERR) << "NFB: Failed to open device. Returned  " << res << " : " << cib::i2c::strerror(res);
+        LOG(Log::ERR, lcmp) << log_e("dac","Failed to open device. Returned  ") << std::to_string(res) << " : " << cib::i2c::strerror(res);
         first = false;
       }
       return res;
@@ -578,7 +604,7 @@ namespace Device
       std::ostringstream msg("");
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"CIB memory not mapped. System on lockdown.");
-      LOG(Log::ERR) << msg.str();
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
@@ -597,6 +623,7 @@ namespace Device
         "daq_queue_state","lbls_queue_state","lbls_width","align_width",
         "align_period","align_state"
     };
+
     //
     // actually, check for all entries and report all missing ones
     std::vector<std::string> missing;
@@ -641,15 +668,11 @@ namespace Device
     std::ostringstream msg("");
     const std::string lbl = "map_registers";
     json reginfo = conf;
-#ifdef DEBUG
-    LOG(Log::INF) << log_i(lbl.c_str(),"Mapping registers");
-#endif
+    LOG(Log::INF, lcmp) << log_i(lbl.c_str(),"Mapping registers");
     st = check_cib_mem(resp);
     if(st != OpcUa_Good)
     {
-#ifdef DEBUG
-      LOG(Log::ERR) << log_e(lbl.c_str(),"CIB memory not mapped");
-#endif
+      LOG(Log::ERR, lcmp) << log_e(lbl.c_str(),"CIB memory not mapped");
       return st;
     }
     else
@@ -720,12 +743,10 @@ namespace Device
           tmp.bit_low = jt.value().at(3);
           tmp.maddr = (tmp.reg.vaddr+(tmp.offset*GPIO_CH_OFFSET));
           tmp.mask = cib::util::bitmask(tmp.bit_high,tmp.bit_low);
-#ifdef DEBUG
-          LOG(Log::INF) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg.id
+          LOG(Log::INF, lcmp) << "Mapping register " << jt.key() << " with reg_id " << tmp.reg.id
               << " offset " << tmp.offset << " bh " << tmp.bit_high << " bl " << tmp.bit_low
               << " addr " << std::hex << tmp.maddr << std::dec << " mask " << std::hex << tmp.mask
               << std::dec << " ";
-#endif
           m_regs.insert(std::pair<std::string,conf_param_t>(jt.key(),tmp));
         }
       }
@@ -814,11 +835,19 @@ namespace Device
     const std::string lbl  = "config";
     UaStatus st = OpcUa_Good;
     std::ostringstream msg("");
+    if (conf.contains("log_level"))
+    {
+      Log::setComponentLogLevel(Log::getComponentHandle(lcmp), static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
+      // if log level is set, update the log level for this system
+      LOG(Log::ERR, lcmp) << log_i(lbl.c_str(), "Log level set to ") << Log::logLevelToString(static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
+    }
+
     st = validate_config_fragment(conf,resp);
     if (st != OpcUa_Good)
     {
       return st;
     }
+
     // first of all we need to grab the mmap, as the registers need to be mapped
     // prior to attemting writing anything
     if (!conf.contains("mmap"))
@@ -827,9 +856,7 @@ namespace Device
       resp["status"] = "ERROR";
       msg << log_e(lbl.c_str(),"Can't find mandatory [mmap] configuration field");
       resp["messages"].push_back(msg.str());
-#ifdef DEBUG
-      LOG(Log::ERR) << msg.str();
-#endif
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["statuscode"] = OpcUa_BadInvalidArgument;
       return OpcUa_BadInvalidArgument;
     }
@@ -903,7 +930,7 @@ namespace Device
     // -- All validation passed. Now apply the configuration (write pass)
     for (json::iterator it = conf.begin(); it != conf.end(); ++it)
     {
-      LOG(Log::INF) << "Processing config key: " << it.key();
+      LOG(Log::INF, lcmp) << "Processing config key: " << it.key();
       // Use contains() for safer dispatch instead of string comparison
       if (it.key() == "dac_threshold")
       {
@@ -928,25 +955,19 @@ namespace Device
         // set the width
         if (m_regs.find("align_width") != m_regs.end())
         {
-#ifdef DEBUG
-          LOG(Log::INF) << log_i(lbl.c_str(), "Setting align width to ") << width;
-#endif
+          LOG(Log::INF, lcmp) << log_i(lbl.c_str(), "Setting align width to ") << width;
           set_cib_align_width(m_regs.at("align_width"),width);
         }
         period = sobj.at("period").get<uint32_t>();
         if (m_regs.find("align_period") != m_regs.end())
         {
-#ifdef DEBUG
-          LOG(Log::INF) << log_i(lbl.c_str(), "Setting align period to ") << period;
-#endif
+          LOG(Log::INF, lcmp) << log_i(lbl.c_str(), "Setting align period to ") << period;
           set_cib_align_period(m_regs.at("align_period"),period);
         }
         bool align_enabled = sobj.at("enabled").get<bool>();
         if (m_regs.find("align_state") != m_regs.end())
         {
-#ifdef DEBUG
-          LOG(Log::INF) << log_i(lbl.c_str(), "Setting align state to ") << align_enabled;
-#endif
+          LOG(Log::INF, lcmp) << log_i(lbl.c_str(), "Setting align state to ") << align_enabled;
           set_cib_align_state(m_regs.at("align_state"),align_enabled);
         }
       }
@@ -1217,13 +1238,11 @@ namespace Device
   }
   UaStatus DIoLCIB::set_cib_value(conf_param_t &reg, const uint32_t value)
   {
-#ifdef DEBUG
-    LOG(Log::INF) << log_i("cib_set","Writting into ")
+    LOG(Log::INF, lcmp) << log_i("cib_set","Writting into ")
             << " addr 0x" << std::hex << reg.maddr << std::dec
             << " val " << value
             << " mask 0x" << std::hex << reg.mask << std::dec
             << " offset " << reg.bit_low;
-#endif
     cib::util::reg_write_mask_offset(reg.maddr, value, reg.mask, reg.bit_low);
     return OpcUa_Good;
   }

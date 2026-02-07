@@ -175,6 +175,7 @@ private:
     bool m_is_ready;
     float m_cpu_load;
     float m_used_mem;
+    std::string lcmp;  // Logging component identifier
     //
     //
     //
