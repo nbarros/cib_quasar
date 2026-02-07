@@ -2797,6 +2797,8 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     std::ostringstream msg("");
     bool got_exception = false;
     const std::string lbl = "config";
+    LOG(Log::DBG, lcmp) << log_d(lbl.c_str(),"Configuring laser unit");
+    LOG(Log::TRC, lcmp) << log_t(lbl.c_str(),"Config fragment : ") << config.dump();
     UaStatus st;
     try
     {
@@ -2865,6 +2867,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       }
       // all good so far, so lets initiate the connection by creating an instance of the laser system
       m_laser = new device::Laser(m_comport.c_str(),static_cast<uint32_t>(m_baud_rate));
+      // there seems to be some sort of race condition here. 
       st = check_laser_instance(resp);
       if (st != OpcUa_Good)
       {
@@ -4042,7 +4045,7 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       std::ostringstream msg("");
       msg.clear(); msg.str("");
-      msg << log_e(lbl.c_str(),"There is no connection to the laser. Doing nothing.");
+      msg << log_e(lbl.c_str(),"No connection to the laser.");
       LOG(Log::ERR, lcmp) << msg.str();
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());

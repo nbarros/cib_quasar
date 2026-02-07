@@ -461,7 +461,7 @@ UaStatus DIoLMotor::callClear_alarm (
       std::ostringstream msg("");
       status = OpcUa_Good;
       msg << log_i(lbl.c_str(),"Remote command successful");
-      LOG(Log::DBG, lcmp) << msg.str();
+      LOG(Log::TRC, lcmp) << msg.str();
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
     }
@@ -741,9 +741,7 @@ UaStatus DIoLMotor::callClear_alarm (
     addr+= m_server_host;
     addr += "/api/";
     addr += request;
-//#ifdef DEBUG
-//    LOG(Log::INF, lcmp) << log_i(lbl.c_str(),"Query address : ") << addr;
-//#endif
+    // LOG(Log::TRC, lcmp) << log_t(lbl.c_str(),"Query address : ") << addr;
     uint16_t lport = m_server_port;
     //mutex to
     const std::lock_guard<std::mutex> lock(m_motor_mtx);
@@ -943,9 +941,7 @@ UaStatus DIoLMotor::callClear_alarm (
     std::string query = "position";
     json answer;
     st = query_motor(query,answer,resp);
-//#ifdef DEBUG
-//    LOG(Log::INF, lcmp) << "Received response [" << answer << "]";
-//#endif
+    // LOG(Log::TRC, lcmp) << log_t(lbl,"Received response [") << answer << "]";
     // now we should parse the answer
     // it is meant to be a json object
     if (answer["status"] == string("OK"))
@@ -956,7 +952,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-      LOG(Log::DBG, lcmp) << msg.str();
+      LOG(Log::TRC, lcmp) << msg.str();
       st =  OpcUa_Good;
     }
     else
@@ -989,15 +985,11 @@ UaStatus DIoLMotor::callClear_alarm (
         return OpcUa_Good;
       }
       m_speed_readout = new_value; 
-      LOG(Log::INF, lcmp) << "Speed readout [" << get_id() << "] : " << m_speed_readout;
+      LOG(Log::DBG, lcmp) << "Speed readout [" << get_id() << "] : " << m_speed_readout;
       std::ostringstream msg("");
-      // msg << log_i(lbl.c_str(), "Remote command successful");
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-      // #ifdef DEBUG
-      //       LOG(Log::INF, lcmp) << msg.str();
-      // #endif
       st = OpcUa_Good;
     }
     else
@@ -1019,7 +1011,7 @@ UaStatus DIoLMotor::callClear_alarm (
     std::string query = "get_alarm";
     json answer;
     st = query_motor(query,answer,resp);
-    LOG(Log::TRC, lcmp) << "Received response [" << answer << "]";
+    LOG(Log::TRC, lcmp) << log_t(lbl,"Received response [") << answer << "]";
     // now we should parse the answer
     // it is meant to be a json object
     if (answer["status"] == string("OK"))
@@ -1030,7 +1022,7 @@ UaStatus DIoLMotor::callClear_alarm (
       resp["status"] = "SUCCESS";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
-      LOG(Log::DBG, lcmp) << msg.str();
+      LOG(Log::TRC, lcmp) << msg.str();
       st =  OpcUa_Good;
     }
     else
@@ -1119,6 +1111,7 @@ UaStatus DIoLMotor::callClear_alarm (
     UaStatus st = OpcUa_Good;
     const std::string lbl = "config";
     std::ostringstream msg("");
+    LOG(Log::TRC, lcmp) << log_t(lbl.c_str(),"Received configuration fragment : ") << conf.dump();
     // check if there is a log_level setting
     if (conf.contains("log_level"))
     {
@@ -1138,7 +1131,6 @@ UaStatus DIoLMotor::callClear_alarm (
       return OpcUa_BadInvalidArgument;
     }
     // first confirm that this configuration is for the correct motor
-    LOG(Log::TRC, lcmp) << "Dumping  config fragment : " << conf.dump();
     if (conf.at("id").get<std::string>() != m_id)
     {
       msg << log_e("config"," ") << "Mismatch in motor id on configuration token (" << m_id << "!=" << conf.at("id").get<std::string>() << ")";
