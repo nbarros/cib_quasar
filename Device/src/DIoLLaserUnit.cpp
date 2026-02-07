@@ -1898,12 +1898,26 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       {
         return;
       }
-// 	LOG(Log::INF, lcmp) << log_i(lbl.c_str(),"Checking security");
+    // 	LOG(Log::INF, lcmp) << log_i(lbl.c_str(),"Checking security");
       m_laser->security(status, desc);
       // actually, this could be a good time to catch bad operation
       // TODO: NFB : Add catch for bad security outcome
-      LOG(Log::TRC, lcmp) << log_t(lbl.c_str(),"Checking passed check. Returned ") << status;
+      LOG(Log::TRC, lcmp) << log_t(lbl.c_str(),"Passed security call. Returned ") << std::setw(2) << status << " : " << desc;
       getAddressSpaceLink()->setLaser_status_code(status,OpcUa_Good);
+      // -- for example, if the interlock was triggered, we know we don't have a laser
+      // we might as well send and error and call stop
+      if (status == 6)
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl.c_str(),"Security interlock triggered. Stopping laser.");
+        resp["messages"].push_back(msg.str());
+        resp["status"] = "ERROR";
+        resp["statuscode"] = OpcUa_Bad;
+        LOG(Log::ERR, lcmp) << msg.str();
+
+        stop(resp);
+        return;
+      }
       // UaString ss(m_status_map.at(m_status).c_str());
       // getAddressSpaceLink()->setState(ss,OpcUa_Good);
     }
@@ -2517,9 +2531,17 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       return;
     }
+    
+
     // if the laser is not yet initialized, skip the update
-    update_status(m_status);
+    update_status(m_status);    
     get_laser_shutter();
+
+    // -- if configuration is not yet completed, skip the rest
+    if (!m_config_completed)
+    {
+      return;
+    }
 
     if (m_laser)
     {
