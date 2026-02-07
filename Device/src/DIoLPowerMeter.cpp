@@ -26,6 +26,7 @@
 #include <PowerMeterSim.hh>
 #else
 #include <PowerMeter.hh>
+#endif
 
 #include <utilities.hh>
 #include <sstream>
@@ -291,24 +292,6 @@ UaStatus DIoLPowerMeter::callReset (
 {
     json resp;
     UaStatus st = reset(resp);
-//    std::ostringstream msg("");
-//    if (st != OpcUa_Good)
-//    {
-//      resp["status"] = "ERROR";
-//      msg.clear(); msg.str("");
-//      msg << log_i(label.c_str(),"Failed to reset power meter.");
-//      resp["messages"].push_back(msg.str());
-//    }
-//    else
-//    {
-//      resp["status"] = "OK";
-//      msg.clear(); msg.str("");
-//      msg << log_i(label.c_str(),"Power meter reset.");
-//      resp["messages"].push_back(msg.str());
-//
-//    }
-//    resp["statuscode"] = st;
-//    response = UaString(resp.dump().c_str());
     return st;
 }
 UaStatus DIoLPowerMeter::callConfig (
@@ -351,9 +334,9 @@ UaStatus DIoLPowerMeter::callConfig (
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
       response = UaString(resp.dump().c_str());
+      LOG(Log::ERR, lcmp) << msg.str();
       return OpcUa_Good;
     }
-
     response = UaString(resp.dump().c_str());
     return OpcUa_Good;
 }
@@ -370,8 +353,9 @@ UaStatus DIoLPowerMeter::callStop_measurements (
     {
       resp["status"] = "ERROR";
       msg.clear(); msg.str("");
-      msg << log_i(label.c_str(),"Failed to stop measurements.");
+      msg << log_e(label.c_str(),"Failed to stop measurements.");
       resp["messages"].push_back(msg.str());
+      LOG(Log::ERR, lcmp) << msg.str();
     }
     else
     {
@@ -400,8 +384,9 @@ UaStatus DIoLPowerMeter::callStart_measurements (
     {
       resp["status"] = "ERROR";
       msg.clear(); msg.str("");
-      msg << log_i(label.c_str(),"Failed to start measurements.");
+      msg << log_e(label.c_str(),"Failed to start measurements.");
       resp["messages"].push_back(msg.str());
+      LOG(Log::ERR, lcmp) << msg.str();
     }
     else
     {
@@ -409,7 +394,7 @@ UaStatus DIoLPowerMeter::callStart_measurements (
       msg.clear(); msg.str("");
       msg << log_i(label.c_str(),"Measurements started.");
       resp["messages"].push_back(msg.str());
-
+      LOG(Log::DBG, lcmp) << msg.str();
     }
     resp["statuscode"] = static_cast<uint32_t>(st);
     response = UaString(resp.dump().c_str());
@@ -429,16 +414,17 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       resp["status"] = "ERROR";
       msg.clear(); msg.str("");
-      msg << log_i(label.c_str(),"Failed to start measurements.");
+      msg << log_e(label.c_str(),"Failed to terminate.");
       resp["messages"].push_back(msg.str());
+      LOG(Log::ERR, lcmp) << msg.str();
     }
     else
     {
       resp["status"] = "OK";
       msg.clear(); msg.str("");
-      msg << log_i(label.c_str(),"Measurements started.");
+      msg << log_i(label.c_str(),"Measurements terminated.");
       resp["messages"].push_back(msg.str());
-
+      LOG(Log::DBG, lcmp) << msg.str();
     }
     resp["statuscode"] = static_cast<uint32_t>(st);
     response = UaString(resp.dump().c_str());
@@ -455,14 +441,16 @@ UaStatus DIoLPowerMeter::callTerminate (
   UaStatus DIoLPowerMeter::set_conn(const std::string port, const uint16_t baud, json &resp)
   {
     std::ostringstream msg("");
+    const std::string lbl = "set_conn";
     //
     if (m_status != sOffline)
     {
       msg.clear(); msg.str("");
-      msg << log_e("set_conn","Power Meter is online. You must first shut it down.");
+      msg << log_e(lbl,"Power Meter is online. You must first shut it down.");
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
+      LOG(Log::ERR, lcmp) << msg.str();
       return OpcUa_BadInvalidState;
 }
     // if the port is already set and the connection is
@@ -472,9 +460,10 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       resp["status"] = "ERROR";
       msg.clear(); msg.str("");
-      msg << log_e("set_conn","Device is already connected. Should first \'terminate\' present connection.");
+      msg << log_e(lbl,"Device is already connected. Should first \'terminate\' present connection.");
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidState;
+      LOG(Log::ERR, lcmp) << msg.str();
       return OpcUa_BadInvalidState;
     }
     // check whether the port is "auto"
@@ -484,7 +473,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       automatic_port_search();
       msg.clear(); msg.str("");
-      msg << log_i("set_conn","Automatic search found port [") << m_comport << "]";
+      msg << log_i(lbl,"Automatic search found port [") << m_comport << "]";
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -497,10 +486,11 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       // the port is invalid. Something failed.
       msg.clear(); msg.str("");
-      msg << log_e("set_conn","Port is invalid [") << m_comport << "]";
+      msg << log_e(lbl,"Port is invalid [") << m_comport << "]";
       resp["status"] = "ERROR";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_BadInvalidArgument;
+      LOG(Log::ERR, lcmp) << msg.str();
       return OpcUa_BadInvalidArgument;
     }
     UaString ss(m_comport.c_str());
@@ -512,10 +502,11 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       // just leave what it is presently set
       msg.clear(); msg.str("");
-      msg << log_i("set_conn","Baud rate kept to current value[") << m_baud_rate << "]";
+      msg << log_i(lbl,"Baud rate kept to current value[") << m_baud_rate << "]";
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
+      LOG(Log::TRC, lcmp) << msg.str();
     }
     else
     {
@@ -546,21 +537,6 @@ UaStatus DIoLPowerMeter::callTerminate (
       getAddressSpaceLink()->setPort(dp,OpcUa_Good);
       first = false;
     }
-//    // get an energy reading
-//    if (!m_pause_measurements)
-//    {
-//      refresh_energy_reading();
-//
-//      if (m_ave_setting == 1)
-//      {
-//        status = OpcUa_BadDataUnavailable;
-//      }
-//      else
-//      {
-//        refresh_average_reading();
-//        status = OpcUa_Good;
-//      }
-//    }
     status = OpcUa_Good;
     UaString ua_str = UaString(m_status_map.at(m_status).c_str());
     getAddressSpaceLink()->setState(ua_str,status);
@@ -570,12 +546,8 @@ UaStatus DIoLPowerMeter::callTerminate (
   {
     if (m_status != sOperating)
     {
-      // LOG(Log::INF, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Getting a timestamp for an unavailable reading.";
-
-      // m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
-      // LOG(Log::INF, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Device is not operating. Setting energy reading to unavailable.";
-      // getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable, m_now);
-    getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable);
+      // LOG(Log::TRC, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Device is not operating. Setting energy reading to unavailable.";
+      getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_BadDataUnavailable);
     }
     else
     {
@@ -592,13 +564,9 @@ UaStatus DIoLPowerMeter::callTerminate (
           success = m_pm->read_energy(m_energy_reading);
           if (success)
           {
-            // LOG(Log::INF, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Calculating timestamp.";
-            // m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
-            // LOG(Log::INF, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Refreshing.";
-            // getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good, m_now);
+            // LOG(Log::TRC, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Refreshing.";
             getAddressSpaceLink()->setEnergy_reading(m_energy_reading, OpcUa_Good);
           }
-          // LOG(Log::INF, lcmp) << "DIoLPowerMeter::refresh_energy_reading : Done with the measurement.";
         }
       }
       catch(std::exception &e)
@@ -614,8 +582,6 @@ UaStatus DIoLPowerMeter::callTerminate (
 
   void DIoLPowerMeter::refresh_average_reading()
   {
-    // m_now = cib_time::to_ua_datetime(cib_time::get().get_timestamp());
-
     if (m_status != sOperating)
     {
       getAddressSpaceLink()->setAverage_reading(m_average_reading, OpcUa_BadDataUnavailable);
@@ -649,6 +615,7 @@ UaStatus DIoLPowerMeter::callTerminate (
 
   void DIoLPowerMeter::automatic_port_search()
   {
+    const std::string lbl = "port_search";
     try
     {
       // the automatic port search queries all available ports, their descriptions and IDs for an occurrence of the device
@@ -658,7 +625,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       m_comport = util::find_port(m_serial_number);
       if (m_comport.size() == 0)
       {
-        LOG(Log::ERR, lcmp) << "DIoLPowerMeter::automatic_port_search : Couldn't find device port";
+        LOG(Log::ERR, lcmp) << log_e(lbl,"Couldn't find device port");
       }
 
       m_status = sOffline;
@@ -666,7 +633,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     catch(...)
     {
       m_status = sOffline;
-      LOG(Log::ERR, lcmp) << "DIoLPowerMeter::automatic_port_search : Caught an exception searching for the port";
+      LOG(Log::ERR, lcmp) << log_e(lbl,"Caught an exception searching for the port");
       m_comport = "";
     }
   }
@@ -683,6 +650,7 @@ UaStatus DIoLPowerMeter::callTerminate (
   void DIoLPowerMeter::refresh_measurement_modes()
   {
     std::string type,sn,name;
+    const std::string lbl = "measurement_modes";
     bool power,energy,freq;
     // actually query the device for the
     if (m_status == sOffline)
@@ -733,6 +701,7 @@ UaStatus DIoLPowerMeter::callTerminate (
   void DIoLPowerMeter::refresh_threshold_limits()
   {
     uint16_t current, min, max;
+    const std::string lbl = "threshold_limits";
     if (m_status == sOffline)
     {
       // do nothing...we are offline
@@ -750,7 +719,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         m_threshold_limits.second = max;
         if (current != m_e_threshold)
         {
-          LOG(Log::WRN, lcmp) << "DIoLPowerMeter::refresh_threshold_limits : Mismatch between cached threshold and device reported ("
+          LOG(Log::WRN, lcmp) << log_w(lbl,"Mismatch between cached threshold and device reported (")
               << m_e_threshold << " <> " << current << ")";
         }
       }
@@ -767,6 +736,7 @@ UaStatus DIoLPowerMeter::callTerminate (
   {
     //
     int16_t v;
+    const std::string lbl = "measurement_ranges";
     if (m_status == sOffline)
     {
       // do nothing...we are offline
@@ -788,7 +758,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       }
       if (v != m_sel_range)
       {
-        LOG(Log::WRN, lcmp) << "DIoLPowerMeter::refresh_measurement_ranges : Mismatch between cached range and device reported (" << m_sel_range << " <> " << v << ")";
+        LOG(Log::WRN, lcmp) << log_w(lbl,"Mismatch between cached range and device reported (") << m_sel_range << " <> " << v << ")";
       }
       {
         const std::lock_guard<std::mutex> lock(m_serial_mutex);
@@ -952,6 +922,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         if (clean_and_rebuild)
         {
           // that means that we should terminate and recreate
+          LOG(Log::TRC, lcmp) << log_t(label,"Reconfiguring serial connection. Cleaning up existing one.");
           const std::lock_guard<std::mutex> lock(m_serial_mutex);
           delete m_pm;
           m_pm = nullptr;
@@ -1084,6 +1055,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       msg.clear(); msg.str("");
       msg << log_i(label.c_str(),"System inititalized");
+      LOG(Log::INF, lcmp) << msg.str();
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -1109,6 +1081,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       msg.clear(); msg.str("");
       msg << log_w(label.c_str(),"Power Meter is taking readings. Stopping first.");
+      LOG(Log::WRN, lcmp) << msg.str();
       resp["messages"].push_back(msg.str());
       stop_readings(resp);
     }
@@ -1119,7 +1092,8 @@ UaStatus DIoLPowerMeter::callTerminate (
         m_pm->reset();
       }
       msg.clear(); msg.str("");
-      msg << log_e(label.c_str()," ") << "Restarting the connection to the device.";
+      msg << log_i(label.c_str()," ") << "Restarting the connection to the device.";
+      LOG(Log::DBG, lcmp) << msg.str();
       terminate(resp);
       // re-initialize
       init(resp,false);
@@ -1171,6 +1145,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       msg.clear(); msg.str("");
       msg << log_i(label.c_str(),"System reset");
+      LOG(Log::INF, lcmp) << msg.str();
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
@@ -1191,6 +1166,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       {
         msg.clear(); msg.str("");
         msg << log_e(label.c_str(),"System already initialized.Should first terminate.Skipping.");
+        LOG(Log::ERR, lcmp) << msg.str();
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadInvalidState;
@@ -1201,7 +1177,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       Log::setComponentLogLevel(Log::getComponentHandle(lcmp), static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
       // if log level is set, update the log level for this system
-      LOG(Log::INF, lcmp) << log_i(lbl.c_str(), "Log level set to ") << Log::logLevelToString(static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
+      LOG(Log::INF, lcmp) << log_i(label.c_str(), "Log level set to ") << Log::logLevelToString(static_cast<Log::LOG_LEVEL>(conf.at("log_level").get<int>()));
     }
       // validate that all settings are here
       if (!validate_config_fragment(conf,resp))
@@ -1214,6 +1190,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         msg.clear(); msg.str("");
         msg << log_e(label.c_str(),"Mismatch between name in object and configuration fragment :")
                           << " (" << conf.at("name").get<std::string>() <<" <> " << m_name << ")";
+        LOG(Log::ERR, lcmp) << msg.str();
         resp["status"] = "ERROR";
         resp["messages"].push_back(msg.str());
         resp["statuscode"] = OpcUa_BadInvalidArgument;
@@ -1237,6 +1214,7 @@ UaStatus DIoLPowerMeter::callTerminate (
       {
         msg.clear(); msg.str("");
         msg << log_w(label.c_str(),"System already initialized. Just reconfiguring.");
+        LOG(Log::WRN, lcmp) << msg.str();
         resp["messages"].push_back(msg.str());
         bool clean_and_rebuild = false;
 
@@ -1317,7 +1295,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         LOG(Log::DBG, lcmp) << "Processing " << it.key() << " : " << it.value() << "\n";
         if (it.key() == "select_range")
         {
-          LOG(Log::TRC, lcmp) << log_t(label,"Setting range to ") << it.value()
+          LOG(Log::TRC, lcmp) << log_t(label,"Setting range to ") << it.value();
           st = set_range(it.value(),resp);
           getAddressSpaceLink()->setRange_selected(m_sel_range, st);
           if (st != OpcUa_Good)
@@ -1327,7 +1305,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         }
         if (it.key() == "wavelength")
         {
-          LOG(Log::TRC, lcmp) << "Setting wavelength to " << it.value();
+          LOG(Log::TRC, lcmp) << log_t(label,"Setting wavelength to ") << it.value();
           st = set_lambda(it.value(),resp);
           getAddressSpaceLink()->setWavelength(m_wavelength, st);
           if (st != OpcUa_Good)
@@ -1337,7 +1315,7 @@ UaStatus DIoLPowerMeter::callTerminate (
         }
         if (it.key() == "energy_threshold")
         {
-          LOG(Log::TRC, lcmp) << log_t(label,"Setting energy_threshold to ") << it.value()
+          LOG(Log::TRC, lcmp) << log_t(label,"Setting energy_threshold to ") << it.value();
           st = set_thresh(it.value(),resp);
           getAddressSpaceLink()->setTrigger_threshold(m_e_threshold, st);
           if (st != OpcUa_Good)
@@ -1473,13 +1451,14 @@ UaStatus DIoLPowerMeter::callTerminate (
       resp["status"] = "ERROR";
       std::ostringstream msg("");
       msg << log_e(label.c_str(),"Refresh interval is too low (should be at least above 50)");
+      LOG(Log::ERR, lcmp) << msg.str();
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Bad;
       return OpcUa_BadInvalidArgument;
     }
     // if it reached this point, we should be good to go
     update_status(sOperating);
-    LOG(Log::INF, lcmp) << log_i(label.c_str(),"Starting reading with a time interval of ") << m_measurement_interval << " ms.";
+    LOG(Log::DBG, lcmp) << log_d(label.c_str(),"Starting reading with a time interval of ") << m_measurement_interval << " ms.";
 
     start_readings();
     // this should just flip a variable
@@ -1487,9 +1466,10 @@ UaStatus DIoLPowerMeter::callTerminate (
   }
   void DIoLPowerMeter::start_readings()
   {
+    const std::string lbl = "start_readings";
     if (m_do_measurements.load())
     {
-      LOG(Log::WRN, lcmp) << log_w("start_readings","Readings are already ongoing.");
+      LOG(Log::WRN, lcmp) << log_w(lbl,"Readings are already ongoing.");
       return;
     }
     m_do_measurements.store(true);
@@ -1571,6 +1551,7 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       msg.clear(); msg.str("");
       msg << log_i(label.c_str(),"System terminated");
+      LOG(Log::INF, lcmp) << msg.str();
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
