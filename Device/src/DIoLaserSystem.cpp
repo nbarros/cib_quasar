@@ -3257,30 +3257,20 @@ UaStatus DIoLaserSystem::move_to_pos(
 
   UaStatus DIoLaserSystem::execute_grid_scan(json &plan, json &resp)
   {
+    const std::string lbl("execute_grid_scan");
     // Validate the plan
     if (validate_grid_parameters(plan, resp) != OpcUa_Good)
     {
       return OpcUa_BadInvalidArgument;
     }
 
-    const uint32_t overstep = 500;
+    // const uint32_t overstep = 500;
     // Extract the parameters
 
-    LOG(Log::INF, lcmp) << "Received scan plan: " << plan.dump(-1);
-
+    LOG(Log::TRC, lcmp) << log_t(lbl,"Received scan plan: ") << plan.dump(-1);
+    std::ostringstream msg("");
     std::vector<int32_t> center = plan["center"].get<std::vector<int32_t> >();
-    LOG(Log::INF, lcmp) << "reinterpreted center: " << center.at(0) << ", " << center.at(1) << ", " << center.at(2);
-
-    if (center.at(2) > 0xFFFFF)
-    {
-      LOG(Log::ERR, lcmp) << log_e("execute_grid_scan", "Center position for Z axis is out of range for 20-bit motor controller.");
-      std::vector<uint32_t> tmp = plan["center"];
-      for (size_t i = 0; i < 3; i++)
-      {
-        center[i] = static_cast<int32_t>(tmp.at(i));
-      }
-      LOG(Log::INF, lcmp) << "Reinterpreted center: " << center.at(0) << ", " << center.at(1) << ", " << center.at(2);
-    }
+    LOG(Log::DBG, lcmp) << log_d(lbl,"Received center: [") << center.at(0) << ", " << center.at(1) << ", " << center.at(2) << "]";
 
     std::vector<uint32_t> range = plan["range"];
     std::vector<uint32_t> step = plan["step"];
@@ -3292,6 +3282,32 @@ UaStatus DIoLaserSystem::move_to_pos(
     int32_t scan_start, scan_end;
 
     scan_plan["scan_plan"] = json::array();
+    // approach can be 'u' for up, 'd' for down, and '-' for default (which is the same as 'u')
+    // approach 'u' means that the scan will reach the position going upwards in step count
+    // approach 'd' means that the scan will reach the position going downwards in step count
+    // grab the relevant overstep for the selected motor
+    int32_t overstep = 0;
+    if (m_map_motor_coordinates.find(scan_axis) != m_map_motor_coordinates.end())
+    {
+      Device::DIoLMotor* lmotor = iolmotors().at(m_map_motor_coordinates.at(scan_axis));
+      if (!lmotor->is_enabled())
+      {
+        msg.clear(); msg.str("");
+        msg << log_e(lbl, "Invalid 'scan_axis' value [") << std::to_string(scan_axis) << "] . Motor is disabled.";
+        resp["messages"].push_back(msg.str());
+        LOG(Log::ERR, lcmp) << msg.str();
+        return OpcUa_BadInvalidArgument;
+      }
+      overstep = lmotor->get_overstep();
+    }
+    else
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl, "Invalid 'scan_axis' value [") << std::to_string(scan_axis) << "] . No corresponding motor.";
+      resp["messages"].push_back(msg.str());
+      LOG(Log::ERR, lcmp) << msg.str();
+      return OpcUa_BadInvalidArgument;
+    }
     if (approach[scan_axis] == 'u')
     {
       scan_start = center[scan_axis] - range[scan_axis] - overstep;
@@ -3316,6 +3332,13 @@ UaStatus DIoLaserSystem::move_to_pos(
     //
     // generate the entries
     // this is done by looping over all axes and skipping the scan_axis
+    // for (size_t i = 0; i < m_map_motor_coordinates.size(); i++)
+    // {
+    //   // skip the scanning axis
+    //   if (i == scan_axis)
+    //   {
+    //     continue;
+    //   }
     for (int32_t x = center[0] - static_cast<int32_t>(range[0]); x <= (center[0] + static_cast<int32_t>(range[0])); x += step[0])
     {
       // if this is the scan axis, we do not need to create entries for it
@@ -3347,7 +3370,6 @@ UaStatus DIoLaserSystem::move_to_pos(
         y_entries.push_back(y);
         break;
       }
-
       if (approach[1] == 'u' || approach[1] == '-')
       {
         // we are going up, then newer values go to the back
@@ -3416,7 +3438,7 @@ UaStatus DIoLaserSystem::move_to_pos(
     // Log the generated scan plan
     resp["scan_plan"] = scan_plan;
     // #ifdef DEBUG
-    LOG(Log::INF, lcmp) << "Generated scan plan: " << scan_plan.dump(-1);
+    LOG(Log::TRC, lcmp) << "Generated scan plan: " << scan_plan.dump(-1);
     // #endif
     //resp["messages"].push_back(scan_plan.dump(-1));
 
@@ -3427,7 +3449,7 @@ UaStatus DIoLaserSystem::move_to_pos(
     if (st != OpcUa_Good)
     {
       resp["messages"].push_back("Failed to execute grid scan plan.");
-      LOG(Log::ERR, lcmp) << "Failed to initiate a scan.";
+      LOG(Log::ERR, lcmp) << "Failed to initiate the grid scan.";
       return st;
     }
     return OpcUa_Good;
