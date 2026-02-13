@@ -78,35 +78,46 @@ DIoLaserSystem::DIoLaserSystem(
                                      ,
                                      m_state(sOffline), lcmp("IOLS")
 {
-    /* fill up constructor body here */
-    // this had to be in the constructor
+  /* fill up constructor body here */
+  // this had to be in the constructor
 
-    m_state_map.insert({sOffline,"offline"});
-    //m_state_map.insert({sGood,"good"});
-    m_state_map.insert({sReady,"ready"});
-    m_state_map.insert({sBusy, "busy"});
-    // m_state_map.insert({sWarmup,"warmup"});
-    // m_state_map.insert({sPause,"pause"});
-    // m_state_map.insert({sStandby,"standby"});
-    // m_state_map.insert({sOperating,"operating"});
-    m_state_map.insert({sError,"sError"});
+  m_state_map.insert({sOffline,"offline"});
+  //m_state_map.insert({sGood,"good"});
+  m_state_map.insert({sReady,"ready"});
+  m_state_map.insert({sBusy, "busy"});
+  // m_state_map.insert({sWarmup,"warmup"});
+  // m_state_map.insert({sPause,"pause"});
+  // m_state_map.insert({sStandby,"standby"});
+  // m_state_map.insert({sOperating,"operating"});
+  m_state_map.insert({sError,"sError"});
 
-    // initialize the timestamp reader
-    // TODO: NFB : Finish implementing this
-    // cib::util::cib_time::initialize(GPIO_TSTAMP_MEM_LOW);
-    // by default only log warnings
-    /**
-     * Log levels:         
-     *    TRC = 0,
-          DBG,
-          INF,
-          WRN,
-          ERR
+  
+  // by default only log warnings
+  /**
+   * Log levels:         
+   *    TRC = 0,
+        DBG,
+        INF,
+        WRN,
+        ERR
 
-     */
-    lcmp = id();
-    Log::registerLoggingComponent(lcmp, Log::TRC);
-    LOG(Log::TRC, lcmp) << log_t("constructor", "Creating DIoLaserSystem with id [" + id() + "]");
+    */
+  lcmp = id();
+  Log::registerLoggingComponent(lcmp, Log::TRC);
+  LOG(Log::TRC, lcmp) << log_t("constructor", "Creating DIoLaserSystem with id [" + id() + "]");
+
+  // initialize the timestamp reader
+  try
+  {
+    cib::util::cib_time::initialize(GPIO_TSTAMP_MEM_LOW);
+  }
+  catch (const std::exception &e)
+  {
+    std::ostringstream msg("");
+    msg << "Failed to initialize timestamp reader: " << e.what();
+    LOG(Log::WRN, lcmp) << msg.str();
+    // we can continue, but the timestamps will not be available
+  }
 }
 
 /* sample dtr */
