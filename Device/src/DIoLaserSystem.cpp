@@ -1069,6 +1069,7 @@ UaStatus DIoLaserSystem::callClear_error (
       // first thing to be stopped is the laser
       // this should only fail if something is not configured
       //st = iollaserunit()->stop(resp);
+      LOG(Log::INF, lcmp) << log_i("stop","Stopping laser unit.");
       st = iollaserunit()->stop(resp);
       if (st != OpcUa_Good)
       {
@@ -1086,6 +1087,7 @@ UaStatus DIoLaserSystem::callClear_error (
       for (Device::DIoLMotor* lmotor : iolmotors ())
       {
         // Skip disabled motors
+        LOG(Log::INF, lcmp) << log_i("stop", "Stopping motor ") << lmotor->id();
         if (!lmotor->check_motor_enabled())
           continue;
         st = lmotor->motor_stop(resp);
@@ -1093,6 +1095,7 @@ UaStatus DIoLaserSystem::callClear_error (
         {
           reset(msg);
           msg << log_e("stop","Failed to stop motor ") << lmotor->id() << ". See previous messages.";
+          LOG(Log::ERR, lcmp) << msg.str();
           resp["status"] = "ERROR";
           resp["messages"].push_back(msg.str());
           if (!resp.contains("statuscode"))
@@ -1137,7 +1140,7 @@ UaStatus DIoLaserSystem::callClear_error (
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
-      msg << log_e("stop","Caught JSON exception : ") << e.what();
+      msg << log_e("stop","Caught STL exception : ") << e.what();
       got_exception = true;
     }
     catch(...)
@@ -1159,6 +1162,7 @@ UaStatus DIoLaserSystem::callClear_error (
     {
       reset(msg);
       msg << log_i("stop","IoLS system stopped.");
+      LOG(Log::DBG, lcmp) << msg.str();
       resp["status"] = "OK";
       resp["messages"].push_back(msg.str());
       resp["statuscode"] = OpcUa_Good;
