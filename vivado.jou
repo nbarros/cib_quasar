@@ -1,0 +1,18 @@
+#-----------------------------------------------------------
+# Vivado v2022.2 (64-bit)
+# SW Build 3671981 on Fri Oct 14 04:59:54 MDT 2022
+# IP Build 3669848 on Fri Oct 14 08:30:02 MDT 2022
+# Start of session at: Fri Feb  6 10:53:26 2026
+# Process ID: 338054
+# Current directory: /home/nbarros/work/dune/cib/sw/slow_control/quasar/opcua-server
+# Command line: vivado
+# Log file: /home/nbarros/work/dune/cib/sw/slow_control/quasar/opcua-server/vivado.log
+# Journal file: /home/nbarros/work/dune/cib/sw/slow_control/quasar/opcua-server/vivado.jou
+# Running On: letra, OS: Linux, CPU Frequency: 5139.142 MHz, CPU Physical cores: 24, Host memory: 62815 MB
+#-----------------------------------------------------------
+start_gui
+open_project /home/nbarros/work/dune/cib/cib_vivado/cib_fpga_v10-00/cib_fpga_v10-00.xpr
+update_compile_order -fileset sources_1
+open_bd_design {/home/nbarros/work/dune/cib/cib_vivado/cib_fpga_v10-00/cib_fpga_v10-00.srcs/sources_1/bd/cib/cib.bd}
+set_property location {-792 681} [get_bd_ports L1_diode]
+set_property location {-797 2193} [get_bd_ports L2_diode]

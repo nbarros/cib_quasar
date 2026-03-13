@@ -106,18 +106,18 @@ DIoLaserSystem::DIoLaserSystem(
   Log::registerLoggingComponent(lcmp, Log::TRC);
   LOG(Log::TRC, lcmp) << log_t("constructor", "Creating DIoLaserSystem with id [" + id() + "]");
 
-  // initialize the timestamp reader
-  try
-  {
-    cib::util::cib_time::initialize(GPIO_TSTAMP_MEM_LOW);
-  }
-  catch (const std::exception &e)
-  {
-    std::ostringstream msg("");
-    msg << "Failed to initialize timestamp reader: " << e.what();
-    LOG(Log::WRN, lcmp) << msg.str();
-    // we can continue, but the timestamps will not be available
-  }
+  // // initialize the timestamp reader
+  // try
+  // {
+  //   cib::util::cib_time::initialize(GPIO_TSTAMP_MEM_LOW);
+  // }
+  // catch (const std::exception &e)
+  // {
+  //   std::ostringstream msg("");
+  //   msg << "Failed to initialize timestamp reader: " << e.what();
+  //   LOG(Log::WRN, lcmp) << msg.str();
+  //   // we can continue, but the timestamps will not be available
+  // }
 }
 
 /* sample dtr */

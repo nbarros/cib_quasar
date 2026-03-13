@@ -126,6 +126,11 @@ DIoLPowerMeter::DIoLPowerMeter (
 /* sample dtr */
 DIoLPowerMeter::~DIoLPowerMeter ()
 {
+  if (m_pm != nullptr) 
+  {
+    delete m_pm;
+    m_pm = nullptr;
+  }
 }
 
 /* delegates for cachevariables */

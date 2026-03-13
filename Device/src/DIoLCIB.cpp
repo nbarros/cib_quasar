@@ -152,6 +152,20 @@ namespace Device
   /* sample dtr */
   DIoLCIB::~DIoLCIB ()
   {
+    for (auto entry: m_reg_map)
+    {
+      if (entry.second.vaddr != 0)
+      {
+        cib::util::unmap_mem(entry.second.vaddr, entry.second.size);
+      }
+    }
+    if (m_mmap_fd > 0)
+    {
+      close(m_mmap_fd);
+      m_mmap_fd = 0;
+    }
+    m_reg_map.clear();
+    m_regs.clear();
   }
 
   /* delegates for cachevariables */

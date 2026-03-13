@@ -130,7 +130,11 @@ DIoLLaserUnit::DIoLLaserUnit (
 /* sample dtr */
 DIoLLaserUnit::~DIoLLaserUnit ()
 {
-
+  if (m_laser != nullptr)
+  {
+    delete m_laser;
+    m_laser = nullptr;
+  }
   cib_free_mem();
 }
 
