@@ -18,6 +18,7 @@ extern "C" {
 #include <chrono>
 #include <thread>
 #include <cstring>
+#include <cctype>
 #include <fstream>
 #include <json.hpp>
 #include <spdlog/spdlog.h>
@@ -27,6 +28,115 @@ using std::endl;
 using std::string;
 using std::vector;
 using json = nlohmann::json;
+
+enum class NodeReportType
+{
+  all,
+  variable,
+  method
+};
+
+enum class NodeKind
+{
+  variable,
+  method
+};
+
+struct BrowseReport
+{
+  std::vector<std::string> in_order;
+  std::vector<std::string> variables;
+  std::vector<std::string> methods;
+};
+
+static bool should_report(NodeKind kind, NodeReportType filter)
+{
+  if (filter == NodeReportType::all)
+  {
+    return true;
+  }
+  if (filter == NodeReportType::variable)
+  {
+    return kind == NodeKind::variable;
+  }
+  return kind == NodeKind::method;
+}
+
+static void add_report_line(BrowseReport &report, NodeKind kind, const std::string &line)
+{
+  report.in_order.push_back(line);
+  if (kind == NodeKind::variable)
+  {
+    report.variables.push_back(line);
+  }
+  else
+  {
+    report.methods.push_back(line);
+  }
+}
+
+static std::string to_lower_copy(std::string value)
+{
+  for (char &ch : value)
+  {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  return value;
+}
+
+static bool parse_type_filter(const std::string &value, NodeReportType &out_filter)
+{
+  const std::string normalized = to_lower_copy(value);
+  if (normalized == "all")
+  {
+    out_filter = NodeReportType::all;
+    return true;
+  }
+  if (normalized == "variable")
+  {
+    out_filter = NodeReportType::variable;
+    return true;
+  }
+  if (normalized == "method")
+  {
+    out_filter = NodeReportType::method;
+    return true;
+  }
+  return false;
+}
+
+static void print_usage(const char *program)
+{
+  std::cout << "Usage: " << program << " [options]\n"
+            << "Options:\n"
+            << "  -s, --sort           Group output by node type\n"
+            << "  -t, --type <type>    Node type filter: variable | method | all\n"
+            << "  -h, --help           Show this help message\n";
+}
+
+static void print_report(const BrowseReport &report, bool sort_by_type)
+{
+  if (!sort_by_type)
+  {
+    for (const auto &line : report.in_order)
+    {
+      std::cout << line << std::endl;
+    }
+    return;
+  }
+
+  std::cout << "[VARIABLES]" << std::endl;
+  for (const auto &line : report.variables)
+  {
+    std::cout << line << std::endl;
+  }
+
+  std::cout << "[METHODS]" << std::endl;
+  for (const auto &line : report.methods)
+  {
+    std::cout << line << std::endl;
+  }
+}
 
 static UA_StatusCode
 nodeIter(UA_NodeId childId, UA_Boolean isInverse, UA_NodeId referenceTypeId, void *handle) {
@@ -139,7 +249,7 @@ void browse_nodes_scan(UA_Client *client, UA_NodeId *node)
   //UA_BrowseResponse_clear(&bResp);
   printf("Done clearing\n");
 }
-void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
+void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node, NodeReportType filter, BrowseReport &report)
 {
   //printf("Browsing nodes in objects folder:\n");
   UA_StatusCode retval = UA_STATUSCODE_GOOD;
@@ -184,20 +294,28 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
         {
           // this is an argument
           // try to fetch its data type exactly
-          printf(",,%-16.*s\n",
-                 (int)ref->browseName.name.length, ref->browseName.name.data
-                 );
+          if (should_report(NodeKind::variable, filter))
+          {
+            char line[256];
+            std::snprintf(line, sizeof(line), ",,%-16.*s",
+                          (int)ref->browseName.name.length, ref->browseName.name.data);
+            add_report_line(report, NodeKind::variable, std::string(line));
+          }
           //(int)ref->browseName.name.length, ref->browseName.name.data,
         }
         else
         {
-        // query the data type
-        //UA_Client_readValueAttribute(UA_Client *client, const UA_NodeId nodeId, UA_Variant *outValue)
-          printf("%-16.*s,VAR,%s \n",
-                 (int)ref->nodeId.nodeId.identifier.string.length,
-                 ref->nodeId.nodeId.identifier.string.data,
-                 output.type->typeName
-                 );
+          // query the data type
+          // UA_Client_readValueAttribute(UA_Client *client, const UA_NodeId nodeId, UA_Variant *outValue)
+          if (should_report(NodeKind::variable, filter))
+          {
+            char line[256];
+            std::snprintf(line, sizeof(line), "%-16.*s,VAR,%s",
+                          (int)ref->nodeId.nodeId.identifier.string.length,
+                          ref->nodeId.nodeId.identifier.string.data,
+                          output.type->typeName);
+            add_report_line(report, NodeKind::variable, std::string(line));
+          }
 
           //UA_Datatype *tp = &UA_TYPES[output.type]
         }
@@ -221,18 +339,22 @@ void browse_nodes_scan_cib(UA_Client *client, UA_NodeId *node)
       {
         // in this case we need to figure out whether they have arguments
         // so we should also fetch their arguments
-        printf("%-16.*s,METHOD\n",
-               (int)ref->nodeId.nodeId.identifier.string.length,
-               ref->nodeId.nodeId.identifier.string.data
-               );
+        if (should_report(NodeKind::method, filter))
+        {
+          char line[256];
+          std::snprintf(line, sizeof(line), "%-16.*s,METHOD",
+                        (int)ref->nodeId.nodeId.identifier.string.length,
+                        ref->nodeId.nodeId.identifier.string.data);
+          add_report_line(report, NodeKind::method, std::string(line));
+        }
 
-        browse_nodes_scan_cib(client,&(ref->nodeId.nodeId));
+        browse_nodes_scan_cib(client, &(ref->nodeId.nodeId), filter, report);
 
       }
       else if (ref->nodeClass == UA_NODECLASS_OBJECT)
       {
         // browse one further
-        browse_nodes_scan_cib(client,&(ref->nodeId.nodeId));
+        browse_nodes_scan_cib(client, &(ref->nodeId.nodeId), filter, report);
       }
       else
       {
@@ -325,10 +447,49 @@ void parse_method_response_string(std::string &input)
 
 }
 
-int main()
+int main(int argc, char **argv)
 {
   spdlog::set_pattern("cib : [%^%L%$] %v");
   spdlog::set_level(spdlog::level::trace); // Set global log level to info
+
+  bool sort_by_type = false;
+  NodeReportType type_filter = NodeReportType::all;
+
+  for (int i = 1; i < argc; ++i)
+  {
+    const std::string arg(argv[i]);
+    if (arg == "-s" || arg == "--sort")
+    {
+      sort_by_type = true;
+      continue;
+    }
+    if (arg == "-h" || arg == "--help")
+    {
+      print_usage(argv[0]);
+      return EXIT_SUCCESS;
+    }
+    if (arg == "-t" || arg == "--type")
+    {
+      if (i + 1 >= argc)
+      {
+        spdlog::error("Missing value for {}", arg);
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
+      }
+      ++i;
+      if (!parse_type_filter(argv[i], type_filter))
+      {
+        spdlog::error("Invalid node type '{}'. Use: variable, method, all", argv[i]);
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
+      }
+      continue;
+    }
+
+    spdlog::error("Unknown argument '{}'", arg);
+    print_usage(argv[0]);
+    return EXIT_FAILURE;
+  }
 
   UA_StatusCode retval = UA_STATUSCODE_GOOD;
   // CIB2 IP
@@ -359,8 +520,9 @@ int main()
   }
 
   // -- First browse all nodes that are available
-  printf("%-9s %-16s %-16s %-16s\n", "NAMESPACE", "NODEID", "BROWSE NAME", "DISPLAY NAME");
-  browse_nodes_scan_cib(client,nullptr);
+  BrowseReport report;
+  browse_nodes_scan_cib(client, nullptr, type_filter, report);
+  print_report(report, sort_by_type);
 
 
   UA_Client_disconnect(client);
