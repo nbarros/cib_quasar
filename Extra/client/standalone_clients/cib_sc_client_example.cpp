@@ -16,6 +16,10 @@ extern "C" {
 #include <chrono>
 #include <thread>
 #include <cstring>
+#include <fstream>
+#include <json.hpp>
+
+using json = nlohmann::json;
 
 
 /**
@@ -118,6 +122,136 @@ UA_StatusCode browse_obj_iterator(UA_Client *client)
     UA_NodeId_delete(parent);
 
     return retval;
+}
+
+UA_StatusCode execute_motor_sequence(UA_Client *client, const std::string &config_path)
+{
+    UA_StatusCode retval = UA_STATUSCODE_GOOD;
+
+    std::ifstream fconf(config_path);
+    if (!fconf.is_open())
+    {
+        printf("Failed to open configuration file: %s\n", config_path.c_str());
+        return UA_STATUSCODE_BADNOTFOUND;
+    }
+
+    json jconf;
+    try
+    {
+        jconf = json::parse(fconf);
+    }
+    catch (const std::exception &e)
+    {
+        printf("Failed to parse configuration file: %s\n", e.what());
+        return UA_STATUSCODE_BADDECODINGERROR;
+    }
+
+    printf("Loaded configuration, calling L1.m1.configure_motor\n");
+
+    UA_Variant input;
+    UA_Variant_init(&input);
+    UA_String argString = UA_String_fromChars(jconf.dump().c_str());
+    UA_Variant_setScalarCopy(&input, &argString, &UA_TYPES[UA_TYPES_STRING]);
+    UA_String_clear(&argString);
+
+    size_t outputSize = 0;
+    UA_Variant *output = NULL;
+    retval = UA_Client_call(client,
+                            UA_NODEID_STRING(2, "L1.m1"),
+                            UA_NODEID_STRING(2, "L1.m1.configure_motor"),
+                            1,
+                            &input,
+                            &outputSize,
+                            &output);
+    UA_Variant_clear(&input);
+
+    if (retval != UA_STATUSCODE_GOOD)
+    {
+        printf("configure_motor failed: %s\n", UA_StatusCode_name(retval));
+        return retval;
+    }
+
+    if (outputSize > 0 && output[0].type == &UA_TYPES[UA_TYPES_STRING])
+    {
+        std::string response((char *)static_cast<UA_String *>(output[0].data)->data,
+                             (size_t)static_cast<UA_String *>(output[0].data)->length);
+        printf("configure_motor response: %s\n", response.c_str());
+    }
+    UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
+
+    printf("Checking current status via L1.m1.position\n");
+    UA_Int32 current_pos = -1;
+    UA_Variant *val = UA_Variant_new();
+    retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "L1.m1.position"), val);
+    if (retval != UA_STATUSCODE_GOOD || !UA_Variant_isScalar(val) || val->type != &UA_TYPES[UA_TYPES_INT32])
+    {
+        UA_Variant_delete(val);
+        printf("Failed reading L1.m1.position: %s\n", UA_StatusCode_name(retval));
+        return retval;
+    }
+    current_pos = *static_cast<UA_Int32 *>(val->data);
+    UA_Variant_delete(val);
+    printf("Current position is %d\n", current_pos);
+
+    const UA_Int32 target_pos = 10000;
+    printf("Setting L1.m1.positionSetPoint to %d\n", target_pos);
+    UA_Variant *setpoint = UA_Variant_new();
+    UA_Variant_setScalarCopy(setpoint, &target_pos, &UA_TYPES[UA_TYPES_INT32]);
+    retval = UA_Client_writeValueAttribute(client, UA_NODEID_STRING(2, "L1.m1.positionSetPoint"), setpoint);
+    UA_Variant_delete(setpoint);
+    if (retval != UA_STATUSCODE_GOOD)
+    {
+        printf("Failed writing setpoint: %s\n", UA_StatusCode_name(retval));
+        return retval;
+    }
+
+    printf("Calling L1.m1.start_move\n");
+    UA_Variant_init(&input);
+    outputSize = 0;
+    output = NULL;
+    retval = UA_Client_call(client,
+                            UA_NODEID_STRING(2, "L1.m1"),
+                            UA_NODEID_STRING(2, "L1.m1.start_move"),
+                            0,
+                            &input,
+                            &outputSize,
+                            &output);
+    UA_Variant_clear(&input);
+    if (retval != UA_STATUSCODE_GOOD)
+    {
+        printf("start_move failed: %s\n", UA_StatusCode_name(retval));
+        return retval;
+    }
+    if (output != NULL)
+    {
+        UA_Array_delete(output, outputSize, &UA_TYPES[UA_TYPES_VARIANT]);
+    }
+
+    printf("Monitoring L1.m1.position for up to 10 seconds\n");
+    auto t_now = std::chrono::steady_clock::now();
+    auto tf = t_now + std::chrono::seconds(10);
+    while ((current_pos != target_pos) && (t_now < tf))
+    {
+        t_now = std::chrono::steady_clock::now();
+        val = UA_Variant_new();
+        retval = UA_Client_readValueAttribute(client, UA_NODEID_STRING(2, "L1.m1.position"), val);
+        if ((retval == UA_STATUSCODE_GOOD) && UA_Variant_isScalar(val) && val->type == &UA_TYPES[UA_TYPES_INT32])
+        {
+            current_pos = *static_cast<UA_Int32 *>(val->data);
+            printf("Current position: %d\n", current_pos);
+        }
+        else
+        {
+            UA_Variant_delete(val);
+            printf("Position read failed while monitoring: %s\n", UA_StatusCode_name(retval));
+            return retval;
+        }
+        UA_Variant_delete(val);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+
+    printf("Sequence completed\n");
+    return UA_STATUSCODE_GOOD;
 }
 
 int main()
@@ -326,8 +460,6 @@ int main()
 
     printf("-- \n\n Calling a method (start_move : L1.m1.start_move).\n");
 
-    UA_UInt32 state;
-
     UA_Variant input;
     UA_Variant_init(&input);
     // UA_String argString = UA_STRING("Hello Server");
@@ -453,17 +585,15 @@ int main()
 //    UA_NodeId_clear(&meth_id);
 
     printf("\n\n\n");
-
-    printf("Let's try a complete sequence of operation.\n\n"
-    		"2.Load a configuration and send it to the server\n"
-    		"3.Check status\n"
-    		"4.Set a target position\n"
-    		"5.Call move_motor to set the movement\n"
-    		"6.Periodically check the value of position to see what the motor is doing\n"
-    );
-
-    std::ifstream fconf("m1_config.json");
-    json jconf =
+    printf("Running automated operation sequence\n");
+    retval = execute_motor_sequence(client, "m1_config.json");
+    if (retval != UA_STATUSCODE_GOOD)
+    {
+        printf("Operation sequence failed: %s\n", UA_StatusCode_name(retval));
+        UA_Client_disconnect(client);
+        UA_Client_delete(client);
+        return EXIT_FAILURE;
+    }
 
 
 
