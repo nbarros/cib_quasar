@@ -1032,6 +1032,13 @@ UaStatus DIoLPowerMeter::callTerminate (
       LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label.c_str()," ") << "Caught a serial IO exception : [" << e.what() << "].";
+      LOG(Log::ERR, lcmp) << msg.str();
+      got_exception = true;
+    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
@@ -1118,6 +1125,13 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
+      LOG(Log::ERR, lcmp) << msg.str();
+      got_exception = true;
+    }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label.c_str()," ") << "Caught a serial IO exception : [" << e.what() << "].";
       LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
@@ -1377,6 +1391,13 @@ UaStatus DIoLPowerMeter::callTerminate (
       LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label.c_str()," ") << "Caught a serial IO exception : [" << e.what() << "].";
+      LOG(Log::ERR, lcmp) << msg.str();
+      got_exception = true;
+    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
@@ -1526,6 +1547,13 @@ UaStatus DIoLPowerMeter::callTerminate (
       LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label.c_str()," ") << "Caught a serial IO exception : [" << e.what() << "].";
+      LOG(Log::ERR, lcmp) << msg.str();
+      got_exception = true;
+    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
@@ -1623,6 +1651,13 @@ UaStatus DIoLPowerMeter::callTerminate (
     {
       msg.clear(); msg.str("");
       msg << log_e(label.c_str()," ") << "Caught a serial exception : [" << e.what() << "].";
+      LOG(Log::ERR, lcmp) << msg.str();
+      got_exception = true;
+    }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label.c_str()," ") << "Caught a serial IO exception : [" << e.what() << "].";
       LOG(Log::ERR, lcmp) << msg.str();
       got_exception = true;
     }

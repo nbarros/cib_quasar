@@ -3770,6 +3770,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Failed with a serial IO exception :") << e.what();
+      got_exception = true;
+    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
@@ -3821,6 +3827,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Failed with a serial IO exception :") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
@@ -3875,6 +3887,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg << log_e(desc.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(desc.c_str(),"Failed with a serial IO exception :") << e.what();
+      got_exception = true;
+    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
@@ -3926,6 +3944,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
       msg << log_e(desc.c_str(),"Failed with a Serial exception :") << e.what();
       got_exception = true;
     }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(desc.c_str(),"Failed with a serial IO exception :") << e.what();
+      got_exception = true;
+    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
@@ -3975,6 +3999,12 @@ UaStatus DIoLLaserUnit::set_conn(const std::string port, uint16_t baud, json &re
     {
       msg.clear(); msg.str("");
       msg << log_e(lbl.c_str(),"Failed with a Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(lbl.c_str(),"Failed with a serial IO exception :") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)

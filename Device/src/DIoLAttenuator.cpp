@@ -582,6 +582,12 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
       msg << log_e("init","Serial exception :") << e.what();
       got_exception = true;
     }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e("init","Serial IO exception :") << e.what();
+      got_exception = true;
+    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
@@ -626,6 +632,10 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
         got_exception = true;
       }
       catch(serial::SerialException &e)
+      {
+        got_exception = true;
+      }
+      catch(serial::IOException &e)
       {
         got_exception = true;
       }
@@ -697,6 +707,12 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
       {
         msg.clear(); msg.str("");
         msg << log_e("init","Serial exception :") << e.what();
+        got_exception = true;
+      }
+      catch(serial::IOException &e)
+      {
+        msg.clear(); msg.str("");
+        msg << log_e("init","Serial IO exception :") << e.what();
         got_exception = true;
       }
       catch(std::exception &e)
@@ -1067,6 +1083,12 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
       msg << log_e(label,"Serial exception :") << e.what();
       got_exception = true;
     }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label,"Serial IO exception :") << e.what();
+      got_exception = true;
+    }
     catch(std::exception &e)
     {
       msg.clear(); msg.str("");
@@ -1163,6 +1185,12 @@ UaStatus DIoLAttenuator::callSet_calibration_parameters (
     {
       msg.clear(); msg.str("");
       msg << log_e(label,"Serial exception :") << e.what();
+      got_exception = true;
+    }
+    catch(serial::IOException &e)
+    {
+      msg.clear(); msg.str("");
+      msg << log_e(label,"Serial IO exception :") << e.what();
       got_exception = true;
     }
     catch(std::exception &e)
